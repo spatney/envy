@@ -1,0 +1,29 @@
+<html>
+
+<body>
+    <div id="visual"></div>
+    <script src="./envy.js"></script>
+    <script>
+        var viz = envy.plugins.gauge.create({
+            element: document.getElementById('visual'),
+            host: {
+                colors: envy.utility.colors.PowerBI
+            }
+        });
+
+        var data = {
+            min: 0,
+            max: 100,
+            values: [
+                { data: 10 },
+                { data: 20 },
+                { data: 30 },
+                { data: 90 }
+            ]
+        };
+
+        viz.update({ data: data, viewport: { height: 500, width: 600 } });
+    </script>
+</body>
+
+</html>
