@@ -1,0 +1,13 @@
+{
+  "name": "@envy/visual",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "shots": "node shoot.mjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

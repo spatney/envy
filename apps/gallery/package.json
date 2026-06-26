@@ -1,0 +1,17 @@
+{
+  "name": "@envy/gallery",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4317"
+  },
+  "dependencies": {
+    "@envy/core": "*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

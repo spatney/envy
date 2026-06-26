@@ -202,6 +202,11 @@ export function computeFrame(input: FrameInput): Frame {
     }
     if (input.yAxis.title) gutter += lineHeight(font.size.base) + AXIS_TITLE_GAP;
     left += gutter;
+    // Reserve half a label line so the top/bottom tick labels (which center on
+    // the plot edges) never collide with the legend above or x labels below.
+    const yHalf = Math.ceil(lineHeight(font.size.small) / 2);
+    top += yHalf;
+    bottom -= yHalf;
   }
   if (input.xAxis?.show) {
     let gutter = lineHeight(font.size.small) + TICK_SIZE + AXIS_LABEL_GAP;

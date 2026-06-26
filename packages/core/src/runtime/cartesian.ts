@@ -295,18 +295,36 @@ export function buildCartesianModel(
     yDomain = [Math.min(0, yDomain[0]), Math.max(0, yDomain[1])];
   }
   const yScaleCfg = enc.y.scale;
-  if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
-    yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
-  } else if (yScaleCfg?.nice !== false) {
-    yDomain = niceDomain(yDomain[0], yDomain[1], 8);
-  }
-  if (yDomain[0] === yDomain[1]) yDomain = [yDomain[0], yDomain[0] + 1];
-
-  // --- Tick values + labels (pixel-independent) ---
   const xAxisCfg = axisCfg(spec, 'x');
   const yAxisCfg = axisCfg(spec, 'y');
   const yTickCount = yAxisCfg.ticks ?? 6;
-  const yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount);
+
+  // Tick values and the y-domain must be derived together so that the first and
+  // last tick sit exactly on the plot edges (otherwise labels spill past the axis).
+  let yTickValues: number[];
+  if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
+    yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
+    const lo = Math.min(yDomain[0], yDomain[1]);
+    const hi = Math.max(yDomain[0], yDomain[1]);
+    yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount).filter(
+      (v) => v >= lo - 1e-9 && v <= hi + 1e-9,
+    );
+  } else if (yScaleCfg?.nice !== false) {
+    yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount);
+    if (yTickValues.length >= 2) {
+      yDomain = [
+        Math.min(yTickValues[0], yDomain[0]),
+        Math.max(yTickValues[yTickValues.length - 1], yDomain[1]),
+      ];
+    }
+  } else {
+    yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount).filter(
+      (v) => v >= yDomain[0] - 1e-9 && v <= yDomain[1] + 1e-9,
+    );
+  }
+  if (yDomain[0] === yDomain[1]) yDomain = [yDomain[0], yDomain[0] + 1];
+
+  // --- Tick labels (pixel-independent) ---
   const yLabels = yTickValues.map((v) => formatNumericTick(v, enc.y.format ?? yAxisCfg.format));
 
   let xTickValues: Array<number | string>;
