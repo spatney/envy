@@ -124,6 +124,12 @@ export interface BaseSpec {
   theme?: ThemeInput;
   dimensions?: Dimensions;
   title?: string | TitleConfig;
+  /**
+   * Accessible description (alt text) for the chart. Used verbatim as the
+   * chart's `aria-label`; when omitted, a concise label is synthesized from the
+   * type, title, and data. Agents should set this to convey the chart's intent.
+   */
+  description?: string;
   legend?: LegendConfig | boolean;
   tooltip?: TooltipConfig | boolean;
   axes?: AxesConfig;

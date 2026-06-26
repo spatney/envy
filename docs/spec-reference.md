@@ -40,6 +40,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Format mini‑language](#format-mini-language)
 - [Enumerations](#enumerations)
 - [Runtime API](#runtime-api)
+- [Accessibility](#accessibility)
 
 ---
 
@@ -53,6 +54,7 @@ Shared by **all** chart types.
 | `theme` | `'light' \| 'dark' \| ThemeOverride` | `'light'` | Theme name or a partial override (see [Themes](#themes)). |
 | `dimensions` | `{ width?, height?, autoResize? }` | responsive | Omit `width`/`height` to fill the container and track resizes. |
 | `title` | `string \| TitleConfig` | — | `string`, or `{ text, subtitle?, align? }`. |
+| `description` | `string` | auto | Accessible alt text. Used verbatim as the chart's `aria-label`; auto‑synthesized from type/title/data when omitted (see [Accessibility](#accessibility)). |
 | `legend` | `LegendConfig \| boolean` | auto | `false` hides it; `{ show?, position?, title? }`. `position`: `top \| right \| bottom \| left`. |
 | `tooltip` | `TooltipConfig \| boolean` | `true` | `false` (or `{ show: false }`) disables hover tooltips. |
 | `axes` | `{ x?: AxisConfig, y?: AxisConfig }` | auto | Per‑axis overrides (cartesian charts). |
@@ -384,3 +386,22 @@ settles, Envy sets `data-envy-ready="true"` on the surface root and increments
   marks layer — so interaction never triggers a full redraw.
 - **Virtualized tables** window rows so `table`/`matrix` stay responsive at large
   row counts.
+
+---
+
+## Accessibility
+
+Every rendered chart is wrapped as an accessible **figure**:
+
+- The surface root gets `role="figure"` and an `aria-label`. Set `description`
+  for precise alt text; otherwise Envy synthesizes one from the type, title, and
+  row count (e.g. _"Bar chart: Quarterly revenue. 4 data points."_).
+- The canvas layers are `aria-hidden` (decorative). For canvas‑drawn charts
+  (line/area/bar/scatter/pie/heatmap) Envy also injects a **visually‑hidden
+  `<table>`** mirroring the data (capped at 100 rows) so screen‑reader users can
+  read the underlying numbers. `table`/`matrix` already render a semantic
+  `<table>` (with `aria-sort` on sortable headers) and `kpi` renders real text,
+  so no fallback is added for those.
+- All titles, axis labels, and legends are real DOM text (not canvas pixels), so
+  they're selectable and readable by assistive tech.
+

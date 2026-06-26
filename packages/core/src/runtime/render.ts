@@ -20,6 +20,7 @@ import {
 } from '../charts';
 import { InteractionController, buildCartesianInteraction } from '../interaction';
 import type { InteractionModel } from '../interaction';
+import { applyA11y } from '../a11y';
 
 export interface ChartInstance {
   /** Re-render with a new spec (data or config changes). */
@@ -106,6 +107,8 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
 
     if (!interaction) interaction = new InteractionController(surface, tokens);
     interaction.setModel(interactionModel, tokens);
+
+    applyA11y(surface, currentSpec);
 
     signalReady(surface);
   };

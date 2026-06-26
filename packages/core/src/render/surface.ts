@@ -18,6 +18,8 @@ export class Surface {
   readonly marks: CanvasLayer;
   readonly interaction: CanvasLayer;
   readonly overlay: HTMLDivElement;
+  /** Visually-hidden container for the screen-reader data-table fallback. */
+  readonly a11y: HTMLDivElement;
   width = 0;
   height = 0;
   dpr = 1;
@@ -46,9 +48,25 @@ export class Surface {
       pointerEvents: 'none',
     });
 
+    // Off-screen (visually hidden) host for the screen-reader data-table
+    // fallback. Present to assistive tech, invisible on screen.
+    this.a11y = createDiv('envy-a11y', {
+      position: 'absolute',
+      width: '1px',
+      height: '1px',
+      overflow: 'hidden',
+      clip: 'rect(0 0 0 0)',
+      clipPath: 'inset(50%)',
+      whiteSpace: 'nowrap',
+      border: '0',
+      margin: '-1px',
+      padding: '0',
+    });
+
     this.root.appendChild(marksCanvas);
     this.root.appendChild(interactionCanvas);
     this.root.appendChild(this.overlay);
+    this.root.appendChild(this.a11y);
     container.appendChild(this.root);
 
     this.marks = new CanvasLayer(marksCanvas);

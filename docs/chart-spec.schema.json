@@ -248,6 +248,7 @@
         "theme": { "$ref": "#/$defs/ThemeInput" },
         "dimensions": { "$ref": "#/$defs/Dimensions" },
         "title": { "$ref": "#/$defs/TitleConfig" },
+        "description": { "type": "string" },
         "legend": { "$ref": "#/$defs/LegendConfig" },
         "tooltip": { "$ref": "#/$defs/TooltipConfig" },
         "axes": { "$ref": "#/$defs/AxesConfig" },
