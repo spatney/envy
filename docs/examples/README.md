@@ -20,5 +20,8 @@ render('#app', spec);
 | [kpi.json](./kpi.json) | kpi |
 | [table.json](./table.json) | table |
 | [matrix.json](./matrix.json) | matrix |
+| [box.json](./box.json) | box (distribution) |
+| [sankey.json](./sankey.json) | sankey (flow) |
+| [choropleth.json](./choropleth.json) | choropleth (map) |
 
 All examples are validated against [`../chart-spec.schema.json`](../chart-spec.schema.json).

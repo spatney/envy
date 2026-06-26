@@ -14,7 +14,10 @@
     { "$ref": "#/$defs/HeatmapSpec" },
     { "$ref": "#/$defs/KpiSpec" },
     { "$ref": "#/$defs/TableSpec" },
-    { "$ref": "#/$defs/MatrixSpec" }
+    { "$ref": "#/$defs/MatrixSpec" },
+    { "$ref": "#/$defs/BoxSpec" },
+    { "$ref": "#/$defs/SankeySpec" },
+    { "$ref": "#/$defs/ChoroplethSpec" }
   ],
   "$defs": {
     "FieldType": {
@@ -75,6 +78,10 @@
         "size": { "$ref": "#/$defs/FieldDef" },
         "series": { "$ref": "#/$defs/FieldDef" },
         "theta": { "$ref": "#/$defs/FieldDef" },
+        "source": { "$ref": "#/$defs/FieldDef" },
+        "target": { "$ref": "#/$defs/FieldDef" },
+        "value": { "$ref": "#/$defs/FieldDef" },
+        "key": { "$ref": "#/$defs/FieldDef" },
         "label": { "$ref": "#/$defs/FieldDef" }
       },
       "additionalProperties": false
@@ -396,6 +403,84 @@
         "subtotals": { "type": "boolean" },
         "grandTotals": { "type": "boolean" }
       }
+    },
+    "BoxSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "box" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y"]
+        },
+        "whisker": { "type": "string", "enum": ["tukey", "minMax"] },
+        "outliers": { "type": "boolean" }
+      }
+    },
+    "SankeySpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "sankey" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["source", "target", "value"]
+        },
+        "nodeWidth": { "type": "number" },
+        "nodePadding": { "type": "number" },
+        "nodeValues": { "type": "boolean" }
+      }
+    },
+    "ChoroplethSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "geo", "encoding"],
+      "properties": {
+        "type": { "const": "choropleth" },
+        "geo": { "$ref": "#/$defs/GeoFeatureCollection" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["key", "color"]
+        },
+        "featureId": { "type": "string" },
+        "projection": { "type": "string", "enum": ["mercator", "equirectangular", "identity"] },
+        "scheme": { "type": "string" }
+      }
+    },
+    "GeoFeatureCollection": {
+      "type": "object",
+      "required": ["type", "features"],
+      "properties": {
+        "type": { "const": "FeatureCollection" },
+        "features": { "type": "array", "items": { "$ref": "#/$defs/GeoFeature" } }
+      },
+      "additionalProperties": true
+    },
+    "GeoFeature": {
+      "type": "object",
+      "required": ["type", "geometry"],
+      "properties": {
+        "type": { "const": "Feature" },
+        "id": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "properties": { "type": ["object", "null"] },
+        "geometry": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["type", "coordinates"],
+              "properties": {
+                "type": { "type": "string", "enum": ["Polygon", "MultiPolygon"] },
+                "coordinates": { "type": "array" }
+              },
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

@@ -1,0 +1,20 @@
+{
+  "type": "box",
+  "title": { "text": "Response time by cohort", "subtitle": "Tukey whiskers · 1.5×IQR" },
+  "data": [
+    { "cohort": "A", "ms": 62 }, { "cohort": "A", "ms": 65 }, { "cohort": "A", "ms": 59 },
+    { "cohort": "A", "ms": 71 }, { "cohort": "A", "ms": 68 }, { "cohort": "A", "ms": 64 },
+    { "cohort": "A", "ms": 60 }, { "cohort": "A", "ms": 66 }, { "cohort": "A", "ms": 118 },
+    { "cohort": "B", "ms": 78 }, { "cohort": "B", "ms": 82 }, { "cohort": "B", "ms": 75 },
+    { "cohort": "B", "ms": 88 }, { "cohort": "B", "ms": 80 }, { "cohort": "B", "ms": 84 },
+    { "cohort": "B", "ms": 79 }, { "cohort": "B", "ms": 91 }, { "cohort": "B", "ms": 47 },
+    { "cohort": "C", "ms": 54 }, { "cohort": "C", "ms": 58 }, { "cohort": "C", "ms": 51 },
+    { "cohort": "C", "ms": 63 }, { "cohort": "C", "ms": 57 }, { "cohort": "C", "ms": 60 },
+    { "cohort": "C", "ms": 55 }, { "cohort": "C", "ms": 49 }, { "cohort": "C", "ms": 72 }
+  ],
+  "encoding": {
+    "x": { "field": "cohort" },
+    "y": { "field": "ms", "title": "Latency (ms)" }
+  },
+  "whisker": "tukey"
+}

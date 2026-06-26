@@ -17,9 +17,38 @@ Canvas2D + DOM rendering core.
 
 ## Install
 
+From npm (recommended):
+
 ```bash
 npm install @envy/core
+# React wrapper (optional):
+npm install @envy/react react
 ```
+
+### Install from GitHub
+
+You can also install straight from the repo — handy for trying unreleased work or
+pinning an exact ref. Reference a **version tag** (or any branch/commit):
+
+```bash
+# the zero-dependency engine, importable as `envy`
+npm install github:spatney/envy#v0.1.0
+
+import { render } from 'envy';
+```
+
+```jsonc
+// package.json
+{
+  "dependencies": {
+    "envy": "github:spatney/envy#v0.1.0"
+  }
+}
+```
+
+> The GitHub install exposes the core engine under the bare name **`envy`**. For
+> the scoped packages (`@envy/core`, `@envy/react`) and fine-grained versioning,
+> install from npm. Tags are published as `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`).
 
 ## Quick start
 
@@ -81,6 +110,9 @@ peer dependency (React 18+).
 | `kpi` | Headline metric with delta + sparkline | [kpi.json](./docs/examples/kpi.json) |
 | `table` | Virtualized, sortable data table + conditional formatting | [table.json](./docs/examples/table.json) |
 | `matrix` | Pivot/cross-tab: groups, aggregates, subtotals/grand totals | [matrix.json](./docs/examples/matrix.json) |
+| `box` | Distributions by category; Tukey/min-max whiskers + outliers | [box.json](./docs/examples/box.json) |
+| `sankey` | Flows between nodes from `source → target` link rows | [sankey.json](./docs/examples/sankey.json) |
+| `choropleth` | Values shaded over GeoJSON regions; sequential color scale | [choropleth.json](./docs/examples/choropleth.json) |
 
 ## Documentation
 
@@ -128,7 +160,10 @@ npm run gallery     # launch the Vite gallery harness for visual iteration
 
 The **gallery** renders a catalog of scenarios across sizes and light/dark themes; a
 Playwright screenshot runner captures the matrix so visual quality is verified by
-review, not assumed.
+review, not assumed. It also ships a **Playground** (`npm run gallery`, then pick
+*Playground* in the sidebar) where you can edit a `ChartSpec` live, seed it from
+presets spanning every chart type and data size, drag to resize the canvas, and
+shuffle the data to watch the update transitions.
 
 ## Design references
 

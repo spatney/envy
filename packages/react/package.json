@@ -1,8 +1,28 @@
 {
   "name": "@envy/react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Envy React wrapper — <Chart spec={...} />.",
+  "description": "Envy React wrapper — declarative <Chart spec={...} /> for the Envy visualization engine.",
+  "license": "MIT",
+  "author": "Sachin Patney <sachin.patney@gmail.com>",
+  "homepage": "https://github.com/spatney/envy/tree/main/packages/react#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spatney/envy.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/spatney/envy/issues"
+  },
+  "keywords": [
+    "react",
+    "visualization",
+    "charts",
+    "dataviz",
+    "envy",
+    "agent",
+    "declarative"
+  ],
   "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -11,22 +31,32 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "tsup"
   },
   "peerDependencies": {
     "react": ">=18"
   },
   "dependencies": {
-    "@envy/core": "*"
+    "@envy/core": "^0.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

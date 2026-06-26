@@ -1,21 +1,58 @@
 {
-  "name": "envy-monorepo",
-  "version": "0.0.0",
+  "name": "envy",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Envy — a beautiful, high-performance, agent-first data visualization library.",
+  "license": "MIT",
+  "author": "Sachin Patney <sachin.patney@gmail.com>",
+  "homepage": "https://github.com/spatney/envy#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spatney/envy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/spatney/envy/issues"
+  },
+  "keywords": [
+    "visualization",
+    "charts",
+    "dataviz",
+    "agent",
+    "declarative"
+  ],
+  "main": "./packages/core/dist/index.js",
+  "module": "./packages/core/dist/index.js",
+  "types": "./packages/core/dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./packages/core/dist/index.d.ts",
+      "import": "./packages/core/dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "packages/core/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "workspaces": [
     "packages/*",
     "apps/*",
     "tests/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace @envy/core --workspace @envy/react",
+    "build:all": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
-    "gallery": "npm run dev --workspace @envy/gallery"
+    "gallery": "npm run dev --workspace @envy/gallery",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

@@ -35,6 +35,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Chart types](#chart-types)
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
+  - [box](#box) · [sankey](#sankey) · [choropleth](#choropleth)
 - [Conditional formatting](#conditional-formatting)
 - [Themes](#themes)
 - [Format mini‑language](#format-mini-language)
@@ -103,10 +104,14 @@ columns onto visual **channels** through `encoding`.
 | `x` | line, area, bar, scatter, heatmap | Horizontal position. |
 | `y` | line, area, bar, scatter, heatmap | Vertical position. |
 | `y2` | area | Upper bound for ranged/band marks. |
-| `color` | heatmap, pie | Continuous color (heatmap) or slice color (pie). |
+| `color` | heatmap, pie, choropleth | Continuous color (heatmap/choropleth) or slice color (pie). |
 | `size` | scatter | Bubble radius. |
-| `series` | line, area, bar | Splits data into multiple series (multi‑line, grouped/stacked bars, stacked areas). |
+| `series` | line, area, bar, box | Splits data into multiple series (multi‑line, grouped/stacked bars, stacked areas, grouped boxes). |
 | `theta` | pie | Angular measure (the slice value). |
+| `source` | sankey | Link source node (one row per link). |
+| `target` | sankey | Link target node. |
+| `value` | sankey | Flow magnitude (ribbon/node thickness). |
+| `key` | choropleth | Joins a data row to a map feature. |
 | `label` | any | Text/label channel. |
 
 ### `FieldDef`
@@ -284,6 +289,54 @@ subtotals/grand totals — rendered through the table engine.
 
 → [`examples/matrix.json`](./examples/matrix.json)
 
+### box
+
+Box‑and‑whisker distributions: one box per category (and per `series`) showing
+quartiles, median, whiskers, and outliers.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `x`, `y`; optional `series` | `x` is the category; `y` holds the **raw observations** (many rows per category) — Envy computes the quartiles. `series` draws grouped boxes side‑by‑side. |
+| `whisker` | `'tukey' \| 'minMax'` | `tukey` (default): whiskers reach the furthest points within 1.5×IQR of the quartiles; points beyond are outliers. `minMax`: whiskers span the full range (no outliers). |
+| `outliers` | `boolean` | Draw outlier points beyond the whiskers (tukey only; default `true`). |
+
+→ [`examples/box.json`](./examples/box.json)
+
+### sankey
+
+Flow diagram: nodes linked by value‑weighted ribbons. Each data row is one
+**link**; nodes are derived from the distinct `source`/`target` values and laid
+out in layers by longest path, with ribbons colored by their source.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `source`, `target`, `value` | One row per link. `value` sets ribbon/node thickness. |
+| `nodeWidth` | `number` | Node block width in px (default `16`). |
+| `nodePadding` | `number` | Vertical gap between stacked nodes in px (default `14`). |
+| `nodeValues` | `boolean` | Show each node's total beside its label (default `true`). |
+
+→ [`examples/sankey.json`](./examples/sankey.json)
+
+### choropleth
+
+Thematic map: GeoJSON regions filled by a sequential color scale, with a value
+legend and per‑region hover. Data rows join to features by a key.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `geo` | `GeoFeatureCollection` | **Required.** GeoJSON `FeatureCollection` of `Polygon`/`MultiPolygon` features. |
+| `encoding` | requires `key`, `color` | `key` joins each row to a feature; `color` is the numeric value driving the fill. |
+| `featureId` | `string` | Where to read a feature's join id: a property name (e.g. `'name'` → `feature.properties.name`), or `'id'` for the top‑level `feature.id`. Defaults to `feature.id` → `properties.id` → `properties.name`. |
+| `projection` | `MapProjection` | `mercator` (default), `equirectangular`, or `identity` (coordinates are already planar `[x, y]`). |
+| `scheme` | `string` | Sequential ramp: `blues`, `teal`, `viridis`, `magma`, `greys`. |
+
+The map auto‑fits its container. Antimeridian‑crossing geometry (e.g. Alaska's
+Aleutians) is handled by choosing a central meridian from the widest longitude
+gap. For composite layouts like Alaska/Hawaii insets, pre‑project the geometry to
+planar coordinates and use `projection: 'identity'`.
+
+→ [`examples/choropleth.json`](./examples/choropleth.json)
+
 ---
 
 ## Conditional formatting
@@ -351,10 +404,11 @@ A small, dependency‑free subset of d3‑format (numbers) plus strftime‑style
 
 | Name | Values |
 | --- | --- |
-| `ChartType` | `line`, `area`, `bar`, `scatter`, `pie`, `heatmap`, `kpi`, `table`, `matrix` |
+| `ChartType` | `line`, `area`, `bar`, `scatter`, `pie`, `heatmap`, `kpi`, `table`, `matrix`, `box`, `sankey`, `choropleth` |
 | `FieldType` | `quantitative`, `temporal`, `ordinal`, `nominal` |
 | `AggOp` | `sum`, `mean`, `avg`, `min`, `max`, `count`, `countDistinct`, `median`, `first`, `last` |
 | `CurveType` | `linear`, `monotone`, `step`, `stepBefore`, `stepAfter`, `catmullRom` |
+| `MapProjection` | `mercator`, `equirectangular`, `identity` |
 | Sequential schemes | `blues`, `teal`, `viridis`, `magma`, `greys` |
 | Diverging schemes | `redBlue`, `spectral`, `blueRed` |
 | `LegendPosition` | `top`, `right`, `bottom`, `left` |
@@ -393,14 +447,14 @@ settles, Envy sets `data-envy-ready="true"` on the surface root and increments
 Charts play a brief **entrance animation** the first time they render; **resizes**
 are always instant (no re‑animation, no jank while dragging):
 
-- **Cartesian charts** (line/area/bar/scatter/heatmap) sweep their marks in
+- **Cartesian charts** (line/area/bar/scatter/box/heatmap) sweep their marks in
   left‑to‑right with a short fade — the axes, gridlines, and labels are drawn
   immediately so only the data "draws on".
-- **Pie, KPI, tables** fade and rise in subtly.
+- **Pie, KPI, sankey, choropleth, tables** fade and rise in subtly.
 
 On **`update()`** (new data or config), canvas‑mark charts
-(line/area/bar/scatter/pie/heatmap) **cross‑fade** the marks layer from the
-previous frame to the next — a smooth dissolve whose final frame is
+(line/area/bar/scatter/box/pie/heatmap/sankey/choropleth) **cross‑fade** the marks
+layer from the previous frame to the next — a smooth dissolve whose final frame is
 pixel‑identical to an instant redraw. DOM charts (`kpi`/`table`/`matrix`) update
 instantly, and a simultaneous size change snaps (that's a resize, not a data
 morph) to avoid a stretched bitmap.

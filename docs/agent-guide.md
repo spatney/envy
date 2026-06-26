@@ -57,6 +57,9 @@ To compare groups, add a `series` channel (line/area/bar) instead of widening:
 | Composition of a total | `bar` + `stack`, or `pie`/donut | bar: `series`; pie: `theta`, `color` |
 | Correlation / distribution | `scatter` (+ `size` for a 3rd dim) | `x`, `y`, optional `size`, `series` |
 | Density across two categories | `heatmap` | `x`, `y`, `color` |
+| Distribution / spread by group | `box` | `x` category, `y` observations, optional `series` |
+| Flow between nodes / stages | `sankey` | `source`, `target`, `value` |
+| Values across a geography | `choropleth` | `geo`, `key`, `color` |
 | Headline metric | `kpi` | `value`, `delta`, `sparkline` |
 | Raw/detail records | `table` | `columns` |
 | Aggregated cross‑tab | `matrix` | `rows`, `columns`, `values` |
@@ -128,6 +131,54 @@ number of shares.
 }
 ```
 
+**Box plot from raw observations**
+
+```jsonc
+{
+  "type": "box",
+  "data": [/* many { group, value } rows — one per observation */],
+  "encoding": {
+    "x": { "field": "group" },
+    "y": { "field": "value", "title": "Latency (ms)" }
+  },
+  "whisker": "tukey"          // 1.5×IQR whiskers + outliers (default)
+}
+```
+
+**Sankey from link rows**
+
+```jsonc
+{
+  "type": "sankey",
+  "data": [
+    { "source": "Coal", "target": "Electricity", "value": 120 },
+    { "source": "Electricity", "target": "Residential", "value": 170 }
+    /* …one row per link; nodes are derived automatically */
+  ],
+  "encoding": {
+    "source": { "field": "source" },
+    "target": { "field": "target" },
+    "value": { "field": "value", "title": "TWh" }
+  }
+}
+```
+
+**Choropleth (data + GeoJSON)**
+
+```jsonc
+{
+  "type": "choropleth",
+  "geo": { "type": "FeatureCollection", "features": [/* Polygon/MultiPolygon */] },
+  "data": [/* { state, value } rows */],
+  "encoding": {
+    "key": { "field": "state" },         // joins to a feature
+    "color": { "field": "value", "title": "Index" }
+  },
+  "featureId": "name",                    // read feature.properties.name
+  "scheme": "teal"
+}
+```
+
 Copy‑paste starting points for **every** type live in [`docs/examples/`](./examples).
 
 ## Building dashboards
@@ -180,9 +231,10 @@ palette is accessible on both light and dark backgrounds.
 
 ## Validation & gotchas
 
-- **`encoding` is required** for `line`/`area`/`bar`/`scatter` (`x`+`y`), `pie`
-  (`theta`+`color`), and `heatmap` (`x`+`y`+`color`). `kpi`/`table`/`matrix` use their
-  own field lists instead of `encoding`.
+- **`encoding` is required** for `line`/`area`/`bar`/`scatter`/`box` (`x`+`y`), `pie`
+  (`theta`+`color`), `heatmap` (`x`+`y`+`color`), `sankey` (`source`+`target`+`value`),
+  and `choropleth` (`key`+`color`, plus a `geo` FeatureCollection). `kpi`/`table`/`matrix`
+  use their own field lists instead of `encoding`.
 - **Field names must exist** in every `data` row (dotted paths like `a.b` read nested
   values).
 - **Don't pre‑pivot** for charts — pass tidy rows and split with `series`. Use `matrix`

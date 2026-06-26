@@ -1,0 +1,22 @@
+{
+  "type": "sankey",
+  "title": "Energy supply → demand",
+  "data": [
+    { "source": "Coal", "target": "Electricity", "value": 120 },
+    { "source": "Gas", "target": "Electricity", "value": 90 },
+    { "source": "Gas", "target": "Heat", "value": 70 },
+    { "source": "Nuclear", "target": "Electricity", "value": 80 },
+    { "source": "Wind", "target": "Electricity", "value": 60 },
+    { "source": "Solar", "target": "Electricity", "value": 35 },
+    { "source": "Electricity", "target": "Residential", "value": 170 },
+    { "source": "Electricity", "target": "Commercial", "value": 115 },
+    { "source": "Electricity", "target": "Industry", "value": 100 },
+    { "source": "Heat", "target": "Residential", "value": 40 },
+    { "source": "Heat", "target": "Commercial", "value": 30 }
+  ],
+  "encoding": {
+    "source": { "field": "source" },
+    "target": { "field": "target" },
+    "value": { "field": "value", "title": "TWh" }
+  }
+}
