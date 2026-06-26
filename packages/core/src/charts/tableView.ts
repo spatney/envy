@@ -7,6 +7,8 @@ import { formatValue } from '../format';
 const HEADER_ROW_HEIGHT = 32;
 const MIN_COL_WIDTH = 72;
 const DEFAULT_BODY_ROW_HEIGHT = 30;
+/** A wobbly, asymmetric border-radius that reads as a hand-drawn frame. */
+const SKETCH_BORDER_RADIUS = '14px 6px 16px 7px / 7px 15px 6px 14px';
 
 export interface ViewColumn {
   key: string;
@@ -50,6 +52,8 @@ export interface BuildTableOptions {
   conditionalDomains?: Array<[number, number] | null>;
   headerRows?: HeaderCell[][];
   visibleRange?: VisibleRange;
+  /** Render hand-drawn chrome (a wobbly container frame) for sketch mode. */
+  sketch?: boolean;
   /** Computed internally by buildTable; column pixel widths fitted to the container. */
   widths?: number[];
 }
@@ -93,7 +97,7 @@ export function buildTable(opts: BuildTableOptions): void {
     pointerEvents: 'auto',
     boxSizing: 'border-box',
     border: `1px solid ${tokens.color.border}`,
-    borderRadius: `${tokens.radius.sm}px`,
+    borderRadius: opts.sketch ? SKETCH_BORDER_RADIUS : `${tokens.radius.sm}px`,
     background: tokens.color.background,
   });
 

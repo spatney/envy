@@ -8,7 +8,8 @@
 
 import type { Size } from '../types';
 import type { ChartSpec, ChartType } from '../spec/types';
-import { resolveTheme, type ThemeTokens } from '../theme';
+import { resolveSketch } from '../spec/sketch';
+import { resolveTheme, withSketchFont, ensureSketchFont, type ThemeTokens } from '../theme';
 import { Surface } from '../render/surface';
 import type { CanvasLayer } from '../render/canvasLayer';
 import { getDevicePixelRatio } from '../render/env';
@@ -86,6 +87,13 @@ function resolveSize(container: HTMLElement, spec: ChartSpec): Size {
   return { width: Math.max(1, width), height: Math.max(1, height) };
 }
 
+/** Resolve the theme, swapping in the handwriting font when sketching with text. */
+function resolveSketchTokens(spec: ChartSpec): ThemeTokens {
+  const tokens = resolveTheme(spec.theme);
+  const sketch = resolveSketch(spec);
+  return sketch?.font ? withSketchFont(tokens) : tokens;
+}
+
 function signalReady(surface: Surface): void {
   surface.root.setAttribute('data-envy-ready', 'true');
   globalThis.__ENVY_READY = (globalThis.__ENVY_READY ?? 0) + 1;
@@ -117,6 +125,8 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
   // Set when the font settles mid-entrance: we defer the corrective redraw until
   // the entrance finishes so the animation isn't cut short by a snap.
   let pendingFontRefresh = false;
+  // One-shot guard so the lazy sketch-font load only ever arms a single redraw.
+  let sketchFontArmed = false;
 
   const draw = (animateEntrance: boolean): void => {
     entrance?.cancel();
@@ -124,7 +134,7 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     updateTransition?.cancel();
     updateTransition = undefined;
 
-    const tokens = resolveTheme(currentSpec.theme);
+    const tokens = resolveSketchTokens(currentSpec);
     const size = resolveSize(container, currentSpec);
     surface.resize(size.width, size.height, getDevicePixelRatio());
     surface.root.removeAttribute('data-envy-ready');
@@ -189,6 +199,9 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     // If text was measured with fallback metrics (web font still loading), arm a
     // one-shot corrective redraw for when the real font arrives.
     armFontRefresh();
+    // Sketch charts use a bundled handwriting font that loads lazily; once it's
+    // ready, redraw so text is laid out with its real glyph metrics.
+    armSketchFont();
   };
 
   // Entrance completion: mark ready, then apply any font-load correction that was
@@ -215,6 +228,18 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
       } else {
         draw(false);
       }
+    });
+  };
+
+  // The sketch font is bundled and loads lazily (data URL, no network). When it
+  // first becomes available, redraw once so handwriting metrics replace the
+  // fallback ones. `ensureSketchFont` resolves `true` only on the load that
+  // actually injected it, so this never loops.
+  const armSketchFont = (): void => {
+    if (sketchFontArmed || !resolveSketch(currentSpec)?.font) return;
+    sketchFontArmed = true;
+    void ensureSketchFont().then((loaded) => {
+      if (loaded && !destroyed) draw(false);
     });
   };
 

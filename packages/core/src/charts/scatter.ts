@@ -3,6 +3,7 @@ import type { CartesianModel } from '../runtime/cartesian';
 import type { ScatterSpec } from '../spec/types';
 import type { Datum } from '../types';
 import { accessor, extent, toNumber } from '../util/data';
+import { RoughPen } from '../rough';
 import { clamp } from '../util/math';
 
 interface ScatterPoint {
@@ -93,6 +94,20 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
   ctx.beginPath();
   ctx.rect(plot.x, plot.y, plot.width, plot.height);
   ctx.clip();
+
+  if (model.sketch) {
+    const pen = new RoughPen(ctx, model.sketch);
+    for (const point of points) {
+      pen.circle(point.x, point.y, point.r, {
+        fill: point.color,
+        fillAlpha: 0.7,
+        stroke: tokens.color.background,
+        strokeWidth: 1,
+      });
+    }
+    ctx.restore();
+    return;
+  }
 
   ctx.lineWidth = 1;
   ctx.strokeStyle = tokens.color.background;

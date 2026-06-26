@@ -2,6 +2,8 @@ import { ordinalColorScale, parseColor, readableTextColor, rgbaToCss } from '../
 import { formatValue } from '../format';
 import type { Surface } from '../render/surface';
 import { arc } from '../shape';
+import { RoughPen } from '../rough';
+import { resolveSketch } from '../spec/sketch';
 import type { ChartSpec, PieSpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { RGBA, Size } from '../types';
@@ -146,21 +148,33 @@ export function drawPie(
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = separator;
 
-  for (const slice of slices) {
-    const wedge = arc({
-      innerRadius,
-      outerRadius,
-      startAngle: slice.startAngle,
-      endAngle: slice.endAngle,
-    });
-    ctx.beginPath();
-    wedge(ctx, cx, cy);
-    ctx.fillStyle = slice.color;
-    ctx.fill();
-    ctx.stroke();
-  }
+  const sketch = resolveSketch(spec);
+  if (sketch) {
+    const pen = new RoughPen(ctx, sketch);
+    for (const slice of slices) {
+      pen.wedge(cx, cy, innerRadius, outerRadius, slice.startAngle, slice.endAngle, {
+        fill: slice.color,
+        stroke: separator,
+      });
+    }
+    ctx.restore();
+  } else {
+    for (const slice of slices) {
+      const wedge = arc({
+        innerRadius,
+        outerRadius,
+        startAngle: slice.startAngle,
+        endAngle: slice.endAngle,
+      });
+      ctx.beginPath();
+      wedge(ctx, cx, cy);
+      ctx.fillStyle = slice.color;
+      ctx.fill();
+      ctx.stroke();
+    }
 
-  ctx.restore();
+    ctx.restore();
+  }
 
   if (pie.labels !== false) {
     const labelRadius = innerRadius > 0 ? (innerRadius + outerRadius) / 2 : outerRadius * 0.62;

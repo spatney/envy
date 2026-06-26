@@ -6,6 +6,7 @@ import {
   type ViewColumn,
 } from './tableView';
 import { pivot, type PivotFlatRow, type PivotHeaderNode } from '../pivot';
+import { resolveSketch } from '../spec/sketch';
 import type { Surface } from '../render/surface';
 import type { ChartSpec, MatrixSpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
@@ -95,6 +96,7 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
     striped: false,
     conditionalDomains: bodyDomains,
     headerRows: buildMatrixHeaderRows(result.columnTree, result.columnLeaves, spec),
+    sketch: resolveSketch(spec) != null,
   });
 }
 

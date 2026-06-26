@@ -1,13 +1,19 @@
 import { formatNumber, formatValue } from '../format';
 import { aggregateValues } from '../pivot';
 import type { Surface } from '../render/surface';
+import { getDevicePixelRatio } from '../render/env';
+import { RoughPen } from '../rough';
+import { resolveSketch, type ResolvedSketch } from '../spec/sketch';
 import type { ChartSpec, KpiSpec, ValueRef } from '../spec/types';
 import type { ThemeTokens } from '../theme';
-import type { Datum, Rect, Size } from '../types';
+import type { Datum, Point, Rect, Size } from '../types';
 import { accessor, toNumber } from '../util/data';
 import { CHROME_PAD, drawTitleBlock } from './chrome';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** A wobbly, asymmetric border-radius that reads as a hand-drawn card outline. */
+const SKETCH_BORDER_RADIUS = '255px 15px 225px 15px / 15px 225px 15px 255px';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -176,6 +182,47 @@ function buildSparkline(
   return svg;
 }
 
+/** Hand-drawn sparkline: the same geometry rendered through the rough engine. */
+function buildSparklineCanvas(
+  tokens: ThemeTokens,
+  width: number,
+  height: number,
+  values: readonly number[],
+  sketch: ResolvedSketch,
+): HTMLCanvasElement | null {
+  if (values.length === 0 || width <= 0 || height <= 0) return null;
+
+  const dpr = getDevicePixelRatio();
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * dpr));
+  canvas.height = Math.max(1, Math.round(height * dpr));
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(dpr, dpr);
+
+  const stroke = 1.75;
+  const pad = stroke;
+  const innerH = Math.max(1, height - pad * 2);
+  const n = values.length;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  const xAt = (i: number): number => (n === 1 ? width / 2 : (i / (n - 1)) * width);
+  const yAt = (v: number): number => pad + (1 - (span === 0 ? 0.5 : (v - min) / span)) * innerH;
+
+  const pen = new RoughPen(ctx, sketch);
+  if (n === 1) {
+    pen.circle(width / 2, yAt(values[0] as number), 2.5, { fill: tokens.color.accent });
+    return canvas;
+  }
+  const points: Point[] = values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
+  pen.polyline(points, { stroke: tokens.color.accent, strokeWidth: stroke });
+  return canvas;
+}
+
 export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
   const kpi = spec as KpiSpec;
   const data = kpi.data ?? [];
@@ -184,8 +231,10 @@ export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, 
   const sparkField = sparklineField(kpi);
   const sparkValues = sparkField ? sparklineValues(data, sparkField) : [];
   const hasSparkline = sparkValues.length > 0;
+  const sketch = resolveSketch(spec);
   const rect = cardRectFor(surface, tokens, size, kpi);
   const card = createCard(tokens, rect, hasSparkline);
+  if (sketch) card.style.borderRadius = SKETCH_BORDER_RADIUS;
 
   if (kpi.label) {
     addText(card, kpi.label, {
@@ -238,12 +287,14 @@ export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, 
     const pad = tokens.spacing.lg;
     const sparkH = clamp(rect.height * 0.18, 24, 40);
     const sparkW = Math.max(0, rect.width - pad * 2);
-    const svg = buildSparkline(tokens, sparkW, sparkH, sparkValues);
-    if (svg) {
-      svg.style.position = 'absolute';
-      svg.style.left = `${pad}px`;
-      svg.style.bottom = `${pad}px`;
-      card.appendChild(svg);
+    const node = sketch
+      ? buildSparklineCanvas(tokens, sparkW, sparkH, sparkValues, sketch)
+      : buildSparkline(tokens, sparkW, sparkH, sparkValues);
+    if (node) {
+      node.style.position = 'absolute';
+      node.style.left = `${pad}px`;
+      node.style.bottom = `${pad}px`;
+      card.appendChild(node);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { drawTitleBlock } from './chrome';
 import { buildTable, resolveConditionalDomain, type ViewColumn } from './tableView';
+import { resolveSketch } from '../spec/sketch';
 import type { Surface } from '../render/surface';
 import type { ChartSpec, TableSpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
@@ -19,6 +20,7 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
   const data = spec.data ?? [];
   const columns = resolveColumns(data, spec);
   const read = columns.map((column) => accessor(column.key));
+  const sketch = resolveSketch(spec) != null;
   let sortState = initialSortState(spec, columns);
   let sortedRows = sortRows(data, columns, read, sortState);
   const domains = columns.map((column, colIndex) =>
@@ -61,6 +63,7 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
       sortState: sortState ?? undefined,
       conditionalDomains: domains,
       visibleRange: { start, end, rowHeight: ROW_HEIGHT },
+      sketch,
     });
   };
 

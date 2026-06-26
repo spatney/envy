@@ -2,6 +2,7 @@ import type { Surface } from '../render/surface';
 import type { CartesianModel } from '../runtime/cartesian';
 import type { BarSpec } from '../spec/types';
 import { roundedRect } from '../shape';
+import { RoughPen } from '../rough';
 import { accessor, toKey, toNumber } from '../util/data';
 
 type CornerSide = 'top' | 'bottom' | 'none';
@@ -39,9 +40,14 @@ function makeRadii(side: CornerSide, radius: number): number | [number, number, 
   return 0;
 }
 
-function drawRect(ctx: CanvasRenderingContext2D, rect: BarRect, radius: number): void {
+function drawRect(ctx: CanvasRenderingContext2D, rect: BarRect, radius: number, pen?: RoughPen | null): void {
   if (!finite(rect.x) || !finite(rect.y) || !finite(rect.width) || !finite(rect.height)) return;
   if (rect.width <= 0 || rect.height <= 0) return;
+
+  if (pen) {
+    pen.rect(rect.x, rect.y, rect.width, rect.height, { stroke: rect.color, fill: rect.color });
+    return;
+  }
 
   const r = Math.min(radius, rect.width / 2, rect.height / 2);
   ctx.beginPath();
@@ -65,7 +71,7 @@ function barRect(x: number, width: number, baseY: number, valueY: number, color:
   };
 }
 
-function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number): void {
+function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number, pen?: RoughPen | null): void {
   const readX = accessor(model.x.field);
   const readY = accessor(model.y.field ?? '');
   const seriesCount = model.series.length;
@@ -86,12 +92,12 @@ function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
 
       const left = center - bandWidth / 2 + seriesIndex * subWidth + gap / 2;
       const rect = barRect(left, barWidth, model.y.baseline, model.y.pixel(value), series.color);
-      if (rect) drawRect(ctx, rect, radius);
+      if (rect) drawRect(ctx, rect, radius, pen);
     }
   });
 }
 
-function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number): void {
+function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number, pen?: RoughPen | null): void {
   const readX = accessor(model.x.field);
   const readY = accessor(model.y.field ?? '');
   const positiveTotals = new Map<string, number>();
@@ -127,7 +133,7 @@ function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
 
   segments.forEach((segment, index) => {
     const isOuterSegment = roundedEnds.get(segment.stackEndKey) === index;
-    drawRect(ctx, { ...segment, cornerSide: isOuterSegment ? segment.cornerSide : 'none' }, radius);
+    drawRect(ctx, { ...segment, cornerSide: isOuterSegment ? segment.cornerSide : 'none' }, radius, pen);
   });
 }
 
@@ -136,6 +142,7 @@ export function drawBar(surface: Surface, model: CartesianModel): void {
   const spec = model.spec as BarSpec;
   const { plot } = model;
   const radius = defaultRadius(model, spec);
+  const pen = model.sketch ? new RoughPen(ctx, model.sketch) : null;
 
   if (model.x.kind !== 'band' || model.x.bandwidth <= 0 || model.series.length === 0) return;
 
@@ -145,9 +152,9 @@ export function drawBar(surface: Surface, model: CartesianModel): void {
   ctx.clip();
 
   if (model.stacked) {
-    drawStackedBars(ctx, model, radius);
+    drawStackedBars(ctx, model, radius, pen);
   } else {
-    drawGroupedBars(ctx, model, radius);
+    drawGroupedBars(ctx, model, radius, pen);
   }
 
   ctx.restore();

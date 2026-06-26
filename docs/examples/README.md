@@ -23,5 +23,6 @@ render('#app', spec);
 | [box.json](./box.json) | box (distribution) |
 | [sankey.json](./sankey.json) | sankey (flow) |
 | [choropleth.json](./choropleth.json) | choropleth (map) |
+| [bar-sketch.json](./bar-sketch.json) | bar + hand-drawn `sketch` mode |
 
 All examples are validated against [`../chart-spec.schema.json`](../chart-spec.schema.json).

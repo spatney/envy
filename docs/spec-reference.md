@@ -38,6 +38,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
   - [box](#box) · [sankey](#sankey) · [choropleth](#choropleth)
 - [Conditional formatting](#conditional-formatting)
 - [Themes](#themes)
+- [Sketch (hand-drawn) mode](#sketchconfig)
 - [Format mini‑language](#format-mini-language)
 - [Enumerations](#enumerations)
 - [Runtime API](#runtime-api)
@@ -63,6 +64,7 @@ Shared by **all** chart types.
 | `animation` | `AnimationConfig \| boolean` | on | Brief entrance on first render. `false` disables; `{ enabled?, duration?, easing? }`. Honors `prefers-reduced-motion` (see [Animation](#animation)). |
 | `padding` | `Partial<Insets>` | auto | Extra `{ top, right, bottom, left }` px around the plot. |
 | `background` | `string` | theme bg | CSS color override for the chart surface. |
+| `sketch` | `boolean \| SketchConfig` | `false` | Render with the hand‑drawn ("sketch") look — wobbly outlines, hachure fills, and a handwriting font (see [`SketchConfig`](#sketchconfig)). |
 
 ### `TitleConfig`
 
@@ -81,6 +83,40 @@ Shared by **all** chart types.
 | `tickValues` | `number[]` | Explicit tick positions. |
 | `format` | `string` | [Format hint](#format-mini-language) for tick labels. |
 | `labels` | `boolean` | Show/hide tick labels. |
+
+### `SketchConfig`
+
+Turns on the alternate **hand‑drawn renderer** — a from‑scratch, rough.js‑style
+engine baked into `@envy/core` (no extra dependency). Marks get wobbly multi‑pass
+outlines and hachure fills; text switches to a bundled handwriting font (Patrick
+Hand, SIL OFL). Works for **every** chart type, including the DOM charts
+(`kpi`/`table`/`matrix`, which get the font plus subtle hand‑drawn chrome).
+
+Set `sketch: true` for all defaults, or pass an object to tune the look:
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `roughness` | `number` | `1` | Jitter amount. `0` ≈ clean; higher is wilder. |
+| `bowing` | `number` | `1` | How much straight strokes bow/curve. |
+| `fillStyle` | `'hachure' \| 'solid' \| 'cross-hatch'` | `'hachure'` | Shape fill style. |
+| `hachureGap` | `number` | auto | Px between hachure lines (scales with stroke when omitted). |
+| `hachureAngle` | `number` | `-41` | Hachure line angle, in degrees. |
+| `strokeWidth` | `number` | `1` | Outline width multiplier. |
+| `seed` | `number` | derived | Explicit PRNG seed. Omit for a stable seed derived from the spec (renders identically every time). |
+| `font` | `boolean` | `true` | Apply the handwriting font. Set `false` to keep the theme font. |
+
+```jsonc
+// All defaults
+{ "type": "bar", "data": [/* … */], "sketch": true }
+
+// Tuned: bolder cross-hatch fill
+{ "type": "pie", "data": [/* … */], "sketch": { "fillStyle": "cross-hatch", "roughness": 1.6 } }
+```
+
+Rendering is **deterministic**: a given spec always produces the same drawing, so
+sketch charts are safe to snapshot/screenshot‑test. Turning sketch off restores the
+default crisp rendering path exactly (zero cost when unused — the font and engine are
+code‑split and only loaded on the sketch path).
 
 ---
 

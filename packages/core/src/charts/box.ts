@@ -4,6 +4,7 @@ import type { BoxSpec } from '../spec/types';
 import { withAlpha } from '../color';
 import { formatValue } from '../format';
 import { roundedRect } from '../shape';
+import { RoughPen } from '../rough';
 import { accessor, toKey, toNumber } from '../util/data';
 import type { InteractionModel, TooltipRow } from '../interaction/types';
 
@@ -143,6 +144,7 @@ function drawOneBox(
   model: CartesianModel,
   geom: BoxGeom,
   showOutliers: boolean,
+  pen: RoughPen | null,
 ): void {
   const yPix = (v: number): number => model.y.pixel(v);
   const { cx, left, right, boxW, stats, color } = geom;
@@ -154,6 +156,22 @@ function drawOneBox(
   const yHi = yPix(stats.max);
   const top = Math.min(yQ1, yQ3);
   const bottom = Math.max(yQ1, yQ3);
+  const h = Math.max(1, bottom - top);
+
+  if (pen) {
+    pen.polyline([{ x: cx, y: yHi }, { x: cx, y: top }], { stroke: color });
+    pen.polyline([{ x: cx, y: bottom }, { x: cx, y: yLo }], { stroke: color });
+    pen.polyline([{ x: cx - capHalf, y: yHi }, { x: cx + capHalf, y: yHi }], { stroke: color });
+    pen.polyline([{ x: cx - capHalf, y: yLo }, { x: cx + capHalf, y: yLo }], { stroke: color });
+    pen.rect(left, top, boxW, h, { stroke: color, fill: color, fillStyle: 'solid', fillAlpha: 0.16 });
+    pen.polyline([{ x: left, y: yMed }, { x: right, y: yMed }], { stroke: color, strokeWidth: 2 });
+    if (showOutliers && stats.outliers.length) {
+      for (const o of stats.outliers) {
+        pen.circle(cx, yPix(o), 1.9, { fill: withAlpha(color, 0.6) });
+      }
+    }
+    return;
+  }
 
   ctx.save();
   ctx.strokeStyle = color;
@@ -171,7 +189,6 @@ function drawOneBox(
   ctx.lineTo(cx + capHalf, yLo);
   ctx.stroke();
 
-  const h = Math.max(1, bottom - top);
   ctx.beginPath();
   roundedRect(ctx, left, top, boxW, h, Math.min(3, boxW / 4));
   ctx.fillStyle = withAlpha(color, 0.16);
@@ -201,12 +218,13 @@ export function drawBox(surface: Surface, model: CartesianModel): void {
   if (!layout) return;
   const ctx = surface.marks.ctx;
   const { plot } = model;
+  const pen = model.sketch ? new RoughPen(ctx, model.sketch) : null;
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(plot.x, plot.y - 2, plot.width, plot.height + 4);
   ctx.clip();
-  for (const geom of layout.geoms) drawOneBox(ctx, model, geom, layout.showOutliers);
+  for (const geom of layout.geoms) drawOneBox(ctx, model, geom, layout.showOutliers, pen);
   ctx.restore();
 }
 

@@ -12,6 +12,7 @@ import { fontString, measureText } from '../render/text';
 import { crisp } from '../util/math';
 import { TICK_SIZE, type Frame, type PositionedLegendItem } from '../layout';
 import type { CartesianModel } from '../runtime/cartesian';
+import { RoughPen } from '../rough';
 import type { ThemeTokens } from '../theme';
 
 interface TextOptions {
@@ -74,51 +75,79 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
   // a dense axis never shows more gridlines than it has room to label.
   const xPlaced = resolveXLabels(model);
 
+  // When sketching, gridlines/ticks are drawn as gently wavy hand-drawn segments
+  // (reduced roughness keeps them subtle behind the bolder data marks).
+  const pen = model.sketch ? new RoughPen(ctx, model.sketch) : null;
+  const seg = (sx0: number, sy0: number, sx1: number, sy1: number, stroke: string): void => {
+    pen!.polyline([{ x: sx0, y: sy0 }, { x: sx1, y: sy1 }], {
+      stroke,
+      strokeWidth: 1,
+      roughness: model.sketch!.roughness * 0.5,
+      bowing: model.sketch!.bowing * 0.55,
+    });
+  };
+
   // Horizontal y gridlines.
   if (yGridEnabled(model)) {
-    ctx.strokeStyle = tokens.color.grid;
-    ctx.beginPath();
-    for (const t of model.yTicks) {
-      const y = crisp(t.pos);
-      ctx.moveTo(x0, y);
-      ctx.lineTo(x1, y);
+    if (pen) {
+      for (const t of model.yTicks) seg(x0, t.pos, x1, t.pos, tokens.color.grid);
+    } else {
+      ctx.strokeStyle = tokens.color.grid;
+      ctx.beginPath();
+      for (const t of model.yTicks) {
+        const y = crisp(t.pos);
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x1, y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
 
   // Vertical x gridlines (aligned to the labelled ticks for a clean read).
   if (xGridEnabled(model)) {
-    ctx.strokeStyle = tokens.color.grid;
-    ctx.beginPath();
-    for (const p of xPlaced) {
-      const x = crisp(p.pos);
-      ctx.moveTo(x, y0);
-      ctx.lineTo(x, y1);
+    if (pen) {
+      for (const p of xPlaced) seg(p.pos, y0, p.pos, y1, tokens.color.grid);
+    } else {
+      ctx.strokeStyle = tokens.color.grid;
+      ctx.beginPath();
+      for (const p of xPlaced) {
+        const x = crisp(p.pos);
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x, y1);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
 
   // Axis baselines. The y axis relies on horizontal gridlines + labels (no
   // vertical domain line) for a cleaner, more modern read; only the x baseline
   // is drawn to anchor the marks.
   if (model.spec.axes?.x?.show !== false) {
-    ctx.strokeStyle = tokens.color.axis;
-    ctx.beginPath();
-    ctx.moveTo(x0, crisp(y1));
-    ctx.lineTo(x1, crisp(y1));
-    ctx.stroke();
+    if (pen) {
+      seg(x0, y1, x1, y1, tokens.color.axis);
+    } else {
+      ctx.strokeStyle = tokens.color.axis;
+      ctx.beginPath();
+      ctx.moveTo(x0, crisp(y1));
+      ctx.lineTo(x1, crisp(y1));
+      ctx.stroke();
+    }
   }
 
   // X tick marks (subtle), drawn only where labels sit.
   if (model.spec.axes?.x?.show !== false) {
-    ctx.strokeStyle = tokens.color.axis;
-    ctx.beginPath();
-    for (const p of xPlaced) {
-      const x = crisp(p.pos);
-      ctx.moveTo(x, y1);
-      ctx.lineTo(x, y1 + TICK_SIZE);
+    if (pen) {
+      for (const p of xPlaced) seg(p.pos, y1, p.pos, y1 + TICK_SIZE, tokens.color.axis);
+    } else {
+      ctx.strokeStyle = tokens.color.axis;
+      ctx.beginPath();
+      for (const p of xPlaced) {
+        const x = crisp(p.pos);
+        ctx.moveTo(x, y1);
+        ctx.lineTo(x, y1 + TICK_SIZE);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
   }
   ctx.restore();
 }

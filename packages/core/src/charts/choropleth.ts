@@ -1,6 +1,8 @@
 import { rgbaToCss, sequential, sequentialColorScale, withAlpha } from '../color';
 import { formatValue } from '../format';
 import type { Surface } from '../render/surface';
+import { RoughPen } from '../rough';
+import { resolveSketch } from '../spec/sketch';
 import type {
   ChartSpec,
   ChoroplethSpec,
@@ -294,6 +296,8 @@ export function drawChoropleth(
   });
 
   const ctx = surface.marks.ctx;
+  const sketch = resolveSketch(spec);
+  const pen = sketch ? new RoughPen(ctx, sketch) : null;
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.strokeStyle = tokens.color.background;
@@ -307,7 +311,19 @@ export function drawChoropleth(
         ctx.closePath();
       }
       ctx.fill('evenodd');
-      ctx.stroke();
+      if (!pen) ctx.stroke();
+    }
+    // Hand-drawn region outlines: the rough offset auto-scales with segment
+    // length, so fine coastline detail stays crisp while broad borders wobble.
+    if (pen) {
+      for (const polygon of f.polys) {
+        for (const ring of polygon) {
+          pen.polygon(
+            ring.map(([x, y]) => ({ x, y })),
+            { stroke: tokens.color.background, strokeWidth: 0.75 },
+          );
+        }
+      }
     }
   }
   ctx.restore();

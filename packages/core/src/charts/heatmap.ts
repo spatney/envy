@@ -4,6 +4,8 @@ import type { Surface } from '../render/surface';
 import { fontString, measureText } from '../render/text';
 import { bandScale } from '../scales';
 import { roundedRect } from '../shape';
+import { RoughPen } from '../rough';
+import { resolveSketch } from '../spec/sketch';
 import type { ChartSpec, HeatmapSpec } from '../spec/types';
 import type { Rect, Size } from '../types';
 import type { ThemeTokens } from '../theme';
@@ -12,6 +14,8 @@ import type { InteractionModel } from '../interaction/types';
 import { addOverlayText, CHROME_PAD, drawTitleBlock } from './chrome';
 
 const MIN_GRID_SIZE = 8;
+/** Above this cell count, sketch mode keeps clean cells (rough fills get too dense/slow). */
+const MAX_ROUGH_CELLS = 800;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -126,6 +130,8 @@ export function drawHeatmap(
   const ctx = surface.marks.ctx;
   const cellRadius = Math.min(2, tokens.radius.sm);
   const cellValue = new Map<string, number>();
+  const sketch = resolveSketch(spec);
+  const pen = sketch && xCats.length * yCats.length <= MAX_ROUGH_CELLS ? new RoughPen(ctx, sketch) : null;
 
   ctx.save();
   ctx.beginPath();
@@ -143,15 +149,27 @@ export function drawHeatmap(
     if (sx === undefined || sy === undefined) continue;
 
     cellValue.set(`${xk}\u0000${yk}`, value);
-    ctx.fillStyle = rgbaToCss(cscale.map(value));
-    drawRoundedCell(ctx, sx, sy, xScale.bandwidth, yScale.bandwidth, cellRadius);
+    const fill = rgbaToCss(cscale.map(value));
+    if (pen) {
+      pen.rect(sx, sy, xScale.bandwidth, yScale.bandwidth, { fill, fillStyle: 'solid' });
+    } else {
+      ctx.fillStyle = fill;
+      drawRoundedCell(ctx, sx, sy, xScale.bandwidth, yScale.bandwidth, cellRadius);
+    }
   }
 
   ctx.restore();
 
-  ctx.strokeStyle = tokens.color.border;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(grid.x + 0.5, grid.y + 0.5, Math.max(0, grid.width - 1), Math.max(0, grid.height - 1));
+  if (pen) {
+    pen.rect(grid.x, grid.y, grid.width, grid.height, {
+      stroke: tokens.color.border,
+      roughness: sketch!.roughness * 0.6,
+    });
+  } else {
+    ctx.strokeStyle = tokens.color.border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(grid.x + 0.5, grid.y + 0.5, Math.max(0, grid.width - 1), Math.max(0, grid.height - 1));
+  }
 
   for (const cat of yCats) {
     const sy = yScale.map(cat);

@@ -165,6 +165,24 @@ export function validateSpec(spec: unknown): ValidationResult {
     }
   }
 
+  const sketch = spec.sketch;
+  if (sketch !== undefined && typeof sketch !== 'boolean') {
+    if (!isObject(sketch)) {
+      err('sketch', '"sketch" must be a boolean or a SketchConfig object.');
+    } else {
+      const fillStyle = sketch.fillStyle;
+      if (fillStyle !== undefined && !['hachure', 'solid', 'cross-hatch'].includes(fillStyle as string)) {
+        err('sketch.fillStyle', 'Expected "hachure", "solid", or "cross-hatch".');
+      }
+      for (const key of ['roughness', 'bowing', 'hachureGap', 'hachureAngle', 'strokeWidth', 'seed'] as const) {
+        const v = sketch[key];
+        if (v !== undefined && (typeof v !== 'number' || !Number.isFinite(v))) {
+          err(`sketch.${key}`, `"${key}" must be a finite number.`);
+        }
+      }
+    }
+  }
+
   return { valid: errors.length === 0, errors, warnings };
 }
 export function assertValidSpec(spec: unknown): ChartSpec {

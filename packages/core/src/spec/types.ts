@@ -1,6 +1,7 @@
 import type { Datum, FieldType, Insets } from '../types';
 import type { AggOp } from '../pivot';
 import type { ThemeInput } from '../theme';
+import type { FillStyle } from '../rough';
 
 /**
  * Envy declarative chart specs.
@@ -124,6 +125,30 @@ export interface AnimationConfig {
   easing?: string;
 }
 
+/**
+ * Hand-drawn ("sketch") rendering options. Set `sketch: true` on any spec for
+ * the defaults, or pass this object to tune the look. All fields are plain JSON
+ * so specs still round-trip through `JSON.stringify`.
+ */
+export interface SketchConfig {
+  /** Wobble magnitude. 0 ≈ clean, 1 = default, >1 = wilder. */
+  roughness?: number;
+  /** How much straight strokes bow between their endpoints. */
+  bowing?: number;
+  /** Fill treatment for closed marks (bars, wedges, cells). Default 'hachure'. */
+  fillStyle?: FillStyle;
+  /** Spacing (px) between hachure lines. Omit to derive from stroke width. */
+  hachureGap?: number;
+  /** Hachure angle in degrees (default -41). */
+  hachureAngle?: number;
+  /** Outline width multiplier (default 1). */
+  strokeWidth?: number;
+  /** Explicit PRNG seed; omit to derive a stable one from the spec. */
+  seed?: number;
+  /** Apply the hand-drawn font to titles/labels/axes (default true). */
+  font?: boolean;
+}
+
 /** Fields shared by all spec types. */
 export interface BaseSpec {
   /** Row-oriented (tidy) data. Required for all charts/tables. */
@@ -146,6 +171,12 @@ export interface BaseSpec {
   padding?: Partial<Insets>;
   /** Background override (defaults to the theme background). */
   background?: string;
+  /**
+   * Render the chart in a hand-drawn ("sketch") style — wobbly outlines, hachure
+   * fills, and a handwriting font. `true` uses the defaults; pass a `SketchConfig`
+   * to tune it. Omit (or `false`) for the default clean rendering.
+   */
+  sketch?: boolean | SketchConfig;
 }
 
 export type CurveType =

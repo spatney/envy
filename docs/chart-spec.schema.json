@@ -168,6 +168,26 @@
         }
       ]
     },
+    "SketchConfig": {
+      "description": "Hand-drawn (rough.js-style) rendering. `true` uses all defaults.",
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "properties": {
+            "roughness": { "type": "number", "minimum": 0 },
+            "bowing": { "type": "number", "minimum": 0 },
+            "fillStyle": { "type": "string", "enum": ["hachure", "solid", "cross-hatch"] },
+            "hachureGap": { "type": "number", "minimum": 0 },
+            "hachureAngle": { "type": "number" },
+            "strokeWidth": { "type": "number", "minimum": 0 },
+            "seed": { "type": "number" },
+            "font": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Insets": {
       "type": "object",
       "properties": {
@@ -261,7 +281,8 @@
         "axes": { "$ref": "#/$defs/AxesConfig" },
         "animation": { "$ref": "#/$defs/AnimationConfig" },
         "padding": { "$ref": "#/$defs/Insets" },
-        "background": { "type": "string" }
+        "background": { "type": "string" },
+        "sketch": { "$ref": "#/$defs/SketchConfig" }
       }
     },
     "LineSpec": {

@@ -229,6 +229,22 @@ Tips:
 The default look is **flat and modern** (solid fills, minimal shadows). The built‑in
 palette is accessible on both light and dark backgrounds.
 
+## Hand-drawn ("sketch") mode
+
+Add `"sketch": true` to **any** spec to render it as a rough.js‑style hand‑drawn
+sketch — wobbly outlines, hachure fills, and a handwriting font. It works for every
+chart type and composes with everything else (themes, legends, animation, dashboards).
+
+```jsonc
+{ "type": "bar", "data": [/* … */], "encoding": { "x": { "field": "q" }, "y": { "field": "v" } }, "sketch": true }
+```
+
+Pass an object to tune it: `fillStyle` (`hachure` | `solid` | `cross-hatch`),
+`roughness`, `bowing`, `hachureGap`/`hachureAngle`, `strokeWidth`, `font`, and an
+optional `seed`. Reach for it for a casual, low‑fidelity, "napkin sketch" feel
+(brainstorms, draft dashboards, playful reports); keep it off for precise/formal
+charts. The output is deterministic, so the same spec always looks identical.
+
 ## Validation & gotchas
 
 - **`encoding` is required** for `line`/`area`/`bar`/`scatter`/`box` (`x`+`y`), `pie`

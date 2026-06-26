@@ -15,6 +15,8 @@ import { accessor, toKey, toNumber } from '../util/data';
 import { area, line, type AreaPoint } from '../shape';
 import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
+import { RoughPen } from '../rough';
+import type { Point } from '../types';
 import { maxFinite, minFinite, verticalFill } from './fill';
 
 interface BandPoints {
@@ -73,6 +75,36 @@ function buildBands(model: CartesianModel, stacked: boolean): BandPoints[] {
   });
 }
 
+/** Hand-drawn path: hachure-filled bands with wobbly top edges (gap-aware). */
+function drawAreaSketch(model: CartesianModel, bands: BandPoints[], pen: RoughPen, stacked: boolean): void {
+  for (const { series, points } of bands) {
+    let run: AreaPoint[] = [];
+    const flush = (): void => {
+      if (run.length >= 2) {
+        const top: Point[] = run.map((p) => ({ x: p.x, y: p.y1 }));
+        const bottom: Point[] = run.map((p) => ({ x: p.x, y: p.y0 })).reverse();
+        pen.polygon([...top, ...bottom], {
+          fill: series.color,
+          fillAlpha: stacked ? 0.85 : 0.5,
+        });
+      }
+      run = [];
+    };
+    for (const p of points) {
+      if (Number.isNaN(p.x) || Number.isNaN(p.y1)) flush();
+      else run.push(p);
+    }
+    flush();
+  }
+
+  for (const { series, points } of bands) {
+    pen.polyline(
+      points.map((p) => ({ x: p.x, y: p.y1 })),
+      { stroke: series.color },
+    );
+  }
+}
+
 export function drawArea(surface: Surface, model: CartesianModel): void {
   const ctx = surface.marks.ctx;
   const spec = model.spec as AreaSpec;
@@ -90,6 +122,12 @@ export function drawArea(surface: Surface, model: CartesianModel): void {
   ctx.beginPath();
   ctx.rect(plot.x, plot.y, plot.width, plot.height);
   ctx.clip();
+
+  if (model.sketch) {
+    drawAreaSketch(model, bands, new RoughPen(ctx, model.sketch), stacked);
+    ctx.restore();
+    return;
+  }
 
   // Gradient fills: overlapping bands fade to near-transparent at the baseline;
   // stacked bands stay mostly opaque with a subtle vertical sheen for depth.

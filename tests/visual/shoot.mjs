@@ -9,6 +9,7 @@ const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
 const OUT =
   process.env.ENVY_SHOTS ??
   'C:/Users/sapatney/.copilot/session-state/50c7b4d8-37fe-4e29-abd7-0188f62da234/files/shots';
+const SKETCH = process.env.ENVY_SKETCH === '1' || process.env.ENVY_SKETCH === 'true';
 
 mkdirSync(OUT, { recursive: true });
 
@@ -36,7 +37,7 @@ let count = 0;
 
 for (const id of scenarios) {
   for (const m of matrix) {
-    const url = `${BASE}/?shot=${id}&w=${m.w}&h=${m.h}&theme=${m.theme}`;
+    const url = `${BASE}/?shot=${id}&w=${m.w}&h=${m.h}&theme=${m.theme}${SKETCH ? '&sketch=1' : ''}`;
     await page.setViewportSize({ width: m.w + 40, height: m.h + 40 });
     await page.goto(url, { waitUntil: 'load' });
     try {
@@ -45,7 +46,7 @@ for (const id of scenarios) {
       console.warn(`! ${id} ${m.name} did not signal ready`);
     }
     const host = await page.$('.shot-root > div');
-    const file = `${OUT}/${id}__${m.name}.png`;
+    const file = `${OUT}/${id}__${m.name}${SKETCH ? '__sketch' : ''}.png`;
     if (host) await host.screenshot({ path: file });
     else await page.screenshot({ path: file });
     count++;

@@ -1,0 +1,15 @@
+{
+  "type": "bar",
+  "title": { "text": "Revenue by quarter", "subtitle": "Hand-drawn sketch mode" },
+  "data": [
+    { "quarter": "Q1", "revenue": 210 },
+    { "quarter": "Q2", "revenue": 245 },
+    { "quarter": "Q3", "revenue": 268 },
+    { "quarter": "Q4", "revenue": 290 }
+  ],
+  "encoding": {
+    "x": { "field": "quarter" },
+    "y": { "field": "revenue", "title": "Revenue", "format": "$,d" }
+  },
+  "sketch": { "fillStyle": "hachure", "roughness": 1.2 }
+}

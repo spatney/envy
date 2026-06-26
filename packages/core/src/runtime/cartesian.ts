@@ -57,6 +57,7 @@ import { ordinalColorScale } from '../color';
 import { rgbaToCss } from '../color';
 import { formatNumber, formatValue, smartDate } from '../format';
 import { computeFrame, type Frame, type LegendItem } from '../layout';
+import { resolveSketch, type ResolvedSketch } from '../spec/sketch';
 
 export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec | BoxSpec;
 
@@ -114,6 +115,8 @@ export interface CartesianModel {
   xTicks: Tick[];
   yTicks: Tick[];
   colorOf(key: string): string;
+  /** Hand-drawn render settings, or null for the default clean rendering. */
+  sketch: ResolvedSketch | null;
 }
 
 const CURVES: Record<CurveType, Curve> = {
@@ -410,6 +413,7 @@ export function buildCartesianModel(
     xTicks,
     yTicks,
     colorOf,
+    sketch: resolveSketch(spec),
   };
 }
 

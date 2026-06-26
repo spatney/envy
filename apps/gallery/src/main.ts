@@ -16,8 +16,13 @@ const SIZES = [
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;
 
-function withSize(spec: ChartSpec, w: number, h: number, theme?: string): ChartSpec {
-  return { ...spec, dimensions: { width: w, height: h }, theme: theme ?? spec.theme } as ChartSpec;
+function withSize(spec: ChartSpec, w: number, h: number, theme?: string, sketch?: boolean): ChartSpec {
+  return {
+    ...spec,
+    dimensions: { width: w, height: h },
+    theme: theme ?? spec.theme,
+    ...(sketch ? { sketch: true } : null),
+  } as ChartSpec;
 }
 
 /** Deterministic single-chart route for Playwright: ?shot=<id>&w=&h=&theme= */
@@ -33,6 +38,7 @@ async function renderShot(): Promise<void> {
   const w = Number(params.get('w') ?? 800);
   const h = Number(params.get('h') ?? 480);
   const theme = params.get('theme') ?? 'light';
+  const sketch = params.get('sketch') === '1' || params.get('sketch') === 'true';
   const scenario = scenarioById(id);
   const root = document.createElement('div');
   root.className = 'shot-root' + (theme === 'dark' ? ' theme-dark-bg' : '');
@@ -44,7 +50,7 @@ async function renderShot(): Promise<void> {
   root.appendChild(host);
 
   if (scenario) {
-    const instance = render(host, withSize(scenario.spec(), w, h, theme));
+    const instance = render(host, withSize(scenario.spec(), w, h, theme, sketch));
     // Expose the instance so update()-transition tests can drive it.
     (window as unknown as { __envyChart?: ChartInstance }).__envyChart = instance;
   } else {
@@ -60,6 +66,7 @@ async function renderShot(): Promise<void> {
 }
 
 let currentTheme: 'light' | 'dark' = (params.get('theme') as 'light' | 'dark') ?? 'light';
+let currentSketch = params.get('sketch') === '1' || params.get('sketch') === 'true';
 let activeId = location.hash.slice(1) || scenarios[0].id;
 const instances: ChartInstance[] = [];
 let playground: PlaygroundHandle | undefined;
@@ -152,6 +159,14 @@ function renderGallery(): void {
   themeBtn.className = 'btn';
   themeBtn.textContent = currentTheme === 'dark' ? '☀ Light' : '☾ Dark';
   themeBtn.onclick = toggleTheme;
+  const sketchBtn = document.createElement('button');
+  sketchBtn.className = 'btn' + (currentSketch ? ' active' : '');
+  sketchBtn.textContent = currentSketch ? '✏ Sketch: on' : '✐ Sketch: off';
+  sketchBtn.onclick = () => {
+    currentSketch = !currentSketch;
+    renderGallery();
+  };
+  toolbar.appendChild(sketchBtn);
   toolbar.appendChild(themeBtn);
   main.appendChild(toolbar);
 
@@ -173,7 +188,7 @@ function renderGallery(): void {
     card.appendChild(host);
     grid.appendChild(card);
     try {
-      instances.push(render(host, withSize(scenario.spec(), size.w, size.h, currentTheme)));
+      instances.push(render(host, withSize(scenario.spec(), size.w, size.h, currentTheme, currentSketch)));
     } catch (err) {
       host.textContent = String(err);
     }

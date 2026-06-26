@@ -10,10 +10,12 @@ Canvas2D + DOM rendering core.
 - **One chart = one JSON object.** No callbacks, no DOM wrangling — just a `ChartSpec`.
 - **Stunning by default.** Flat, modern light/dark themes, an accessible palette, and
   perceptual (OKLab) color scales.
+- **Hand-drawn mode.** Flip on `sketch: true` for a rough.js-style sketched look —
+  wobbly strokes, hachure fills, and a handwriting font — on any chart type.
 - **Fast at scale.** LTTB decimation, layered redraw, and virtualized tables keep things
   smooth from a handful of points to 50k+.
-- **From scratch.** Scales, ticks, color, shapes, the pivot engine, and the renderer are
-  all hand-written — no D3/charting dependencies.
+- **From scratch.** Scales, ticks, color, shapes, the pivot engine, the sketch
+  renderer, and the core renderer are all hand-written — no D3/charting dependencies.
 
 ## Install
 
@@ -113,6 +115,10 @@ peer dependency (React 18+).
 | `box` | Distributions by category; Tukey/min-max whiskers + outliers | [box.json](./docs/examples/box.json) |
 | `sankey` | Flows between nodes from `source → target` link rows | [sankey.json](./docs/examples/sankey.json) |
 | `choropleth` | Values shaded over GeoJSON regions; sequential color scale | [choropleth.json](./docs/examples/choropleth.json) |
+
+Add `"sketch": true` to **any** spec for a hand-drawn look — see
+[bar-sketch.json](./docs/examples/bar-sketch.json) and the
+[`SketchConfig` reference](./docs/spec-reference.md#sketchconfig).
 
 ## Documentation
 

@@ -3,6 +3,8 @@ import { formatValue } from '../format';
 import type { Surface } from '../render/surface';
 import { fontString, measureText } from '../render/text';
 import { roundedRect } from '../shape';
+import { RoughPen } from '../rough';
+import { resolveSketch } from '../spec/sketch';
 import type { ChartSpec, SankeySpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { Rect, Size } from '../types';
@@ -290,12 +292,18 @@ export function drawSankey(
 
   // Nodes.
   const radius = Math.min(3, tokens.radius.sm);
+  const sketch = resolveSketch(spec);
+  const pen = sketch ? new RoughPen(ctx, sketch) : null;
   for (const n of graph.nodes) {
     const h = Math.max(1, n.y1 - n.y0);
-    ctx.fillStyle = n.color;
-    ctx.beginPath();
-    roundedRect(ctx, n.x0, n.y0, nodeWidth, h, Math.min(radius, h / 2));
-    ctx.fill();
+    if (pen) {
+      pen.rect(n.x0, n.y0, nodeWidth, h, { fill: n.color, fillStyle: 'solid' });
+    } else {
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      roundedRect(ctx, n.x0, n.y0, nodeWidth, h, Math.min(radius, h / 2));
+      ctx.fill();
+    }
   }
   ctx.restore();
 
