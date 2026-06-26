@@ -1,0 +1,479 @@
+/**
+ * Cartesian model builder.
+ *
+ * Turns a line / area / bar / scatter spec + resolved theme + pixel size into a
+ * fully-resolved drawing model: x/y scales, the plot rect, series split, color
+ * mapping, and positioned axis ticks. Charts consume this model and only worry
+ * about drawing marks. Heatmap, pie, kpi, table, and matrix are non-cartesian
+ * and build their own models.
+ */
+
+import type { Datum, FieldType, Rect } from '../types';
+import type { ThemeTokens } from '../theme';
+import type {
+  AreaSpec,
+  AxisConfig,
+  BarSpec,
+  CurveType,
+  FieldDef,
+  LegendConfig,
+  LineSpec,
+  ScatterSpec,
+} from '../spec/types';
+import {
+  accessor,
+  extent,
+  groupBySeries,
+  inferType,
+  toDate,
+  toKey,
+  toNumber,
+  uniqueStrings,
+  type Series,
+} from '../util/data';
+import { ticks as numericTicks } from '../ticks';
+import { timeTicks } from '../ticks';
+import { niceDomain } from '../ticks';
+import {
+  bandScale,
+  linearScale,
+  pointScale,
+  timeScale,
+  type BandScale,
+  type ContinuousScale,
+  type PointScale,
+} from '../scales';
+import {
+  curveCatmullRom,
+  curveLinear,
+  curveMonotoneX,
+  curveStep,
+  curveStepAfter,
+  curveStepBefore,
+  type Curve,
+} from '../shape';
+import { ordinalColorScale } from '../color';
+import { rgbaToCss } from '../color';
+import { formatNumber, formatValue, smartDate } from '../format';
+import { computeFrame, type Frame, type LegendItem } from '../layout';
+
+export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec;
+
+export type XKind = 'linear' | 'time' | 'band' | 'point';
+
+export interface Tick {
+  value: number | string;
+  /** Pixel position along the axis. */
+  pos: number;
+  label: string;
+}
+
+export interface XModel {
+  kind: XKind;
+  field: string;
+  type: FieldType;
+  /** Band/point category domain. */
+  categories?: string[];
+  band?: BandScale;
+  point?: PointScale;
+  /** Continuous (linear/time) scale; domain in numbers or epoch ms. */
+  continuous?: ContinuousScale;
+  /** Category width for band scales (0 otherwise). */
+  bandwidth: number;
+  /** Project a data value to its center pixel, or undefined if unmappable. */
+  pixel(value: unknown): number | undefined;
+}
+
+export interface YModel {
+  field?: string;
+  scale: ContinuousScale;
+  /** Pixel of the zero baseline, clamped into the plot. */
+  baseline: number;
+  pixel(value: unknown): number;
+}
+
+export interface ResolvedSeries {
+  key: string;
+  label: string;
+  color: string;
+  value: unknown;
+  rows: Datum[];
+}
+
+export interface CartesianModel {
+  spec: CartesianChartSpec;
+  tokens: ThemeTokens;
+  frame: Frame;
+  plot: Rect;
+  x: XModel;
+  y: YModel;
+  series: ResolvedSeries[];
+  seriesField?: string;
+  stacked: boolean;
+  xTicks: Tick[];
+  yTicks: Tick[];
+  colorOf(key: string): string;
+}
+
+const CURVES: Record<CurveType, Curve> = {
+  linear: curveLinear,
+  monotone: curveMonotoneX,
+  step: curveStep,
+  stepBefore: curveStepBefore,
+  stepAfter: curveStepAfter,
+  catmullRom: curveCatmullRom,
+};
+
+export function resolveCurve(curve?: CurveType): Curve {
+  return curve ? (CURVES[curve] ?? curveLinear) : curveLinear;
+}
+
+function fieldType(spec: CartesianChartSpec, def: FieldDef | undefined, fallback: FieldType): FieldType {
+  if (def?.type) return def.type;
+  if (def && spec.data?.length) return inferType(spec.data, def.field);
+  return fallback;
+}
+
+/** Decide the x scale kind from the chart type and field type. */
+function xKindFor(spec: CartesianChartSpec, xType: FieldType): XKind {
+  if (spec.type === 'bar') return 'band';
+  if (xType === 'quantitative') return 'linear';
+  if (xType === 'temporal') return 'time';
+  return 'point';
+}
+
+function wantsZeroBaseline(spec: CartesianChartSpec): boolean {
+  return spec.type === 'bar' || spec.type === 'area';
+}
+
+function isStacked(spec: CartesianChartSpec, seriesCount: number): boolean {
+  if (seriesCount < 2) return false;
+  if (spec.type === 'area') return spec.stack === true;
+  if (spec.type === 'bar') return spec.stack === true;
+  return false;
+}
+
+/** Stacked y extent: max of per-category cumulative sums (and min with 0). */
+function stackedYExtent(
+  rows: readonly Datum[],
+  xField: string,
+  yField: string,
+): [number, number] {
+  const readX = accessor(xField);
+  const readY = accessor(yField);
+  const pos = new Map<string, number>();
+  const neg = new Map<string, number>();
+  for (const d of rows) {
+    const k = toKey(readX(d));
+    const v = toNumber(readY(d));
+    if (Number.isNaN(v)) continue;
+    if (v >= 0) pos.set(k, (pos.get(k) ?? 0) + v);
+    else neg.set(k, (neg.get(k) ?? 0) + v);
+  }
+  let max = 0;
+  let min = 0;
+  for (const v of pos.values()) if (v > max) max = v;
+  for (const v of neg.values()) if (v < min) min = v;
+  return [min, max];
+}
+
+function resolveSeriesField(spec: CartesianChartSpec): string | undefined {
+  const enc = spec.encoding;
+  if (enc.series?.field) return enc.series.field;
+  if (enc.color?.field) {
+    const t = fieldType(spec, enc.color, 'nominal');
+    if (t !== 'quantitative') return enc.color.field;
+  }
+  return undefined;
+}
+
+function legendDefaults(
+  spec: CartesianChartSpec,
+  seriesCount: number,
+): { show: boolean; position: 'top' | 'right' | 'bottom' | 'left' } {
+  const cfg = spec.legend;
+  const show =
+    cfg === true
+      ? true
+      : cfg === false
+        ? false
+        : typeof cfg === 'object' && cfg.show !== undefined
+          ? cfg.show
+          : seriesCount > 1;
+  const position =
+    (typeof cfg === 'object' && (cfg as LegendConfig).position) ||
+    (seriesCount > 8 ? 'right' : 'top');
+  return { show, position };
+}
+
+function axisCfg(spec: CartesianChartSpec, axis: 'x' | 'y'): AxisConfig {
+  return spec.axes?.[axis] ?? {};
+}
+
+function numericTickValues(d0: number, d1: number, count: number): number[] {
+  return numericTicks(d0, d1, count);
+}
+
+function formatNumericTick(value: number, userFormat: string | undefined): string {
+  if (userFormat) return formatValue(value, userFormat);
+  return formatNumber(value, ',');
+}
+
+const DEFAULT_PADDING = { top: 12, right: 16, bottom: 12, left: 12 };
+
+export interface BuildOptions {
+  width: number;
+  height: number;
+}
+
+export function buildCartesianModel(
+  spec: CartesianChartSpec,
+  tokens: ThemeTokens,
+  opts: BuildOptions,
+): CartesianModel {
+  const data = spec.data ?? [];
+  const enc = spec.encoding;
+  const xField = enc.x.field;
+  const yField = enc.y.field;
+  const xType = fieldType(spec, enc.x, 'nominal');
+  const xKind = xKindFor(spec, xType);
+
+  // --- Series split + colors ---
+  const seriesField = resolveSeriesField(spec);
+  const rawSeries: Series[] = groupBySeries(data, seriesField);
+  const seriesKeys = rawSeries.map((s) => s.key);
+  const palette = tokens.color.palette;
+  const colorScale = ordinalColorScale({ domain: seriesKeys, palette });
+  const colorCache = new Map<string, string>();
+  const colorOf = (key: string): string => {
+    let c = colorCache.get(key);
+    if (!c) {
+      c = rgbaToCss(colorScale.map(key));
+      colorCache.set(key, c);
+    }
+    return c;
+  };
+  const singleSeries = rawSeries.length <= 1 && !seriesField;
+  const series: ResolvedSeries[] = rawSeries.map((s) => ({
+    key: s.key,
+    label: s.key === '' ? (enc.y.title ?? yField) : s.key,
+    color: singleSeries ? rgbaToCss(colorScale.map(s.key)) : colorOf(s.key),
+    value: s.value,
+    rows: s.rows,
+  }));
+
+  const stacked = isStacked(spec, series.length);
+
+  // --- Domains (pixel-independent) ---
+  let categories: string[] | undefined;
+  let xDomainNum: [number, number] | null = null;
+  if (xKind === 'band' || xKind === 'point') {
+    categories = uniqueStrings(data, xField);
+  } else if (xKind === 'time') {
+    const ms = data
+      .map((d) => toDate(accessor(xField)(d))?.getTime())
+      .filter((v): v is number => v != null);
+    xDomainNum = ms.length ? [Math.min(...ms), Math.max(...ms)] : [0, 1];
+  } else {
+    xDomainNum = extent(data, xField) ?? [0, 1];
+    const xScaleCfg = enc.x.scale;
+    if (xScaleCfg?.domain && typeof xScaleCfg.domain[0] === 'number') {
+      xDomainNum = [xScaleCfg.domain[0], xScaleCfg.domain[1] as number];
+    } else if (xScaleCfg?.nice !== false) {
+      xDomainNum = niceDomain(xDomainNum[0], xDomainNum[1], 10);
+    }
+  }
+
+  let yDomain: [number, number];
+  if (stacked) {
+    yDomain = stackedYExtent(data, xField, yField);
+  } else {
+    const ext = extent(data, yField) ?? [0, 1];
+    yDomain = [ext[0], ext[1]];
+  }
+  if (wantsZeroBaseline(spec)) {
+    yDomain = [Math.min(0, yDomain[0]), Math.max(0, yDomain[1])];
+  }
+  const yScaleCfg = enc.y.scale;
+  if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
+    yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
+  } else if (yScaleCfg?.nice !== false) {
+    yDomain = niceDomain(yDomain[0], yDomain[1], 8);
+  }
+  if (yDomain[0] === yDomain[1]) yDomain = [yDomain[0], yDomain[0] + 1];
+
+  // --- Tick values + labels (pixel-independent) ---
+  const xAxisCfg = axisCfg(spec, 'x');
+  const yAxisCfg = axisCfg(spec, 'y');
+  const yTickCount = yAxisCfg.ticks ?? 6;
+  const yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount);
+  const yLabels = yTickValues.map((v) => formatNumericTick(v, enc.y.format ?? yAxisCfg.format));
+
+  let xTickValues: Array<number | string>;
+  let xLabels: string[];
+  let xStepMs = 0;
+  if (categories) {
+    xTickValues = categories;
+    xLabels = categories.map((c) => c);
+  } else if (xKind === 'time') {
+    const xt = timeTicks(xDomainNum![0], xDomainNum![1], xAxisCfg.ticks ?? 7);
+    xTickValues = xt;
+    xStepMs = xt.length > 1 ? xt[1] - xt[0] : 0;
+    xLabels = xt.map((v) => (enc.x.format ? formatValue(v, enc.x.format) : smartDate(v, xStepMs)));
+  } else {
+    const xt = numericTickValues(xDomainNum![0], xDomainNum![1], xAxisCfg.ticks ?? 8);
+    xTickValues = xt;
+    xLabels = xt.map((v) => formatNumericTick(v, enc.x.format ?? xAxisCfg.format));
+  }
+
+  // --- Frame (reserve title/legend/axis space) ---
+  const xShow = xAxisCfg.show !== false;
+  const yShow = yAxisCfg.show !== false;
+  const legend = legendDefaults(spec, series.length);
+  const legendItems: LegendItem[] = series.map((s) => ({
+    label: s.label,
+    color: s.color,
+    symbol: spec.type === 'scatter' ? 'circle' : spec.type === 'line' ? 'line' : 'square',
+  }));
+  const padding = { ...DEFAULT_PADDING, ...spec.padding };
+  const titleInput = resolveTitle(spec);
+
+  const frame = computeFrame({
+    width: opts.width,
+    height: opts.height,
+    padding,
+    font: tokens.font,
+    title: titleInput,
+    legend: legend.show && legendItems.length > 1 ? { items: legendItems, position: legend.position } : undefined,
+    xAxis: { show: xShow, labels: xLabels, title: resolveAxisTitle(enc.x, xAxisCfg) },
+    yAxis: { show: yShow, labels: yLabels, title: resolveAxisTitle(enc.y, yAxisCfg) },
+  });
+  const plot = frame.plot;
+
+  // --- Build scales with final ranges ---
+  const yScale = linearScale({ domain: yDomain, range: [plot.y + plot.height, plot.y] });
+  const yPixel = (value: unknown): number => yScale.map(toNumber(value));
+  const baseline = clampPx(yScale.map(0), plot.y, plot.y + plot.height);
+
+  const xModel = buildXModel(xKind, {
+    field: xField,
+    type: xType,
+    categories,
+    domainNum: xDomainNum,
+    range: [plot.x, plot.x + plot.width],
+    paddingInner: spec.type === 'bar' ? 0.2 : 0.5,
+    scaleCfg: enc.x.scale,
+  });
+
+  // --- Positioned ticks ---
+  const yTicks: Tick[] = yTickValues.map((v, i) => ({
+    value: v,
+    pos: yScale.map(v),
+    label: yLabels[i],
+  }));
+  const xTicks: Tick[] = xTickValues
+    .map((v, i) => {
+      const pos = categories ? xModel.pixel(v) : xModel.pixel(toTickNumber(v));
+      return pos == null ? null : { value: v, pos, label: xLabels[i] };
+    })
+    .filter((t): t is Tick => t !== null);
+
+  return {
+    spec,
+    tokens,
+    frame,
+    plot,
+    x: xModel,
+    y: { field: yField, scale: yScale, baseline, pixel: yPixel },
+    series,
+    seriesField,
+    stacked,
+    xTicks,
+    yTicks,
+    colorOf,
+  };
+}
+
+function toTickNumber(v: number | string): number {
+  return typeof v === 'number' ? v : Number(v);
+}
+
+interface XBuildArgs {
+  field: string;
+  type: FieldType;
+  categories?: string[];
+  domainNum: [number, number] | null;
+  range: [number, number];
+  paddingInner: number;
+  scaleCfg?: FieldDef['scale'];
+}
+
+function buildXModel(kind: XKind, args: XBuildArgs): XModel {
+  if (kind === 'band') {
+    const band = bandScale({
+      domain: args.categories ?? [],
+      range: args.range,
+      paddingInner: args.scaleCfg?.padding ?? args.paddingInner,
+      paddingOuter: (args.scaleCfg?.padding ?? args.paddingInner) / 2,
+    });
+    return {
+      kind,
+      field: args.field,
+      type: args.type,
+      categories: args.categories,
+      band,
+      bandwidth: band.bandwidth,
+      pixel: (value) => {
+        const p = band.map(toKey(value));
+        return p == null ? undefined : p + band.bandwidth / 2;
+      },
+    };
+  }
+  if (kind === 'point') {
+    const point = pointScale({
+      domain: args.categories ?? [],
+      range: args.range,
+      padding: args.scaleCfg?.padding ?? 0.5,
+    });
+    return {
+      kind,
+      field: args.field,
+      type: args.type,
+      categories: args.categories,
+      point,
+      bandwidth: 0,
+      pixel: (value) => point.map(toKey(value)),
+    };
+  }
+  const domain = args.domainNum ?? [0, 1];
+  const continuous =
+    kind === 'time'
+      ? timeScale({ domain, range: args.range })
+      : linearScale({ domain, range: args.range });
+  return {
+    kind,
+    field: args.field,
+    type: args.type,
+    continuous,
+    bandwidth: 0,
+    pixel: (value) => {
+      const n = kind === 'time' ? toDate(value)?.getTime() : toNumber(value);
+      return n == null || Number.isNaN(n) ? undefined : continuous.map(n);
+    },
+  };
+}
+
+function resolveTitle(spec: CartesianChartSpec): { text?: string; subtitle?: string } | undefined {
+  if (!spec.title) return undefined;
+  if (typeof spec.title === 'string') return { text: spec.title };
+  return { text: spec.title.text, subtitle: spec.title.subtitle };
+}
+
+function resolveAxisTitle(def: FieldDef, cfg: AxisConfig): string | undefined {
+  if (cfg.title !== undefined) return cfg.title;
+  return def.title;
+}
+
+function clampPx(v: number, min: number, max: number): number {
+  return v < min ? min : v > max ? max : v;
+}

@@ -15,3 +15,8 @@ export * from './pivot';
 export * from './render';
 export * from './theme';
 export * from './spec';
+export * from './format';
+export * from './layout';
+export * from './axes';
+export * from './charts';
+export * from './runtime';
