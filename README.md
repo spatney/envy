@@ -50,7 +50,7 @@ Explore them live, resize them, and tweak the JSON in the Playground with `npm r
 
 ### One spec, three looks
 
-The same `area` chart in light, dark, and hand-drawn (`"sketch": true`) modes — just flip a field:
+The same `box` chart in light, dark, and hand-drawn (`"sketch": true`) modes — just flip a field:
 
 <table>
   <tr>

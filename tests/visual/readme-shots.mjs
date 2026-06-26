@@ -29,9 +29,9 @@ const SHOTS = [
   ['table', 'table-sales', 1180, 520],
   ['line-dense', 'line-dense', 1180, 460],
   // One spec, three looks
-  ['modes-light', 'area-stacked', 640, 420, 'light', false],
-  ['modes-dark', 'area-stacked', 640, 420, 'dark', false],
-  ['modes-sketch', 'area-stacked', 640, 420, 'light', true],
+  ['modes-light', 'box-basic', 640, 420, 'light', false],
+  ['modes-dark', 'box-basic', 640, 420, 'dark', false],
+  ['modes-sketch', 'box-basic', 640, 420, 'light', true],
 ];
 
 const browser = await chromium.launch();
@@ -41,7 +41,9 @@ await page.addInitScript(() => {
 });
 
 let n = 0;
+const only = process.argv[2]; // optional substring filter on shot name
 for (const [name, id, w, h, theme = 'light', sketch = false] of SHOTS) {
+  if (only && !name.includes(only)) continue;
   const url = `${BASE}/?shot=${id}&w=${w}&h=${h}&theme=${theme}${sketch ? '&sketch=1' : ''}`;
   await page.setViewportSize({ width: w + 40, height: h + 40 });
   await page.goto(url, { waitUntil: 'load' });
