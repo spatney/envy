@@ -49,6 +49,25 @@ chart.resize();          // re-measure after a layout change
 chart.destroy();         // tear down
 ```
 
+### React
+
+```tsx
+import { Chart } from '@envy/react';
+
+function Dashboard({ spec }) {
+  return (
+    <div style={{ height: 360 }}>
+      <Chart spec={spec} />
+    </div>
+  );
+}
+```
+
+`<Chart spec={…} />` renders into a fill-by-default container; pass a new `spec`
+to update in place, and it tears down on unmount. For headless control over your
+own element, use the `useChart(spec)` hook (returns a ref to attach). `react` is a
+peer dependency (React 18+).
+
 ## Chart catalog
 
 | Type | What it's for | Example |
@@ -92,7 +111,7 @@ chart.destroy();         // tear down
 | Package | Description | Status |
 | --- | --- | --- |
 | `@envy/core` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
-| `@envy/react` | Thin React wrapper: `<Chart spec={...} />`. | 🛠️ scaffolded |
+| `@envy/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
 | `apps/gallery` | Vite gallery + screenshot harness for visual iteration. | ✅ (dev) |
 
 ## Development
