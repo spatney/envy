@@ -8,6 +8,7 @@ import type { ChartSpec, HeatmapSpec } from '../spec/types';
 import type { Rect, Size } from '../types';
 import type { ThemeTokens } from '../theme';
 import { accessor, extent, toKey, toNumber, uniqueStrings } from '../util/data';
+import type { InteractionModel } from '../interaction/types';
 import { addOverlayText, CHROME_PAD, drawTitleBlock } from './chrome';
 
 const MIN_GRID_SIZE = 8;
@@ -83,7 +84,12 @@ function drawLegend(
   });
 }
 
-export function drawHeatmap(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
+export function drawHeatmap(
+  surface: Surface,
+  spec: ChartSpec,
+  tokens: ThemeTokens,
+  size: Size,
+): InteractionModel | void {
   const heatmap = spec as HeatmapSpec;
   const content = drawTitleBlock(surface, tokens, size, heatmap.title);
   const rows = heatmap.data ?? [];
@@ -119,6 +125,7 @@ export function drawHeatmap(surface: Surface, spec: ChartSpec, tokens: ThemeToke
   const readColor = accessor(color.field);
   const ctx = surface.marks.ctx;
   const cellRadius = Math.min(2, tokens.radius.sm);
+  const cellValue = new Map<string, number>();
 
   ctx.save();
   ctx.beginPath();
@@ -129,10 +136,13 @@ export function drawHeatmap(surface: Surface, spec: ChartSpec, tokens: ThemeToke
     const value = toNumber(readColor(row));
     if (!finite(value)) continue;
 
-    const sx = xScale.map(categoryKey(readX(row)));
-    const sy = yScale.map(categoryKey(readY(row)));
+    const xk = categoryKey(readX(row));
+    const yk = categoryKey(readY(row));
+    const sx = xScale.map(xk);
+    const sy = yScale.map(yk);
     if (sx === undefined || sy === undefined) continue;
 
+    cellValue.set(`${xk}\u0000${yk}`, value);
     ctx.fillStyle = rgbaToCss(cscale.map(value));
     drawRoundedCell(ctx, sx, sy, xScale.bandwidth, yScale.bandwidth, cellRadius);
   }
@@ -188,4 +198,49 @@ export function drawHeatmap(surface: Surface, spec: ChartSpec, tokens: ThemeToke
     colorDomain[1],
     heatmap,
   );
+
+  const tt = heatmap.tooltip;
+  if (tt === false || (tt && typeof tt === 'object' && tt.show === false)) return;
+
+  const bw = xScale.bandwidth;
+  const bh = yScale.bandwidth;
+  const xPos = xCats.map((cat) => ({ cat, s: xScale.map(cat) })).filter((p) => p.s !== undefined) as { cat: string; s: number }[];
+  const yPos = yCats.map((cat) => ({ cat, s: yScale.map(cat) })).filter((p) => p.s !== undefined) as { cat: string; s: number }[];
+  const colorLabel = color.title ?? color.field;
+
+  return {
+    region: grid,
+    hitTest: (px, py) => {
+      const xc = xPos.find((p) => px >= p.s && px <= p.s + bw);
+      const yc = yPos.find((p) => py >= p.s && py <= p.s + bh);
+      if (!xc || !yc) return null;
+      const value = cellValue.get(`${xc.cat}\u0000${yc.cat}`);
+      if (value === undefined) return null;
+      return {
+        key: `${xc.cat}\u0000${yc.cat}`,
+        anchorX: xc.s + bw / 2,
+        anchorY: yc.s + bh / 2,
+        content: {
+          title: `${xc.cat} · ${yc.cat}`,
+          rows: [
+            { swatch: rgbaToCss(cscale.map(value)), label: colorLabel, value: formatValue(value, color.format) },
+          ],
+        },
+        draw: (ictx) => {
+          ictx.save();
+          ictx.beginPath();
+          roundedRect(ictx, xc.s, yc.s, bw, bh, cellRadius);
+          ictx.lineWidth = 3;
+          ictx.strokeStyle = tokens.color.background;
+          ictx.stroke();
+          ictx.beginPath();
+          roundedRect(ictx, xc.s, yc.s, bw, bh, cellRadius);
+          ictx.lineWidth = 1.5;
+          ictx.strokeStyle = tokens.color.text;
+          ictx.stroke();
+          ictx.restore();
+        },
+      };
+    },
+  };
 }

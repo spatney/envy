@@ -11,6 +11,7 @@ import type { Size } from '../types';
 import type { ChartSpec, ChartType } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { CartesianModel } from '../runtime/cartesian';
+import type { InteractionModel } from '../interaction/types';
 import { drawLine } from './line';
 import { drawArea } from './area';
 import { drawBar } from './bar';
@@ -27,7 +28,7 @@ export type CustomRenderer = (
   spec: ChartSpec,
   tokens: ThemeTokens,
   size: Size,
-) => void;
+) => InteractionModel | void;
 
 export const CARTESIAN_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
   'line',

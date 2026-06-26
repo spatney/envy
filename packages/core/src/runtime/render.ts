@@ -18,6 +18,8 @@ import {
   cartesianRenderers,
   customRenderers,
 } from '../charts';
+import { InteractionController, buildCartesianInteraction } from '../interaction';
+import type { InteractionModel } from '../interaction';
 
 export interface ChartInstance {
   /** Re-render with a new spec (data or config changes). */
@@ -74,6 +76,7 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
 
   let currentSpec = spec;
   let observer: ResizeObserver | undefined;
+  let interaction: InteractionController | undefined;
 
   const draw = (): void => {
     const tokens = resolveTheme(currentSpec.theme);
@@ -83,6 +86,7 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     surface.clear();
     paintBackground(surface, tokens, currentSpec.background);
 
+    let interactionModel: InteractionModel | null = null;
     const type = currentSpec.type;
     if (CARTESIAN_TYPES.has(type)) {
       const renderer = cartesianRenderers[type];
@@ -90,14 +94,19 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
       drawAxesUnderlay(surface, model);
       if (renderer) renderer(surface, model);
       drawOverlay(surface, model);
+      interactionModel = buildCartesianInteraction(model);
     } else {
       const renderer = customRenderers[type];
       if (renderer) {
-        renderer(surface, currentSpec, tokens, size);
+        interactionModel = renderer(surface, currentSpec, tokens, size) ?? null;
       } else {
         drawPlaceholder(surface, tokens, `“${type}” renderer not yet registered`);
       }
     }
+
+    if (!interaction) interaction = new InteractionController(surface, tokens);
+    interaction.setModel(interactionModel, tokens);
+
     signalReady(surface);
   };
 
@@ -126,6 +135,7 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     },
     destroy(): void {
       observer?.disconnect();
+      interaction?.destroy();
       surface.destroy();
     },
   };

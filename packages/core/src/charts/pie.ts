@@ -6,6 +6,7 @@ import type { ChartSpec, PieSpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { RGBA, Size } from '../types';
 import { accessor, toKey, toNumber } from '../util/data';
+import type { InteractionModel } from '../interaction/types';
 import {
   addOverlayText,
   CHROME_PAD,
@@ -97,7 +98,19 @@ function totalOf(slices: readonly PieSlice[]): number {
   return slices.reduce((sum, slice) => sum + slice.value, 0);
 }
 
-export function drawPie(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
+function pieTooltipEnabled(spec: PieSpec): boolean {
+  const tt = spec.tooltip;
+  if (tt === false) return false;
+  if (tt && typeof tt === 'object' && tt.show === false) return false;
+  return true;
+}
+
+export function drawPie(
+  surface: Surface,
+  spec: ChartSpec,
+  tokens: ThemeTokens,
+  size: Size,
+): InteractionModel | void {
   const pie = spec as PieSpec;
   const ctx = surface.marks.ctx;
   const content = drawTitleBlock(surface, tokens, size, pie.title);
@@ -188,4 +201,53 @@ export function drawPie(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, 
       transform: 'translate(-50%,-50%)',
     });
   }
+
+  if (!pieTooltipEnabled(pie)) return;
+
+  const measureLabel = pie.encoding.theta.title ?? pie.encoding.theta.field;
+  const region = { x: area.x, y: area.y, width: area.width, height: area.height };
+
+  return {
+    region,
+    hitTest: (px, py) => {
+      const dx = px - cx;
+      const dy = py - cy;
+      const r = Math.hypot(dx, dy);
+      if (r < innerRadius || r > outerRadius) return null;
+      let theta = Math.atan2(dx, -dy);
+      if (theta < 0) theta += TAU;
+      const slice = slices.find((s) => theta >= s.startAngle && theta < s.endAngle);
+      if (!slice) return null;
+      const share = slice.value / total;
+      return {
+        key: slice.key,
+        anchorX: px,
+        anchorY: py,
+        content: {
+          title: slice.label,
+          rows: [
+            { swatch: slice.color, label: measureLabel, value: formatValue(slice.value, pie.encoding.theta.format) },
+            { label: 'Share', value: `${(share * 100).toFixed(1)}%`, muted: true },
+          ],
+        },
+        draw: (ictx) => {
+          const wedge = arc({
+            innerRadius,
+            outerRadius: outerRadius + 5,
+            startAngle: slice.startAngle,
+            endAngle: slice.endAngle,
+          });
+          ictx.save();
+          ictx.beginPath();
+          wedge(ictx, cx, cy);
+          ictx.fillStyle = slice.color;
+          ictx.fill();
+          ictx.lineWidth = 1.5;
+          ictx.strokeStyle = separator;
+          ictx.stroke();
+          ictx.restore();
+        },
+      };
+    },
+  };
 }

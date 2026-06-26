@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { RGBA } from '../types';
 import { parseColor } from './parse';
-import { rgbaToCss, toHex } from './format';
+import { rgbaToCss, toHex, withAlpha } from './format';
 import { rgbToOklab, oklabToRgb } from './convert';
 import { interpolateRgb, interpolateOklab } from './interpolate';
 import { categorical, sequential, diverging } from './palettes';
@@ -37,6 +37,14 @@ describe('format', () => {
   it('formats css', () => {
     expect(rgbaToCss({ r: 1, g: 2, b: 3, a: 1 })).toBe('rgb(1, 2, 3)');
     expect(rgbaToCss({ r: 1, g: 2, b: 3, a: 0.5 })).toBe('rgba(1, 2, 3, 0.5)');
+  });
+  it('applies alpha to any css color', () => {
+    expect(withAlpha('#123456', 0.4)).toBe('rgba(18, 52, 86, 0.4)');
+    expect(withAlpha('rgb(10, 20, 30)', 1)).toBe('rgb(10, 20, 30)');
+    // Clamps out-of-range alpha.
+    expect(withAlpha('#000000', 2)).toBe('rgb(0, 0, 0)');
+    // Unparseable input is returned untouched.
+    expect(withAlpha('not-a-color', 0.5)).toBe('not-a-color');
   });
 });
 

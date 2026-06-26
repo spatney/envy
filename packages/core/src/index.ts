@@ -19,4 +19,5 @@ export * from './format';
 export * from './layout';
 export * from './axes';
 export * from './charts';
+export * from './interaction';
 export * from './runtime';
