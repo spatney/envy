@@ -17,12 +17,19 @@ const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;
 
 function withSize(spec: ChartSpec, w: number, h: number, theme?: string, sketch?: boolean): ChartSpec {
-  return {
+  const next = {
     ...spec,
     dimensions: { width: w, height: h },
     theme: theme ?? spec.theme,
-    ...(sketch ? { sketch: true } : null),
-  } as ChartSpec;
+  } as ChartSpec & { sketch?: unknown };
+  // The toggle is authoritative: ON enables sketch (keeping any richer config the
+  // spec already carries), OFF strips it so the chart renders clean.
+  if (sketch) {
+    if (next.sketch == null) next.sketch = true;
+  } else {
+    delete next.sketch;
+  }
+  return next as ChartSpec;
 }
 
 /** Deterministic single-chart route for Playwright: ?shot=<id>&w=&h=&theme= */

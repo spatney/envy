@@ -105,7 +105,29 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
   themeBtn.textContent = opts.theme === 'dark' ? '☀ Light' : '☾ Dark';
   themeBtn.onclick = opts.onThemeToggle;
 
-  toolbar.append(presetSelect, shuffleBtn, themeBtn);
+  // Sketch toggle — flips the `sketch` field on the edited spec so the change is
+  // reflected in the JSON (and in Copy), then re-renders.
+  const sketchBtn = document.createElement('button');
+  function syncSketchBtn(on: boolean): void {
+    sketchBtn.className = 'btn' + (on ? ' active' : '');
+    sketchBtn.textContent = on ? '✏ Sketch: on' : '✐ Sketch: off';
+  }
+  syncSketchBtn(false);
+  sketchBtn.title = 'Toggle the hand-drawn sketch renderer';
+  sketchBtn.onclick = () => {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(textarea.value) as Record<string, unknown>;
+    } catch {
+      return; // invalid JSON — nothing to toggle
+    }
+    if (parsed.sketch) delete parsed.sketch;
+    else parsed.sketch = true;
+    textarea.value = JSON.stringify(parsed, null, 2);
+    renderFromText(textarea.value);
+  };
+
+  toolbar.append(presetSelect, shuffleBtn, sketchBtn, themeBtn);
   mainEl.appendChild(toolbar);
 
   // ---- Split body ----------------------------------------------------------
@@ -179,6 +201,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     }
 
     const result = validateSpec(parsed);
+    syncSketchBtn(Boolean(parsed.sketch));
     const previewSpec = (() => {
       const clone: Record<string, unknown> = { ...parsed, theme: opts.theme };
       delete clone.dimensions;

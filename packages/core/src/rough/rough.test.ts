@@ -8,6 +8,7 @@ type Op =
   | ['moveTo', number, number]
   | ['lineTo', number, number]
   | ['bezierCurveTo', number, number, number, number, number, number]
+  | ['quadraticCurveTo', number, number, number, number]
   | ['stroke', string, number, number]
   | ['fill', string, number]
   | ['beginPath']
@@ -39,6 +40,9 @@ class RecordingContext implements RoughContext {
   }
   bezierCurveTo(a: number, b: number, c: number, d: number, e: number, f: number): void {
     this.ops.push(['bezierCurveTo', round(a), round(b), round(c), round(d), round(e), round(f)]);
+  }
+  quadraticCurveTo(a: number, b: number, c: number, d: number): void {
+    this.ops.push(['quadraticCurveTo', round(a), round(b), round(c), round(d)]);
   }
   stroke(): void {
     this.ops.push(['stroke', String(this.strokeStyle), round(this.lineWidth), round(this.globalAlpha)]);

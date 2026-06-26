@@ -392,55 +392,6 @@ export const scenarios: Scenario[] = [
       title: 'Population by state',
     }),
   },
-  // --- Sketch (hand-drawn renderer) ---
-  {
-    id: 'sketch-bar',
-    title: 'Sketch — bar chart',
-    group: 'Sketch',
-    spec: () => ({
-      type: 'bar',
-      data: categorical({ categories: REGIONS, seed: 7 }),
-      encoding: { x: { field: 'category' }, y: { field: 'value', title: 'Revenue ($k)' } },
-      title: { text: 'Revenue by region', subtitle: 'Hand-drawn renderer' },
-      sketch: true,
-    }),
-  },
-  {
-    id: 'sketch-line',
-    title: 'Sketch — area + line',
-    group: 'Sketch',
-    spec: () => ({
-      type: 'area',
-      data: timeSeries({ points: 36, seed: 3 }),
-      encoding: { x: { field: 'date', type: 'temporal' }, y: { field: 'value', title: 'Value' } },
-      title: { text: 'Weekly active users', subtitle: 'Hachure fill' },
-      sketch: true,
-    }),
-  },
-  {
-    id: 'sketch-pie',
-    title: 'Sketch — pie chart',
-    group: 'Sketch',
-    spec: () => ({
-      type: 'pie',
-      data: categorical({ categories: ['Furniture', 'Technology', 'Office'], seed: 12 }),
-      encoding: { theta: { field: 'value' }, color: { field: 'category' } },
-      title: 'Sales by category',
-      sketch: true,
-    }),
-  },
-  {
-    id: 'sketch-wild',
-    title: 'Sketch — cross-hatch, high roughness',
-    group: 'Sketch',
-    spec: () => ({
-      type: 'bar',
-      data: categorical({ categories: REGIONS, seed: 21 }),
-      encoding: { x: { field: 'category' }, y: { field: 'value', title: 'Units' } },
-      title: { text: 'Units sold', subtitle: 'fillStyle: cross-hatch, roughness: 1.8' },
-      sketch: { fillStyle: 'cross-hatch', roughness: 1.8, hachureGap: 6 },
-    }),
-  },
 ];
 
 export function scenarioById(id: string): Scenario | undefined {

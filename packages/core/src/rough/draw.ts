@@ -33,6 +33,7 @@ export interface RoughContext {
     x: number,
     y: number,
   ): void;
+  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
   stroke(): void;
   fill(): void;
   lineWidth: number;
@@ -145,6 +146,29 @@ export class RoughPen {
     }
   }
 
+  /**
+   * Trace a smooth *closed* loop through `points` (quadratic spline through the
+   * segment midpoints, with each point as a control). Used for circles so they
+   * read as round hand-drawn blobs rather than angular polygons.
+   */
+  private traceSmoothClosed(points: readonly Point[]): void {
+    const ctx = this.ctx;
+    const n = points.length;
+    if (n < 3) {
+      points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      return;
+    }
+    const last = points[n - 1];
+    const first = points[0];
+    ctx.moveTo((last.x + first.x) / 2, (last.y + first.y) / 2);
+    for (let i = 0; i < n; i++) {
+      const curr = points[i];
+      const next = points[(i + 1) % n];
+      ctx.quadraticCurveTo(curr.x, curr.y, (curr.x + next.x) / 2, (curr.y + next.y) / 2);
+    }
+    ctx.closePath();
+  }
+
   private applyStroke(m: ResolvedMark, weight = m.strokeWidth): void {
     const ctx = this.ctx;
     ctx.lineWidth = weight;
@@ -233,19 +257,21 @@ export class RoughPen {
     if (r <= 0) return;
     const m = this.resolve(opts);
     const ctx = this.ctx;
-    const segs = Math.max(8, Math.min(16, Math.round(r * 1.4)));
-    const jitter = m.roughness * Math.min(Math.max(r * 0.16, 0.35), 2.4);
+    // Enough segments (and a smooth spline) to read as round even for big bubbles;
+    // gentle radial jitter so it wobbles like a hand-drawn circle, not a heptagon.
+    const segs = Math.max(12, Math.min(40, Math.round(r * 1.2)));
+    const jitter = m.roughness * Math.min(Math.max(r * 0.06, 0.3), 1.4);
+    const start = this.rng() * TAU;
     const pts: Point[] = [];
     for (let i = 0; i < segs; i++) {
-      const a = (i / segs) * TAU;
+      const a = start + (i / segs) * TAU;
       const rr = r + (this.rng() * 2 - 1) * jitter;
       pts.push({ x: cx + rr * Math.cos(a), y: cy + rr * Math.sin(a) });
     }
 
     if (m.fill) {
       ctx.beginPath();
-      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-      ctx.closePath();
+      this.traceSmoothClosed(pts);
       ctx.fillStyle = m.fill;
       ctx.globalAlpha = m.fillAlpha ?? 1;
       ctx.fill();
@@ -253,7 +279,7 @@ export class RoughPen {
     }
     if (m.stroke) {
       ctx.beginPath();
-      this.tracePolyline(pts, m, true);
+      this.traceSmoothClosed(pts);
       this.applyStroke(m);
     }
   }

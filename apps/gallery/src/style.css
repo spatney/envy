@@ -194,6 +194,14 @@ body {
 .btn:active {
   background: var(--accent-soft);
 }
+.btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn.active:hover {
+  background: var(--accent);
+}
 .btn-ghost {
   border-color: transparent;
   background: transparent;
