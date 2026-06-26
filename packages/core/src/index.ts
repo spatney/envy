@@ -6,3 +6,12 @@
 export const VERSION = '0.0.0';
 
 export * from './types';
+export * from './scales';
+export * from './ticks';
+export * from './color';
+export * from './shape';
+export * from './animation';
+export * from './pivot';
+export * from './render';
+export * from './theme';
+export * from './spec';
