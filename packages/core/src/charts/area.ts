@@ -13,6 +13,7 @@ import type { Surface } from '../render/surface';
 import type { AreaSpec } from '../spec/types';
 import { accessor, toKey, toNumber } from '../util/data';
 import { area, line, type AreaPoint } from '../shape';
+import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
 
 interface BandPoints {
@@ -25,6 +26,9 @@ function buildBands(model: CartesianModel, stacked: boolean): BandPoints[] {
   const readX = accessor(model.x.field);
   const readY = accessor(model.y.field ?? '');
   const cumulative = new Map<string, number>();
+  // Stacked bands must share x samples to stay aligned, so only the
+  // independent (overlapping) mode is downsampled.
+  const threshold = stacked ? Infinity : Math.max(2, Math.round(model.plot.width));
 
   return model.series.map((series) => {
     const points: Array<AreaPoint & { sortKey: number }> = [];
@@ -56,7 +60,15 @@ function buildBands(model: CartesianModel, stacked: boolean): BandPoints[] {
       }
     }
     points.sort((a, b) => a.sortKey - b.sortKey);
-    return { series, points: points.map(({ x, y0, y1 }) => ({ x, y0, y1 })) };
+    const band: AreaPoint[] = points.map(({ x, y0, y1 }) => ({ x, y0, y1 }));
+    const reduced = Number.isFinite(threshold)
+      ? decimate(band, threshold, {
+          getX: (p) => p.x,
+          getY: (p) => p.y1,
+          gap: () => ({ x: NaN, y0: NaN, y1: NaN }),
+        })
+      : band;
+    return { series, points: reduced };
   });
 }
 

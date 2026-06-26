@@ -62,6 +62,17 @@ export const scenarios: Scenario[] = [
       title: 'Smooth interpolation',
     }),
   },
+  {
+    id: 'line-dense',
+    title: 'Line — 50k points (LTTB)',
+    group: 'Line',
+    spec: () => ({
+      type: 'line',
+      data: timeSeries({ points: 50000, stepDays: 1, noise: 8, seasonAmp: 30, trend: 0.4, seed: 12 }),
+      encoding: { x: { field: 'date', type: 'temporal' }, y: { field: 'value', title: 'Signal' } },
+      title: { text: 'High-frequency signal', subtitle: '50,000 points, downsampled for drawing' },
+    }),
+  },
   // --- Area ---
   {
     id: 'area-single',

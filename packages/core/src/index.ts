@@ -10,6 +10,7 @@ export * from './scales';
 export * from './ticks';
 export * from './color';
 export * from './shape';
+export * from './decimate';
 export * from './animation';
 export * from './pivot';
 export * from './render';

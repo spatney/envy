@@ -8,6 +8,7 @@ import type { LineSpec } from '../spec/types';
 import type { Point } from '../types';
 import { accessor, toNumber } from '../util/data';
 import { line, area } from '../shape';
+import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
 
 interface SeriesPoints {
@@ -31,7 +32,13 @@ function buildSeriesPoints(model: CartesianModel, s: ResolvedSeries): Point[] {
     });
   }
   pts.sort((a, b) => a.sortKey - b.sortKey);
-  return pts.map(({ x, y }) => ({ x, y }));
+  const points: Point[] = pts.map(({ x, y }) => ({ x, y }));
+  const threshold = Math.max(2, Math.round(model.plot.width));
+  return decimate(points, threshold, {
+    getX: (p) => p.x,
+    getY: (p) => p.y,
+    gap: () => ({ x: NaN, y: NaN }),
+  });
 }
 
 export function drawLine(surface: Surface, model: CartesianModel): void {
