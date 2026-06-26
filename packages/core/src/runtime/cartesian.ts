@@ -14,6 +14,7 @@ import type {
   AreaSpec,
   AxisConfig,
   BarSpec,
+  BoxSpec,
   CurveType,
   FieldDef,
   LegendConfig,
@@ -57,7 +58,7 @@ import { rgbaToCss } from '../color';
 import { formatNumber, formatValue, smartDate } from '../format';
 import { computeFrame, type Frame, type LegendItem } from '../layout';
 
-export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec;
+export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec | BoxSpec;
 
 export type XKind = 'linear' | 'time' | 'band' | 'point';
 
@@ -136,7 +137,7 @@ function fieldType(spec: CartesianChartSpec, def: FieldDef | undefined, fallback
 
 /** Decide the x scale kind from the chart type and field type. */
 function xKindFor(spec: CartesianChartSpec, xType: FieldType): XKind {
-  if (spec.type === 'bar') return 'band';
+  if (spec.type === 'bar' || spec.type === 'box') return 'band';
   if (xType === 'quantitative') return 'linear';
   if (xType === 'temporal') return 'time';
   return 'point';
@@ -379,7 +380,7 @@ export function buildCartesianModel(
     categories,
     domainNum: xDomainNum,
     range: [plot.x, plot.x + plot.width],
-    paddingInner: spec.type === 'bar' ? 0.2 : 0.5,
+    paddingInner: spec.type === 'bar' ? 0.2 : spec.type === 'box' ? 0.32 : 0.5,
     scaleCfg: enc.x.scale,
   });
 

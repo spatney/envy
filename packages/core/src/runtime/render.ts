@@ -18,6 +18,7 @@ import { drawAxesUnderlay, drawOverlay } from '../axes';
 import {
   CARTESIAN_TYPES,
   cartesianRenderers,
+  cartesianInteractionBuilders,
   customRenderers,
   type CartesianRenderer,
 } from '../charts';
@@ -62,8 +63,11 @@ const CANVAS_MARK_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
   'area',
   'bar',
   'scatter',
+  'box',
   'pie',
   'heatmap',
+  'sankey',
+  'choropleth',
 ]);
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {
@@ -146,7 +150,10 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
         if (renderer) renderer(surface, model);
       }
       drawOverlay(surface, model);
-      interactionModel = buildCartesianInteraction(model);
+      const overrideInteraction = cartesianInteractionBuilders[type];
+      interactionModel = overrideInteraction
+        ? (overrideInteraction(model) ?? null)
+        : buildCartesianInteraction(model);
 
       if (anim.enabled && renderer) {
         entrance = runCartesianEntrance(

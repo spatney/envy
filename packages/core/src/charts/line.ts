@@ -10,6 +10,7 @@ import { accessor, toNumber } from '../util/data';
 import { line, area } from '../shape';
 import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
+import { minFinite, verticalFill } from './fill';
 
 interface SeriesPoints {
   series: ResolvedSeries;
@@ -59,18 +60,21 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
   ctx.rect(plot.x, plot.y, plot.width, plot.height);
   ctx.clip();
 
-  // Area fills first (behind the strokes).
+  // Area fills first (behind the strokes) — a vertical gradient that's richest
+  // just under the line and fades to transparent at the baseline.
   if (areaGen) {
     for (const { series, points } of allSeries) {
+      const top = minFinite(
+        points.map((p) => p.y),
+        plot.y,
+      );
       ctx.beginPath();
       areaGen(
         points.map((p) => ({ x: p.x, y0: model.y.baseline, y1: p.y })),
         ctx,
       );
-      ctx.globalAlpha = 0.14;
-      ctx.fillStyle = series.color;
+      ctx.fillStyle = verticalFill(ctx, series.color, top, model.y.baseline, 0.26, 0.0);
       ctx.fill();
-      ctx.globalAlpha = 1;
     }
   }
 

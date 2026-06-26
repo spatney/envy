@@ -1,11 +1,12 @@
 import type { ConditionalFormat } from '../spec/types';
 import type { ThemeTokens } from '../theme';
-import type { FieldType, Rect, RGBA } from '../types';
+import type { FieldType, Rect } from '../types';
 import { parseColor, readableTextColor, rgbaToCss, sequential, sequentialColorScale } from '../color';
 import { formatValue } from '../format';
 
 const HEADER_ROW_HEIGHT = 32;
 const MIN_COL_WIDTH = 72;
+const DEFAULT_BODY_ROW_HEIGHT = 30;
 
 export interface ViewColumn {
   key: string;
@@ -75,7 +76,11 @@ export function resolveConditionalDomain(
 
 export function buildTable(opts: BuildTableOptions): void {
   const { container, rect, tokens } = opts;
-  const available = Math.max(0, rect.width - 2);
+  // When the body is taller than the container a vertical scrollbar appears and
+  // eats horizontal space; reserve its (platform-specific) width so the last
+  // column isn't clipped behind a spurious horizontal scrollbar.
+  const reserve = willScrollVertically(opts) ? scrollbarWidth() : 0;
+  const available = Math.max(0, rect.width - 2 - reserve);
   opts.widths = computeFittedWidths(opts.columns, available);
   const tableWidth = Math.max(available, sumWidths(opts.widths));
   setStyles(container, {
@@ -115,6 +120,32 @@ export function buildTable(opts: BuildTableOptions): void {
 }
 
 const FILL_EPS = 0.5;
+
+let cachedScrollbarWidth: number | null = null;
+
+/** Measure the browser's vertical scrollbar width (0 for overlay scrollbars). */
+function scrollbarWidth(): number {
+  if (cachedScrollbarWidth != null) return cachedScrollbarWidth;
+  if (typeof document === 'undefined' || !document.body) return 0;
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll;visibility:hidden';
+  document.body.appendChild(probe);
+  cachedScrollbarWidth = probe.offsetWidth - probe.clientWidth;
+  probe.remove();
+  return cachedScrollbarWidth;
+}
+
+/** Predicted total content height, used to decide whether the body will scroll. */
+function contentHeight(opts: BuildTableOptions): number {
+  const headerRows = opts.headerRows?.length ?? 1;
+  const rowHeight = opts.visibleRange?.rowHeight ?? DEFAULT_BODY_ROW_HEIGHT;
+  return headerRows * HEADER_ROW_HEIGHT + opts.rowCount * rowHeight;
+}
+
+function willScrollVertically(opts: BuildTableOptions): boolean {
+  return contentHeight(opts) > opts.rect.height + 1;
+}
 
 function computeFittedWidths(columns: readonly ViewColumn[], available: number): number[] {
   const natural = columns.map((column) => column.width ?? defaultColumnWidth(column));

@@ -63,6 +63,65 @@ describe('validateSpec', () => {
     expect(good.valid).toBe(true);
   });
 
+  it('validates box requirements', () => {
+    const good = validateSpec({
+      type: 'box',
+      data: [
+        { g: 'A', v: 1 },
+        { g: 'A', v: 3 },
+      ],
+      encoding: { x: { field: 'g' }, y: { field: 'v' } },
+    });
+    expect(good.valid).toBe(true);
+    const bad = validateSpec({ type: 'box', data: [{ g: 'A', v: 1 }], encoding: { x: { field: 'g' } } });
+    expect(bad.valid).toBe(false);
+    expect(bad.errors.some((e) => e.path === 'encoding.y')).toBe(true);
+  });
+
+  it('validates sankey requirements', () => {
+    const good = validateSpec({
+      type: 'sankey',
+      data: [{ s: 'A', t: 'B', v: 5 }],
+      encoding: { source: { field: 's' }, target: { field: 't' }, value: { field: 'v' } },
+    });
+    expect(good.valid).toBe(true);
+    const bad = validateSpec({
+      type: 'sankey',
+      data: [{ s: 'A', t: 'B', v: 5 }],
+      encoding: { source: { field: 's' }, target: { field: 't' } },
+    });
+    expect(bad.valid).toBe(false);
+    expect(bad.errors.some((e) => e.path === 'encoding.value')).toBe(true);
+  });
+
+  it('validates choropleth requirements', () => {
+    const geo = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { name: 'X' },
+          geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+        },
+      ],
+    };
+    const good = validateSpec({
+      type: 'choropleth',
+      geo,
+      data: [{ k: 'X', c: 3 }],
+      encoding: { key: { field: 'k' }, color: { field: 'c' } },
+      featureId: 'name',
+    });
+    expect(good.valid).toBe(true);
+    const noGeo = validateSpec({
+      type: 'choropleth',
+      data: [{ k: 'X', c: 3 }],
+      encoding: { key: { field: 'k' }, color: { field: 'c' } },
+    });
+    expect(noGeo.valid).toBe(false);
+    expect(noGeo.errors.some((e) => e.path === 'geo')).toBe(true);
+  });
+
   it('assertValidSpec throws with a readable message', () => {
     expect(() => assertValidSpec({ type: 'line' })).toThrow(/Invalid Envy chart spec/);
   });

@@ -15,6 +15,7 @@ import { accessor, toKey, toNumber } from '../util/data';
 import { area, line, type AreaPoint } from '../shape';
 import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
+import { maxFinite, minFinite, verticalFill } from './fill';
 
 interface BandPoints {
   series: ResolvedSeries;
@@ -84,20 +85,31 @@ export function drawArea(surface: Surface, model: CartesianModel): void {
   // Painter's order: for stacked charts the topmost band must paint last so its
   // edge sits above neighbours; bottom-up matches the resolved series order.
   const bands = buildBands(model, stacked);
-  const fillAlpha = stacked ? 0.9 : 0.25;
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(plot.x, plot.y, plot.width, plot.height);
   ctx.clip();
 
+  // Gradient fills: overlapping bands fade to near-transparent at the baseline;
+  // stacked bands stay mostly opaque with a subtle vertical sheen for depth.
   for (const { series, points } of bands) {
+    const top = minFinite(
+      points.map((p) => p.y1),
+      plot.y,
+    );
+    const bottom = stacked
+      ? maxFinite(
+          points.map((p) => p.y0),
+          model.y.baseline,
+        )
+      : model.y.baseline;
     ctx.beginPath();
     areaGen(points, ctx);
-    ctx.globalAlpha = fillAlpha;
-    ctx.fillStyle = series.color;
+    ctx.fillStyle = stacked
+      ? verticalFill(ctx, series.color, top, bottom, 0.96, 0.74)
+      : verticalFill(ctx, series.color, top, bottom, 0.3, 0.02);
     ctx.fill();
-    ctx.globalAlpha = 1;
   }
 
   // Top edge strokes for crisp band separation.

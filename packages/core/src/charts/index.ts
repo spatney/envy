@@ -16,13 +16,17 @@ import { drawLine } from './line';
 import { drawArea } from './area';
 import { drawBar } from './bar';
 import { drawScatter } from './scatter';
+import { drawBox, buildBoxInteraction } from './box';
 import { drawHeatmap } from './heatmap';
 import { drawPie } from './pie';
 import { drawKpi } from './kpi';
+import { drawSankey } from './sankey';
+import { drawChoropleth } from './choropleth';
 import { drawTable } from './table';
 import { drawMatrix } from './matrix';
 
 export type CartesianRenderer = (surface: Surface, model: CartesianModel) => void;
+export type CartesianInteractionBuilder = (model: CartesianModel) => InteractionModel | void;
 export type CustomRenderer = (
   surface: Surface,
   spec: ChartSpec,
@@ -35,6 +39,7 @@ export const CARTESIAN_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
   'area',
   'bar',
   'scatter',
+  'box',
 ]);
 
 export const cartesianRenderers: Partial<Record<ChartType, CartesianRenderer>> = {
@@ -42,12 +47,24 @@ export const cartesianRenderers: Partial<Record<ChartType, CartesianRenderer>> =
   area: drawArea,
   bar: drawBar,
   scatter: drawScatter,
+  box: drawBox,
+};
+
+/**
+ * Cartesian charts whose hover semantics differ from the generic nearest-point
+ * model (e.g. box plots surface quartile stats). When present, the runtime uses
+ * this builder instead of `buildCartesianInteraction`.
+ */
+export const cartesianInteractionBuilders: Partial<Record<ChartType, CartesianInteractionBuilder>> = {
+  box: buildBoxInteraction,
 };
 
 export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {
   heatmap: drawHeatmap,
   pie: drawPie,
   kpi: drawKpi,
+  sankey: drawSankey,
+  choropleth: drawChoropleth,
   table: drawTable,
   matrix: drawMatrix,
 };

@@ -94,34 +94,28 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
     ctx.stroke();
   }
 
-  // Axis baselines.
-  ctx.strokeStyle = tokens.color.axis;
-  ctx.beginPath();
+  // Axis baselines. The y axis relies on horizontal gridlines + labels (no
+  // vertical domain line) for a cleaner, more modern read; only the x baseline
+  // is drawn to anchor the marks.
   if (model.spec.axes?.x?.show !== false) {
+    ctx.strokeStyle = tokens.color.axis;
+    ctx.beginPath();
     ctx.moveTo(x0, crisp(y1));
     ctx.lineTo(x1, crisp(y1));
+    ctx.stroke();
   }
-  if (model.spec.axes?.y?.show !== false) {
-    ctx.moveTo(crisp(x0), y0);
-    ctx.lineTo(crisp(x0), y1);
-  }
-  ctx.stroke();
 
-  // X tick marks.
-  ctx.strokeStyle = tokens.color.axis;
-  ctx.beginPath();
-  for (const t of model.xTicks) {
-    const x = crisp(t.pos);
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x, y1 + TICK_SIZE);
+  // X tick marks (subtle), drawn only where labels sit.
+  if (model.spec.axes?.x?.show !== false) {
+    ctx.strokeStyle = tokens.color.axis;
+    ctx.beginPath();
+    for (const t of model.xTicks) {
+      const x = crisp(t.pos);
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y1 + TICK_SIZE);
+    }
+    ctx.stroke();
   }
-  // Y tick marks.
-  for (const t of model.yTicks) {
-    const y = crisp(t.pos);
-    ctx.moveTo(x0 - TICK_SIZE, y);
-    ctx.lineTo(x0, y);
-  }
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -135,6 +129,63 @@ function thinXTicks(model: CartesianModel, avgCharPx: number): typeof model.xTic
   if (available >= needed) return ticks;
   const stride = Math.ceil(needed / available);
   return ticks.filter((_, i) => i % stride === 0);
+}
+
+interface PlacedLabel {
+  text: string;
+  left: number;
+  transform: string;
+}
+
+/**
+ * Resolve thinned x ticks into non-overlapping label boxes. Each label is
+ * centered on its tick, except the first/last which are clamped to the surface
+ * edges. A left→right sweep then drops any label whose box would collide with
+ * the previous kept label or with the final label, so the right-edge label is
+ * always preserved without overlap (fixes "Aug 2023Sep 2023" style run-ons).
+ */
+function placeXLabels(
+  ticks: CartesianModel['xTicks'],
+  frameWidth: number,
+  font: string,
+): PlacedLabel[] {
+  const edgePad = 2;
+  const minGap = 6;
+  const boxes = ticks.map((t) => {
+    const w = measureText(t.label, font).width;
+    const half = w / 2;
+    let left = t.pos;
+    let transform = 'translateX(-50%)';
+    let bl = t.pos - half;
+    let br = t.pos + half;
+    if (bl < edgePad) {
+      left = edgePad;
+      transform = 'none';
+      bl = edgePad;
+      br = edgePad + w;
+    } else if (br > frameWidth - edgePad) {
+      left = frameWidth - edgePad;
+      transform = 'translateX(-100%)';
+      br = frameWidth - edgePad;
+      bl = br - w;
+    }
+    return { text: t.label, left, transform, bl, br };
+  });
+  if (boxes.length <= 1) return boxes;
+
+  const n = boxes.length;
+  const last = boxes[n - 1];
+  const keep = new Array<boolean>(n).fill(false);
+  keep[n - 1] = true;
+  let prevBr = -Infinity;
+  for (let i = 0; i < n - 1; i += 1) {
+    const b = boxes[i];
+    if (b.bl < prevBr + minGap) continue; // overlaps the previous kept label
+    if (b.br + minGap > last.bl) break; // would overlap the final label
+    keep[i] = true;
+    prevBr = b.br;
+  }
+  return boxes.filter((_, i) => keep[i]);
 }
 
 /** Draw all overlay text: tick labels, axis titles, chart title, legend. */
@@ -161,30 +212,21 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
     }
   }
 
-  // X tick labels (centered under each tick, but clamped at the edges so the
-  // first/last labels never overflow the surface — DOM text can render a touch
-  // wider than the canvas measurement the layout reserved for).
+  // X tick labels. Resolve each thinned tick to a measured box, clamp the
+  // first/last so they never overflow the surface, then drop any that still
+  // collide — always preserving the final (right-edge) label, which is the most
+  // informative on a time/linear axis.
   if (model.spec.axes?.x?.labels !== false) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
-    const edgePad = 2;
-    for (const t of thinXTicks(model, f.size.small * 0.58)) {
-      const half = measureText(t.label, smallFont).width / 2;
-      let left = t.pos;
-      let transform = 'translateX(-50%)';
-      if (t.pos - half < edgePad) {
-        left = edgePad;
-        transform = 'none';
-      } else if (t.pos + half > frame.width - edgePad) {
-        left = frame.width - edgePad;
-        transform = 'translateX(-100%)';
-      }
+    const thinned = thinXTicks(model, f.size.small * 0.58);
+    for (const p of placeXLabels(thinned, frame.width, smallFont)) {
       addText(overlay, smallFont, {
-        left,
+        left: p.left,
         top,
-        text: t.label,
+        text: p.text,
         color: tokens.color.textMuted,
         size: f.size.small,
-        transform,
+        transform: p.transform,
       });
     }
   }

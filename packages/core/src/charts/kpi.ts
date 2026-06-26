@@ -138,10 +138,30 @@ function buildSparkline(
   }
   const areaD = `${lineD}L${width.toFixed(2)} ${height}L0 ${height}Z`;
 
+  const gradId = `envy-spark-${Math.random().toString(36).slice(2, 9)}`;
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  const grad = document.createElementNS(SVG_NS, 'linearGradient');
+  grad.setAttribute('id', gradId);
+  grad.setAttribute('x1', '0');
+  grad.setAttribute('y1', '0');
+  grad.setAttribute('x2', '0');
+  grad.setAttribute('y2', '1');
+  const stopTop = document.createElementNS(SVG_NS, 'stop');
+  stopTop.setAttribute('offset', '0');
+  stopTop.setAttribute('stop-color', tokens.color.accent);
+  stopTop.setAttribute('stop-opacity', '0.24');
+  const stopBottom = document.createElementNS(SVG_NS, 'stop');
+  stopBottom.setAttribute('offset', '1');
+  stopBottom.setAttribute('stop-color', tokens.color.accent);
+  stopBottom.setAttribute('stop-opacity', '0');
+  grad.appendChild(stopTop);
+  grad.appendChild(stopBottom);
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+
   const area = document.createElementNS(SVG_NS, 'path');
   area.setAttribute('d', areaD);
-  area.setAttribute('fill', tokens.color.accent);
-  area.setAttribute('fill-opacity', '0.12');
+  area.setAttribute('fill', `url(#${gradId})`);
   svg.appendChild(area);
 
   const path = document.createElementNS(SVG_NS, 'path');

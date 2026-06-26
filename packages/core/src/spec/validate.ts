@@ -20,6 +20,9 @@ const REQUIRED_CHANNELS: Record<ChartType, string[]> = {
   scatter: ['x', 'y'],
   pie: ['theta', 'color'],
   heatmap: ['x', 'y', 'color'],
+  box: ['x', 'y'],
+  sankey: ['source', 'target', 'value'],
+  choropleth: ['key', 'color'],
   kpi: [],
   table: [],
   matrix: [],
@@ -151,10 +154,19 @@ export function validateSpec(spec: unknown): ValidationResult {
     }
   }
 
+  if (type === 'choropleth') {
+    const geo = spec.geo as { type?: unknown; features?: unknown } | undefined;
+    if (!isObject(geo)) {
+      err('geo', '"choropleth" requires a "geo" GeoJSON FeatureCollection.');
+    } else if (geo.type !== 'FeatureCollection' || !Array.isArray(geo.features)) {
+      err('geo', '"geo" must be a GeoJSON FeatureCollection with a "features" array.');
+    } else if (geo.features.length === 0) {
+      warn('geo', '"geo.features" is empty — the map will render nothing.');
+    }
+  }
+
   return { valid: errors.length === 0, errors, warnings };
 }
-
-/** Throw if invalid; returns the spec typed as ChartSpec otherwise. */
 export function assertValidSpec(spec: unknown): ChartSpec {
   const { valid, errors } = validateSpec(spec);
   if (!valid) {

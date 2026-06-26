@@ -63,6 +63,14 @@ export interface Encoding {
   theta?: FieldDef;
   /** Text/label channel. */
   label?: FieldDef;
+  /** Sankey link source node. */
+  source?: FieldDef;
+  /** Sankey link target node. */
+  target?: FieldDef;
+  /** Magnitude channel (Sankey link value / generic measure). */
+  value?: FieldDef;
+  /** Geographic key matching a GeoJSON feature (choropleth). */
+  key?: FieldDef;
 }
 
 export interface Dimensions {
@@ -256,6 +264,98 @@ export interface MatrixSpec extends BaseSpec {
   grandTotals?: boolean;
 }
 
+export interface BoxSpec extends BaseSpec {
+  type: 'box';
+  /**
+   * `x` is the category axis (one box per category); `y` holds the raw
+   * observations that are summarized into quartiles. Add `series` to draw
+   * grouped boxes side-by-side within each category.
+   */
+  encoding: Encoding & { x: FieldDef; y: FieldDef };
+  /**
+   * Whisker rule:
+   * - 'tukey' (default): whiskers reach the furthest points within 1.5×IQR of
+   *   the quartiles; points beyond are drawn as outliers.
+   * - 'minMax': whiskers span the full data range (no outliers).
+   */
+  whisker?: 'tukey' | 'minMax';
+  /** Draw outlier points beyond the whiskers (tukey only; default true). */
+  outliers?: boolean;
+}
+
+export interface SankeySpec extends BaseSpec {
+  type: 'sankey';
+  /**
+   * Each data row is one link. Nodes are derived from the distinct `source`
+   * and `target` values; `value` is the flow magnitude (link/node thickness).
+   */
+  encoding: Encoding & { source: FieldDef; target: FieldDef; value: FieldDef };
+  /** Node block width in px (default 16). */
+  nodeWidth?: number;
+  /** Vertical gap between stacked nodes in px (default 14). */
+  nodePadding?: number;
+  /** Show the node total alongside its label (default true). */
+  nodeValues?: boolean;
+}
+
+/** A GeoJSON position: [longitude, latitude] (or projected [x, y]). */
+export type GeoPosition = [number, number];
+
+export interface GeoPolygon {
+  type: 'Polygon';
+  /** Rings: the first is the exterior, the rest are holes. */
+  coordinates: GeoPosition[][];
+}
+
+export interface GeoMultiPolygon {
+  type: 'MultiPolygon';
+  coordinates: GeoPosition[][][];
+}
+
+export type GeoGeometry = GeoPolygon | GeoMultiPolygon;
+
+export interface GeoFeature {
+  type: 'Feature';
+  id?: string | number;
+  properties?: Record<string, unknown> | null;
+  geometry: GeoGeometry | null;
+}
+
+export interface GeoFeatureCollection {
+  type: 'FeatureCollection';
+  features: GeoFeature[];
+}
+
+/**
+ * How feature coordinates are mapped to the screen:
+ * - 'mercator' / 'equirectangular': geographic [lon, lat] projections.
+ * - 'identity': coordinates are already planar [x, y] in screen orientation
+ *   (y increases downward), e.g. data pre-projected with Albers USA. Useful for
+ *   composite projections or non-geographic polygon maps.
+ */
+export type MapProjection = 'mercator' | 'equirectangular' | 'identity';
+
+export interface ChoroplethSpec extends BaseSpec {
+  type: 'choropleth';
+  /** Map geometry: a GeoJSON FeatureCollection of Polygon/MultiPolygon features. */
+  geo: GeoFeatureCollection;
+  /**
+   * `key` joins each data row to a feature; `color` is the numeric value that
+   * drives the fill via a sequential color scale.
+   */
+  encoding: Encoding & { key: FieldDef; color: FieldDef };
+  /**
+   * Where to read a feature's join id: a property name (e.g. 'name' for
+   * `feature.properties.name'), or 'id' for the top-level `feature.id`.
+   * Defaults to trying `feature.id`, then `properties.id`, then `properties.name`.
+   */
+  featureId?: string;
+  /** Geographic projection (default 'mercator'). */
+  projection?: MapProjection;
+  /** Sequential color scheme name (e.g. 'teal', 'blues', 'viridis'). */
+  scheme?: string;
+}
+
 export type ChartSpec =
   | LineSpec
   | AreaSpec
@@ -265,7 +365,10 @@ export type ChartSpec =
   | HeatmapSpec
   | KpiSpec
   | TableSpec
-  | MatrixSpec;
+  | MatrixSpec
+  | BoxSpec
+  | SankeySpec
+  | ChoroplethSpec;
 
 export type ChartType = ChartSpec['type'];
 
@@ -279,4 +382,7 @@ export const CHART_TYPES: readonly ChartType[] = [
   'kpi',
   'table',
   'matrix',
+  'box',
+  'sankey',
+  'choropleth',
 ];
