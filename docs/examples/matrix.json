@@ -1,0 +1,19 @@
+{
+  "type": "matrix",
+  "title": "Sales pivot",
+  "rows": ["region", "segment"],
+  "columns": ["category"],
+  "values": [{ "field": "sales", "op": "sum", "format": "$,.0f" }],
+  "subtotals": true,
+  "grandTotals": true,
+  "data": [
+    { "region": "West", "segment": "SMB", "category": "Hardware", "sales": 4820 },
+    { "region": "West", "segment": "SMB", "category": "Software", "sales": 7400 },
+    { "region": "West", "segment": "Enterprise", "category": "Hardware", "sales": 9100 },
+    { "region": "West", "segment": "Enterprise", "category": "Services", "sales": 6200 },
+    { "region": "East", "segment": "SMB", "category": "Software", "sales": 9600 },
+    { "region": "East", "segment": "SMB", "category": "Services", "sales": 2480 },
+    { "region": "East", "segment": "Enterprise", "category": "Hardware", "sales": 5300 },
+    { "region": "East", "segment": "Enterprise", "category": "Software", "sales": 11200 }
+  ]
+}

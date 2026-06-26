@@ -1,0 +1,19 @@
+{
+  "type": "scatter",
+  "title": "Spend vs. return",
+  "data": [
+    { "spend": 12, "return": 30, "weight": 4, "group": "Alpha" },
+    { "spend": 22, "return": 41, "weight": 9, "group": "Alpha" },
+    { "spend": 35, "return": 58, "weight": 6, "group": "Beta" },
+    { "spend": 48, "return": 73, "weight": 14, "group": "Beta" },
+    { "spend": 61, "return": 88, "weight": 8, "group": "Gamma" },
+    { "spend": 79, "return": 102, "weight": 18, "group": "Gamma" },
+    { "spend": 94, "return": 119, "weight": 11, "group": "Gamma" }
+  ],
+  "encoding": {
+    "x": { "field": "spend", "type": "quantitative", "title": "Spend ($k)" },
+    "y": { "field": "return", "type": "quantitative", "title": "Return ($k)" },
+    "size": { "field": "weight", "title": "Accounts" },
+    "series": { "field": "group" }
+  }
+}

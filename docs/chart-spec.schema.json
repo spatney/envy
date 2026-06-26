@@ -1,0 +1,400 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://envy.dev/chart-spec.schema.json",
+  "title": "Envy ChartSpec",
+  "description": "A single JSON-serializable Envy chart specification. Discriminated on `type`.",
+  "type": "object",
+  "required": ["type"],
+  "oneOf": [
+    { "$ref": "#/$defs/LineSpec" },
+    { "$ref": "#/$defs/AreaSpec" },
+    { "$ref": "#/$defs/BarSpec" },
+    { "$ref": "#/$defs/ScatterSpec" },
+    { "$ref": "#/$defs/PieSpec" },
+    { "$ref": "#/$defs/HeatmapSpec" },
+    { "$ref": "#/$defs/KpiSpec" },
+    { "$ref": "#/$defs/TableSpec" },
+    { "$ref": "#/$defs/MatrixSpec" }
+  ],
+  "$defs": {
+    "FieldType": {
+      "type": "string",
+      "enum": ["quantitative", "temporal", "ordinal", "nominal"]
+    },
+    "AggOp": {
+      "type": "string",
+      "enum": ["sum", "mean", "avg", "min", "max", "count", "countDistinct", "median", "first", "last"]
+    },
+    "CurveType": {
+      "type": "string",
+      "enum": ["linear", "monotone", "step", "stepBefore", "stepAfter", "catmullRom"]
+    },
+    "Datum": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "ScaleConfig": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["linear", "log", "time", "band", "point"] },
+        "domain": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "nice": { "type": "boolean" },
+        "zero": { "type": "boolean" },
+        "clamp": { "type": "boolean" },
+        "padding": { "type": "number", "minimum": 0, "maximum": 1 },
+        "base": { "type": "number" },
+        "reverse": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "FieldDef": {
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "field": { "type": "string" },
+        "type": { "$ref": "#/$defs/FieldType" },
+        "aggregate": { "$ref": "#/$defs/AggOp" },
+        "title": { "type": "string" },
+        "format": { "type": "string" },
+        "scale": { "$ref": "#/$defs/ScaleConfig" }
+      },
+      "additionalProperties": false
+    },
+    "Encoding": {
+      "type": "object",
+      "properties": {
+        "x": { "$ref": "#/$defs/FieldDef" },
+        "y": { "$ref": "#/$defs/FieldDef" },
+        "y2": { "$ref": "#/$defs/FieldDef" },
+        "color": { "$ref": "#/$defs/FieldDef" },
+        "size": { "$ref": "#/$defs/FieldDef" },
+        "series": { "$ref": "#/$defs/FieldDef" },
+        "theta": { "$ref": "#/$defs/FieldDef" },
+        "label": { "$ref": "#/$defs/FieldDef" }
+      },
+      "additionalProperties": false
+    },
+    "Dimensions": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "autoResize": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "AxisConfig": {
+      "type": "object",
+      "properties": {
+        "show": { "type": "boolean" },
+        "title": { "type": "string" },
+        "grid": { "type": "boolean" },
+        "ticks": { "type": "number" },
+        "tickValues": { "type": "array", "items": { "type": "number" } },
+        "format": { "type": "string" },
+        "labels": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "AxesConfig": {
+      "type": "object",
+      "properties": {
+        "x": { "$ref": "#/$defs/AxisConfig" },
+        "y": { "$ref": "#/$defs/AxisConfig" }
+      },
+      "additionalProperties": false
+    },
+    "LegendConfig": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "properties": {
+            "show": { "type": "boolean" },
+            "position": { "type": "string", "enum": ["top", "right", "bottom", "left"] },
+            "title": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TooltipConfig": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "properties": { "show": { "type": "boolean" } },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TitleConfig": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "subtitle": { "type": "string" },
+            "align": { "type": "string", "enum": ["left", "center", "right"] }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AnimationConfig": {
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "duration": { "type": "number" },
+            "easing": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Insets": {
+      "type": "object",
+      "properties": {
+        "top": { "type": "number" },
+        "right": { "type": "number" },
+        "bottom": { "type": "number" },
+        "left": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "ThemeInput": {
+      "oneOf": [
+        { "type": "string", "enum": ["light", "dark"] },
+        { "type": "object", "additionalProperties": true }
+      ]
+    },
+    "ValueRef": {
+      "oneOf": [
+        { "type": "number" },
+        {
+          "type": "object",
+          "required": ["field"],
+          "properties": {
+            "field": { "type": "string" },
+            "aggregate": { "$ref": "#/$defs/AggOp" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ConditionalFormat": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "colorScale" },
+            "scheme": { "type": "string" },
+            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "bar" },
+            "color": { "type": "string" },
+            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TableColumn": {
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "field": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "$ref": "#/$defs/FieldType" },
+        "format": { "type": "string" },
+        "align": { "type": "string", "enum": ["left", "center", "right"] },
+        "width": { "type": "number" },
+        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" }
+      },
+      "additionalProperties": false
+    },
+    "MatrixValueDef": {
+      "type": "object",
+      "required": ["field", "op"],
+      "properties": {
+        "field": { "type": "string" },
+        "op": { "$ref": "#/$defs/AggOp" },
+        "label": { "type": "string" },
+        "format": { "type": "string" },
+        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" }
+      },
+      "additionalProperties": false
+    },
+    "BaseProps": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "items": { "$ref": "#/$defs/Datum" } },
+        "theme": { "$ref": "#/$defs/ThemeInput" },
+        "dimensions": { "$ref": "#/$defs/Dimensions" },
+        "title": { "$ref": "#/$defs/TitleConfig" },
+        "legend": { "$ref": "#/$defs/LegendConfig" },
+        "tooltip": { "$ref": "#/$defs/TooltipConfig" },
+        "axes": { "$ref": "#/$defs/AxesConfig" },
+        "animation": { "$ref": "#/$defs/AnimationConfig" },
+        "padding": { "$ref": "#/$defs/Insets" },
+        "background": { "type": "string" }
+      }
+    },
+    "LineSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "line" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y"]
+        },
+        "curve": { "$ref": "#/$defs/CurveType" },
+        "points": { "type": "boolean" },
+        "area": { "type": "boolean" }
+      }
+    },
+    "AreaSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "area" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y"]
+        },
+        "curve": { "$ref": "#/$defs/CurveType" },
+        "stack": { "type": "boolean" }
+      }
+    },
+    "BarSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "bar" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y"]
+        },
+        "orientation": { "type": "string", "enum": ["vertical", "horizontal"] },
+        "stack": { "type": "boolean" },
+        "group": { "type": "boolean" },
+        "cornerRadius": { "type": "number" }
+      }
+    },
+    "ScatterSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "scatter" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y"]
+        }
+      }
+    },
+    "PieSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "pie" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["theta", "color"]
+        },
+        "donut": { "oneOf": [{ "type": "boolean" }, { "type": "number", "minimum": 0, "maximum": 1 }] },
+        "labels": { "type": "boolean" }
+      }
+    },
+    "HeatmapSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "heatmap" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y", "color"]
+        },
+        "scheme": { "type": "string" }
+      }
+    },
+    "KpiSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "kpi" },
+        "value": { "$ref": "#/$defs/ValueRef" },
+        "label": { "type": "string" },
+        "delta": { "$ref": "#/$defs/ValueRef" },
+        "format": { "type": "string" },
+        "sparkline": {
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "required": ["field"],
+              "properties": { "field": { "type": "string" } },
+              "additionalProperties": false
+            }
+          ]
+        }
+      }
+    },
+    "TableSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "table" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/TableColumn" } },
+        "sort": {
+          "type": "object",
+          "required": ["field"],
+          "properties": {
+            "field": { "type": "string" },
+            "order": { "type": "string", "enum": ["asc", "desc"] }
+          },
+          "additionalProperties": false
+        },
+        "striped": { "type": "boolean" },
+        "stickyHeader": { "type": "boolean" }
+      }
+    },
+    "MatrixSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "rows", "values"],
+      "properties": {
+        "type": { "const": "matrix" },
+        "rows": { "type": "array", "items": { "type": "string" } },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "values": { "type": "array", "items": { "$ref": "#/$defs/MatrixValueDef" }, "minItems": 1 },
+        "subtotals": { "type": "boolean" },
+        "grandTotals": { "type": "boolean" }
+      }
+    }
+  }
+}

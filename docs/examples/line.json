@@ -1,0 +1,16 @@
+{
+  "type": "line",
+  "title": { "text": "Monthly active users", "subtitle": "Trailing 6 months" },
+  "data": [
+    { "month": "2024-01", "users": 4200 },
+    { "month": "2024-02", "users": 4650 },
+    { "month": "2024-03", "users": 5010 },
+    { "month": "2024-04", "users": 4880 },
+    { "month": "2024-05", "users": 5430 },
+    { "month": "2024-06", "users": 6120 }
+  ],
+  "encoding": {
+    "x": { "field": "month", "type": "temporal" },
+    "y": { "field": "users", "type": "quantitative", "title": "Users", "format": ",d" }
+  }
+}

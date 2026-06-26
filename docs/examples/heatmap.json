@@ -1,0 +1,27 @@
+{
+  "type": "heatmap",
+  "title": "Activity by day & slot",
+  "scheme": "teal",
+  "data": [
+    { "day": "Mon", "slot": "Morning", "sessions": 32 },
+    { "day": "Mon", "slot": "Afternoon", "sessions": 54 },
+    { "day": "Mon", "slot": "Evening", "sessions": 41 },
+    { "day": "Tue", "slot": "Morning", "sessions": 28 },
+    { "day": "Tue", "slot": "Afternoon", "sessions": 61 },
+    { "day": "Tue", "slot": "Evening", "sessions": 44 },
+    { "day": "Wed", "slot": "Morning", "sessions": 35 },
+    { "day": "Wed", "slot": "Afternoon", "sessions": 72 },
+    { "day": "Wed", "slot": "Evening", "sessions": 38 },
+    { "day": "Thu", "slot": "Morning", "sessions": 30 },
+    { "day": "Thu", "slot": "Afternoon", "sessions": 66 },
+    { "day": "Thu", "slot": "Evening", "sessions": 49 },
+    { "day": "Fri", "slot": "Morning", "sessions": 40 },
+    { "day": "Fri", "slot": "Afternoon", "sessions": 58 },
+    { "day": "Fri", "slot": "Evening", "sessions": 70 }
+  ],
+  "encoding": {
+    "x": { "field": "slot" },
+    "y": { "field": "day" },
+    "color": { "field": "sessions", "type": "quantitative" }
+  }
+}

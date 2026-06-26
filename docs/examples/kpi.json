@@ -1,0 +1,18 @@
+{
+  "type": "kpi",
+  "label": "Total sales",
+  "value": { "field": "sales", "aggregate": "sum" },
+  "delta": 0.124,
+  "format": "$,.0f",
+  "sparkline": true,
+  "data": [
+    { "month": "2024-01", "sales": 5200 },
+    { "month": "2024-02", "sales": 5380 },
+    { "month": "2024-03", "sales": 5120 },
+    { "month": "2024-04", "sales": 5610 },
+    { "month": "2024-05", "sales": 5840 },
+    { "month": "2024-06", "sales": 6020 },
+    { "month": "2024-07", "sales": 6310 },
+    { "month": "2024-08", "sales": 6580 }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "type": "area",
+  "title": "Revenue by region",
+  "stack": true,
+  "data": [
+    { "quarter": "Q1", "region": "West", "revenue": 210 },
+    { "quarter": "Q1", "region": "East", "revenue": 180 },
+    { "quarter": "Q1", "region": "North", "revenue": 140 },
+    { "quarter": "Q2", "region": "West", "revenue": 245 },
+    { "quarter": "Q2", "region": "East", "revenue": 205 },
+    { "quarter": "Q2", "region": "North", "revenue": 165 },
+    { "quarter": "Q3", "region": "West", "revenue": 268 },
+    { "quarter": "Q3", "region": "East", "revenue": 230 },
+    { "quarter": "Q3", "region": "North", "revenue": 175 },
+    { "quarter": "Q4", "region": "West", "revenue": 290 },
+    { "quarter": "Q4", "region": "East", "revenue": 250 },
+    { "quarter": "Q4", "region": "North", "revenue": 198 }
+  ],
+  "encoding": {
+    "x": { "field": "quarter", "type": "ordinal" },
+    "y": { "field": "revenue", "type": "quantitative", "format": "$,d" },
+    "series": { "field": "region" }
+  }
+}

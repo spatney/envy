@@ -1,0 +1,22 @@
+{
+  "type": "table",
+  "title": "Orders",
+  "sort": { "field": "sales", "order": "desc" },
+  "data": [
+    { "order": "ORD-1001", "date": "2024-05-02", "region": "West", "category": "Hardware", "units": 12, "sales": 4820, "margin": 0.31 },
+    { "order": "ORD-1002", "date": "2024-05-03", "region": "East", "category": "Software", "units": 40, "sales": 9600, "margin": 0.62 },
+    { "order": "ORD-1003", "date": "2024-05-05", "region": "North", "category": "Services", "units": 8, "sales": 3120, "margin": 0.18 },
+    { "order": "ORD-1004", "date": "2024-05-07", "region": "West", "category": "Software", "units": 25, "sales": 7400, "margin": 0.55 },
+    { "order": "ORD-1005", "date": "2024-05-09", "region": "South", "category": "Hardware", "units": 17, "sales": 5230, "margin": 0.27 },
+    { "order": "ORD-1006", "date": "2024-05-11", "region": "East", "category": "Services", "units": 6, "sales": 2480, "margin": 0.15 }
+  ],
+  "columns": [
+    { "field": "order", "title": "Order" },
+    { "field": "date", "title": "Date", "format": "%b %e, %Y" },
+    { "field": "region", "title": "Region" },
+    { "field": "category", "title": "Category" },
+    { "field": "units", "title": "Units", "align": "right" },
+    { "field": "sales", "title": "Sales", "format": "$,.0f", "align": "right", "conditionalFormat": { "type": "bar" } },
+    { "field": "margin", "title": "Margin", "format": ".1%", "align": "right", "conditionalFormat": { "type": "colorScale" } }
+  ]
+}

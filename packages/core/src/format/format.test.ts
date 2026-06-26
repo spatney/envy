@@ -58,4 +58,13 @@ describe('format/formatValue', () => {
     expect(formatValue('West')).toBe('West');
     expect(formatValue(null)).toBe('');
   });
+
+  it('formats ISO date strings when given a date hint', () => {
+    expect(formatValue('2024-01-15', '%Y')).toBe('2024');
+    expect(formatValue('2024-01-15', '%b %Y')).toBe('Jan 2024');
+    // Non-date strings with a date hint fall through unchanged.
+    expect(formatValue('not-a-date', '%Y')).toBe('not-a-date');
+    // Plain strings without a hint are untouched.
+    expect(formatValue('2024-01-15')).toBe('2024-01-15');
+  });
 });

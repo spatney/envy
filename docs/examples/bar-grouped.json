@@ -1,0 +1,19 @@
+{
+  "type": "bar",
+  "title": "Revenue by quarter & region",
+  "data": [
+    { "quarter": "Q1", "region": "West", "revenue": 210 },
+    { "quarter": "Q1", "region": "East", "revenue": 180 },
+    { "quarter": "Q2", "region": "West", "revenue": 245 },
+    { "quarter": "Q2", "region": "East", "revenue": 205 },
+    { "quarter": "Q3", "region": "West", "revenue": 268 },
+    { "quarter": "Q3", "region": "East", "revenue": 230 },
+    { "quarter": "Q4", "region": "West", "revenue": 290 },
+    { "quarter": "Q4", "region": "East", "revenue": 250 }
+  ],
+  "encoding": {
+    "x": { "field": "quarter" },
+    "y": { "field": "revenue", "title": "Revenue", "format": "$,d" },
+    "series": { "field": "region" }
+  }
+}
