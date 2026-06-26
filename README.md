@@ -17,6 +17,49 @@ Canvas2D + DOM rendering core.
 - **From scratch.** Scales, ticks, color, shapes, the pivot engine, the sketch
   renderer, and the core renderer are all hand-written — no D3/charting dependencies.
 
+## Gallery
+
+A quick tour of what Envy renders — **every image below is a single declarative `ChartSpec`.**
+Explore them live, resize them, and tweak the JSON in the Playground with `npm run gallery`.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/line-multi.png" alt="Multi-series line chart"><br><sub><b>line</b> — multi-series with legend</sub></td>
+    <td width="50%"><img src="docs/images/bar-grouped.png" alt="Grouped bar chart"><br><sub><b>bar</b> — grouped categories</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/area-stacked.png" alt="Stacked area chart"><br><sub><b>area</b> — stacked over time</sub></td>
+    <td><img src="docs/images/scatter-groups.png" alt="Bubble scatter chart"><br><sub><b>scatter</b> — bubble size + color groups</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/donut.png" alt="Donut chart"><br><sub><b>pie</b> — donut with labels</sub></td>
+    <td><img src="docs/images/heatmap.png" alt="Heatmap"><br><sub><b>heatmap</b> — week × hour density</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/box.png" alt="Box-and-whisker plot"><br><sub><b>box</b> — distribution by group</sub></td>
+    <td><img src="docs/images/kpi.png" alt="KPI card with sparkline"><br><sub><b>kpi</b> — metric, delta + sparkline</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr><td><img src="docs/images/sankey.png" alt="Sankey flow diagram"><br><sub><b>sankey</b> — weighted flows from <code>source → target</code></sub></td></tr>
+  <tr><td><img src="docs/images/choropleth.png" alt="US choropleth map"><br><sub><b>choropleth</b> — values shaded over GeoJSON regions</sub></td></tr>
+  <tr><td><img src="docs/images/table.png" alt="Data table with conditional formatting"><br><sub><b>table</b> — virtualized, sortable, with bar + color-scale conditional formatting</sub></td></tr>
+  <tr><td><img src="docs/images/line-dense.png" alt="50,000-point line chart"><br><sub><b>line</b> — 50,000 points, LTTB-downsampled, still smooth</sub></td></tr>
+</table>
+
+### One spec, three looks
+
+The same `area` chart in light, dark, and hand-drawn (`"sketch": true`) modes — just flip a field:
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/images/modes-light.png" alt="Light theme"><br><sub>Light</sub></td>
+    <td width="33%"><img src="docs/images/modes-dark.png" alt="Dark theme"><br><sub>Dark</sub></td>
+    <td width="33%"><img src="docs/images/modes-sketch.png" alt="Hand-drawn sketch mode"><br><sub>Sketch</sub></td>
+  </tr>
+</table>
+
 ## Install
 
 From npm (recommended):
@@ -164,12 +207,13 @@ npm run typecheck   # type-check all workspaces
 npm run gallery     # launch the Vite gallery harness for visual iteration
 ```
 
-The **gallery** renders a catalog of scenarios across sizes and light/dark themes; a
-Playwright screenshot runner captures the matrix so visual quality is verified by
-review, not assumed. It also ships a **Playground** (`npm run gallery`, then pick
-*Playground* in the sidebar) where you can edit a `ChartSpec` live, seed it from
-presets spanning every chart type and data size, drag to resize the canvas, and
-shuffle the data to watch the update transitions.
+The **gallery** opens on an **Overview** — a mosaic of every chart type, each one a single
+`ChartSpec`, with global light/dark and hand-drawn **sketch** toggles. Pick any chart to see
+it large alongside its spec and a responsive size strip; a Playwright screenshot runner
+captures the matrix so visual quality is verified by review, not assumed. It also ships a
+**Playground** (`npm run gallery`, then pick *Playground* in the sidebar) where you can edit a
+`ChartSpec` live, seed it from presets spanning every chart type and data size, drag to resize
+the canvas, and shuffle the data to watch the update transitions.
 
 ## Design references
 

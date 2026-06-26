@@ -16,7 +16,6 @@ import { presetGroups, presetById, presets, type Preset } from './presets';
 
 interface MountOpts {
   theme: 'light' | 'dark';
-  onThemeToggle: () => void;
 }
 
 export interface PlaygroundHandle {
@@ -100,11 +99,6 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
   shuffleBtn.innerHTML = '⤮ Shuffle data';
   shuffleBtn.title = 'Randomize the data to see update animations';
 
-  const themeBtn = document.createElement('button');
-  themeBtn.className = 'btn';
-  themeBtn.textContent = opts.theme === 'dark' ? '☀ Light' : '☾ Dark';
-  themeBtn.onclick = opts.onThemeToggle;
-
   // Sketch toggle — flips the `sketch` field on the edited spec so the change is
   // reflected in the JSON (and in Copy), then re-renders.
   const sketchBtn = document.createElement('button');
@@ -127,7 +121,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     renderFromText(textarea.value);
   };
 
-  toolbar.append(presetSelect, shuffleBtn, sketchBtn, themeBtn);
+  toolbar.append(presetSelect, shuffleBtn, sketchBtn);
   mainEl.appendChild(toolbar);
 
   // ---- Split body ----------------------------------------------------------
