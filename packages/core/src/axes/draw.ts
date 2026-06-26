@@ -70,6 +70,10 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
   ctx.save();
   ctx.lineWidth = 1;
 
+  // The labelled x-tick subset drives gridlines, tick marks and labels alike so
+  // a dense axis never shows more gridlines than it has room to label.
+  const xPlaced = resolveXLabels(model);
+
   // Horizontal y gridlines.
   if (yGridEnabled(model)) {
     ctx.strokeStyle = tokens.color.grid;
@@ -82,12 +86,12 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
     ctx.stroke();
   }
 
-  // Vertical x gridlines.
+  // Vertical x gridlines (aligned to the labelled ticks for a clean read).
   if (xGridEnabled(model)) {
     ctx.strokeStyle = tokens.color.grid;
     ctx.beginPath();
-    for (const t of model.xTicks) {
-      const x = crisp(t.pos);
+    for (const p of xPlaced) {
+      const x = crisp(p.pos);
       ctx.moveTo(x, y0);
       ctx.lineTo(x, y1);
     }
@@ -109,8 +113,8 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
   if (model.spec.axes?.x?.show !== false) {
     ctx.strokeStyle = tokens.color.axis;
     ctx.beginPath();
-    for (const t of model.xTicks) {
-      const x = crisp(t.pos);
+    for (const p of xPlaced) {
+      const x = crisp(p.pos);
       ctx.moveTo(x, y1);
       ctx.lineTo(x, y1 + TICK_SIZE);
     }
@@ -133,6 +137,7 @@ function thinXTicks(model: CartesianModel, avgCharPx: number): typeof model.xTic
 
 interface PlacedLabel {
   text: string;
+  pos: number;
   left: number;
   transform: string;
 }
@@ -169,7 +174,7 @@ function placeXLabels(
       br = frameWidth - edgePad;
       bl = br - w;
     }
-    return { text: t.label, left, transform, bl, br };
+    return { text: t.label, pos: t.pos, left, transform, bl, br };
   });
   if (boxes.length <= 1) return boxes;
 
@@ -186,6 +191,15 @@ function placeXLabels(
     prevBr = b.br;
   }
   return boxes.filter((_, i) => keep[i]);
+}
+
+/** Compute the placed (thinned, non-overlapping) x labels for a model. Shared by
+ * the gridline/tick underlay and the label overlay so they stay perfectly aligned. */
+function resolveXLabels(model: CartesianModel): PlacedLabel[] {
+  const f = model.tokens.font;
+  const smallFont = fontString(f.size.small, f.family, f.weight.normal);
+  const thinned = thinXTicks(model, f.size.small * 0.58);
+  return placeXLabels(thinned, model.frame.width, smallFont);
 }
 
 /** Draw all overlay text: tick labels, axis titles, chart title, legend. */
@@ -218,8 +232,7 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
   // informative on a time/linear axis.
   if (model.spec.axes?.x?.labels !== false) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
-    const thinned = thinXTicks(model, f.size.small * 0.58);
-    for (const p of placeXLabels(thinned, frame.width, smallFont)) {
+    for (const p of resolveXLabels(model)) {
       addText(overlay, smallFont, {
         left: p.left,
         top,
