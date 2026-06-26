@@ -1,5 +1,6 @@
 import { formatNumber } from './number';
 import { formatDate, prettyDate } from './date';
+import { toDate } from '../util/data';
 
 /**
  * Format any field value for display. Routes by value type and an optional
@@ -27,8 +28,8 @@ export function formatValue(value: unknown, hint?: string): string {
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   if (typeof value === 'string') {
     if (hint && hint.indexOf('%') !== -1) {
-      const ms = Date.parse(value);
-      if (!Number.isNaN(ms)) return formatDate(new Date(ms), hint);
+      const d = toDate(value);
+      if (d) return formatDate(d, hint);
     }
     return value;
   }

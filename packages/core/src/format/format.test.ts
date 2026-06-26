@@ -62,6 +62,10 @@ describe('format/formatValue', () => {
   it('formats ISO date strings when given a date hint', () => {
     expect(formatValue('2024-01-15', '%Y')).toBe('2024');
     expect(formatValue('2024-01-15', '%b %Y')).toBe('Jan 2024');
+    // Date-only ISO strings are parsed in local time, so the calendar day is
+    // exact regardless of the host timezone (no UTC off-by-one).
+    expect(formatValue('2024-05-03', '%b %e, %Y')).toBe('May 3, 2024');
+    expect(formatValue('2024-12-31', '%Y-%m-%d')).toBe('2024-12-31');
     // Non-date strings with a date hint fall through unchanged.
     expect(formatValue('not-a-date', '%Y')).toBe('not-a-date');
     // Plain strings without a hint are untouched.
