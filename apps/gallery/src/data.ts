@@ -175,3 +175,91 @@ function round(v: number, dp = 2): number {
   const f = 10 ** dp;
   return Math.round(v * f) / f;
 }
+
+export interface BoxOptions {
+  categories?: string[];
+  series?: string[];
+  /** Observations per (category, series). */
+  n?: number;
+  seed?: number;
+  base?: number;
+  spread?: number;
+  categoryField?: string;
+  valueField?: string;
+}
+
+/**
+ * Tidy distributions for box plots: many raw observations per category (and
+ * optional series). Each category gets a distinct center + spread, with a few
+ * deliberate outliers so the Tukey whiskers have something to exclude.
+ */
+export function boxDistributions(opts: BoxOptions = {}): Datum[] {
+  const {
+    categories = ['Alpha', 'Bravo', 'Charlie', 'Delta'],
+    series = ['Series A'],
+    n = 80,
+    seed = 41,
+    base = 60,
+    spread = 14,
+    categoryField = 'category',
+    valueField = 'value',
+  } = opts;
+  const out: Datum[] = [];
+  series.forEach((name, si) => {
+    categories.forEach((cat, ci) => {
+      const r = rng(seed + si * 131 + ci * 17);
+      const center = base + Math.sin(ci * 0.9 + si) * spread + si * spread * 0.8;
+      const sd = spread * (0.6 + (ci % 3) * 0.25 + si * 0.1);
+      for (let i = 0; i < n; i++) {
+        let v = center + gaussian(r) * sd;
+        if (r() < 0.04) v += (r() < 0.5 ? -1 : 1) * sd * (3 + r() * 2);
+        out.push({ [categoryField]: cat, series: name, [valueField]: round(Math.max(0, v)) });
+      }
+    });
+  });
+  return out;
+}
+
+/** Link rows {source, target, value} for Sankey diagrams. */
+export function sankeyFlows(variant: 'energy' | 'budget' = 'energy'): Datum[] {
+  if (variant === 'budget') {
+    return [
+      { source: 'Revenue', target: 'Gross profit', value: 640 },
+      { source: 'Revenue', target: 'Cost of sales', value: 360 },
+      { source: 'Gross profit', target: 'Operating profit', value: 420 },
+      { source: 'Gross profit', target: 'Operating costs', value: 220 },
+      { source: 'Operating profit', target: 'Net income', value: 300 },
+      { source: 'Operating profit', target: 'Tax', value: 120 },
+      { source: 'Operating costs', target: 'R&D', value: 120 },
+      { source: 'Operating costs', target: 'Sales & marketing', value: 100 },
+    ];
+  }
+  return [
+    { source: 'Coal', target: 'Electricity', value: 120 },
+    { source: 'Gas', target: 'Electricity', value: 90 },
+    { source: 'Gas', target: 'Heat', value: 70 },
+    { source: 'Nuclear', target: 'Electricity', value: 80 },
+    { source: 'Wind', target: 'Electricity', value: 60 },
+    { source: 'Solar', target: 'Electricity', value: 35 },
+    { source: 'Hydro', target: 'Electricity', value: 25 },
+    { source: 'Imports', target: 'Electricity', value: 20 },
+    { source: 'Electricity', target: 'Residential', value: 170 },
+    { source: 'Electricity', target: 'Commercial', value: 140 },
+    { source: 'Electricity', target: 'Industry', value: 120 },
+    { source: 'Heat', target: 'Residential', value: 40 },
+    { source: 'Heat', target: 'Commercial', value: 30 },
+  ];
+}
+
+/** One numeric value per join key (e.g. US state name) for choropleths. */
+export function choroplethMetric(
+  keys: string[],
+  opts: { seed?: number; base?: number; keyField?: string; valueField?: string } = {},
+): Datum[] {
+  const { seed = 51, base = 50, keyField = 'name', valueField = 'value' } = opts;
+  const r = rng(seed);
+  return keys.map((k) => ({
+    [keyField]: k,
+    [valueField]: round(base + Math.abs(gaussian(r)) * base * 1.6),
+  }));
+}

@@ -1,12 +1,21 @@
-import type { ChartSpec } from '@envy/core';
+import type { ChartSpec, GeoFeatureCollection } from '@envy/core';
 import {
+  boxDistributions,
   categorical,
+  choroplethMetric,
   heatmapGrid,
   salesTable,
+  sankeyFlows,
   scatter,
   timeSeries,
   type Datum,
 } from './data';
+import usStatesRaw from './us-states.albers.json';
+
+const usStates = usStatesRaw as unknown as GeoFeatureCollection;
+const usStateNames = usStates.features
+  .map((f) => (f.properties?.name as string | undefined) ?? '')
+  .filter(Boolean);
 
 export interface Scenario {
   id: string;
@@ -249,20 +258,138 @@ export const scenarios: Scenario[] = [
       title: 'Orders',
     }),
   },
-  // --- Matrix ---
+  // --- Box & whisker ---
   {
-    id: 'matrix-region',
-    title: 'Matrix — region × category',
-    group: 'Matrix',
+    id: 'box-basic',
+    title: 'Box — distribution by group',
+    group: 'Box',
     spec: () => ({
-      type: 'matrix',
-      data: salesTable({ n: 400 }),
-      rows: ['region', 'segment'],
-      columns: ['category'],
-      values: [{ field: 'sales', op: 'sum', format: '$,.0f' }],
-      subtotals: true,
-      grandTotals: true,
-      title: 'Sales pivot',
+      type: 'box',
+      data: boxDistributions({
+        categories: ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'],
+        n: 90,
+        seed: 41,
+        base: 64,
+        spread: 13,
+      }),
+      encoding: { x: { field: 'category' }, y: { field: 'value', title: 'Latency (ms)' } },
+      title: { text: 'Response time by cohort', subtitle: 'Tukey whiskers · 1.5×IQR' },
+    }),
+  },
+  {
+    id: 'box-grouped',
+    title: 'Box — grouped series',
+    group: 'Box',
+    spec: () => ({
+      type: 'box',
+      data: boxDistributions({
+        categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+        series: ['2023', '2024'],
+        n: 70,
+        seed: 7,
+        base: 52,
+        spread: 12,
+      }),
+      encoding: {
+        x: { field: 'category' },
+        y: { field: 'value', title: 'Score' },
+        series: { field: 'series' },
+      },
+      title: 'Scores by quarter & year',
+    }),
+  },
+  {
+    id: 'box-long',
+    title: 'Box — many groups, long labels',
+    group: 'Box',
+    spec: () => ({
+      type: 'box',
+      data: boxDistributions({
+        categories: [
+          'North America',
+          'South America',
+          'Western Europe',
+          'Eastern Europe',
+          'Middle East',
+          'Sub-Saharan Africa',
+          'South Asia',
+          'East Asia & Pacific',
+        ],
+        n: 60,
+        seed: 19,
+        base: 70,
+        spread: 16,
+      }),
+      encoding: { x: { field: 'category' }, y: { field: 'value', title: 'Delivery (hrs)' } },
+      title: 'Fulfilment time by region',
+    }),
+  },
+  // --- Sankey ---
+  {
+    id: 'sankey-energy',
+    title: 'Sankey — energy flow',
+    group: 'Sankey',
+    spec: () => ({
+      type: 'sankey',
+      data: sankeyFlows('energy'),
+      encoding: {
+        source: { field: 'source' },
+        target: { field: 'target' },
+        value: { field: 'value', title: 'TWh' },
+      },
+      title: { text: 'Energy supply → demand', subtitle: 'Generation mix to end use' },
+    }),
+  },
+  {
+    id: 'sankey-budget',
+    title: 'Sankey — P&L breakdown',
+    group: 'Sankey',
+    spec: () => ({
+      type: 'sankey',
+      data: sankeyFlows('budget'),
+      encoding: {
+        source: { field: 'source' },
+        target: { field: 'target' },
+        value: { field: 'value', title: '$M', format: '$,.0f' },
+      },
+      title: 'Revenue to net income',
+    }),
+  },
+  // --- Choropleth ---
+  {
+    id: 'choropleth-states',
+    title: 'Choropleth — US states',
+    group: 'Choropleth',
+    spec: () => ({
+      type: 'choropleth',
+      geo: usStates,
+      data: choroplethMetric(usStateNames, { seed: 51, base: 40 }),
+      encoding: {
+        key: { field: 'name' },
+        color: { field: 'value', title: 'Index', type: 'quantitative' },
+      },
+      featureId: 'name',
+      projection: 'identity',
+      scheme: 'teal',
+      title: { text: 'Adoption index by state', subtitle: 'Higher is stronger' },
+    }),
+  },
+  {
+    id: 'choropleth-blues',
+    title: 'Choropleth — sequential blues',
+    group: 'Choropleth',
+    spec: () => ({
+      type: 'choropleth',
+      geo: usStates,
+      data: choroplethMetric(usStateNames, { seed: 88, base: 30 }),
+      encoding: {
+        key: { field: 'name' },
+        color: { field: 'value', title: 'Population (M)', type: 'quantitative' },
+      },
+      featureId: 'name',
+      projection: 'identity',
+      scheme: 'blues',
+      title: 'Population by state',
     }),
   },
 ];

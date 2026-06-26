@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "shots": "node shoot.mjs",
-    "test": "playwright test"
+    "shots": "node shoot.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

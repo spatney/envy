@@ -1,6 +1,9 @@
 import './style.css';
 import { render, type ChartSpec, type ChartInstance } from '@envy/core';
 import { scenarios, scenarioById, type Scenario } from './scenarios';
+import { mountPlayground, type PlaygroundHandle } from './playground';
+
+const PLAYGROUND_ID = '__playground__';
 
 const SIZES = [
   { name: 'Small', w: 360, h: 240 },
@@ -59,20 +62,44 @@ async function renderShot(): Promise<void> {
 let currentTheme: 'light' | 'dark' = (params.get('theme') as 'light' | 'dark') ?? 'light';
 let activeId = location.hash.slice(1) || scenarios[0].id;
 const instances: ChartInstance[] = [];
+let playground: PlaygroundHandle | undefined;
 
 function clearInstances(): void {
+  playground?.dispose();
+  playground = undefined;
   for (const i of instances) i.destroy();
   instances.length = 0;
 }
 
-function renderGallery(): void {
-  document.documentElement.classList.toggle('theme-dark', currentTheme === 'dark');
-  app.innerHTML = '';
+function toggleTheme(): void {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  renderGallery();
+}
 
-  // Sidebar
+function buildSidebar(): HTMLElement {
   const sidebar = document.createElement('aside');
   sidebar.className = 'sidebar';
-  sidebar.innerHTML = `<h1>Envy</h1><p class="tagline">agent-first data visualization</p>`;
+  const brand = document.createElement('div');
+  brand.className = 'brand';
+  brand.innerHTML =
+    '<div class="brand-mark">E</div>' +
+    '<div class="brand-text"><h1>Envy</h1><p class="tagline">agent-first data visualization</p></div>';
+  sidebar.appendChild(brand);
+
+  const buildLabel = document.createElement('div');
+  buildLabel.className = 'group-label';
+  buildLabel.textContent = 'Build';
+  sidebar.appendChild(buildLabel);
+  const pgBtn = document.createElement('button');
+  pgBtn.className = 'nav-item nav-playground' + (activeId === PLAYGROUND_ID ? ' active' : '');
+  pgBtn.innerHTML = '<span class="nav-ico">✦</span>Playground';
+  pgBtn.onclick = () => {
+    activeId = PLAYGROUND_ID;
+    location.hash = PLAYGROUND_ID;
+    renderGallery();
+  };
+  sidebar.appendChild(pgBtn);
+
   let lastGroup = '';
   for (const s of scenarios) {
     if (s.group !== lastGroup) {
@@ -92,32 +119,46 @@ function renderGallery(): void {
     };
     sidebar.appendChild(btn);
   }
-  app.appendChild(sidebar);
+  return sidebar;
+}
 
-  // Main
+function renderGallery(): void {
+  clearInstances();
+  document.documentElement.classList.toggle('theme-dark', currentTheme === 'dark');
+  app.innerHTML = '';
+  app.appendChild(buildSidebar());
+
   const main = document.createElement('main');
   main.className = 'main';
+  app.appendChild(main);
+
+  if (activeId === PLAYGROUND_ID) {
+    playground = mountPlayground(main, { theme: currentTheme, onThemeToggle: toggleTheme });
+    return;
+  }
+
   const scenario = scenarioById(activeId) ?? scenarios[0];
 
   const toolbar = document.createElement('div');
   toolbar.className = 'toolbar';
-  toolbar.innerHTML = `<h2>${scenario.title}</h2><div class="spacer"></div>`;
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'title-group';
+  titleGroup.innerHTML = `<h2>${scenario.title}</h2><p class="sub">${scenario.group} · ${SIZES.length} sizes</p>`;
+  toolbar.appendChild(titleGroup);
+  const spacer = document.createElement('div');
+  spacer.className = 'spacer';
+  toolbar.appendChild(spacer);
   const themeBtn = document.createElement('button');
   themeBtn.className = 'btn';
   themeBtn.textContent = currentTheme === 'dark' ? '☀ Light' : '☾ Dark';
-  themeBtn.onclick = () => {
-    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    renderGallery();
-  };
+  themeBtn.onclick = toggleTheme;
   toolbar.appendChild(themeBtn);
   main.appendChild(toolbar);
 
   const grid = document.createElement('div');
   grid.className = 'grid';
   main.appendChild(grid);
-  app.appendChild(main);
 
-  clearInstances();
   for (const size of SIZES) {
     const card = document.createElement('div');
     card.className = 'card';
@@ -144,7 +185,7 @@ if (params.has('shot')) {
 } else {
   window.addEventListener('hashchange', () => {
     const id = location.hash.slice(1);
-    if (id && id !== activeId && scenarioById(id)) {
+    if (id && id !== activeId && (id === PLAYGROUND_ID || scenarioById(id))) {
       activeId = id;
       renderGallery();
     }
