@@ -40,6 +40,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Format mini‑language](#format-mini-language)
 - [Enumerations](#enumerations)
 - [Runtime API](#runtime-api)
+  - [Performance](#performance) · [Animation](#animation)
 - [Accessibility](#accessibility)
 
 ---
@@ -58,7 +59,7 @@ Shared by **all** chart types.
 | `legend` | `LegendConfig \| boolean` | auto | `false` hides it; `{ show?, position?, title? }`. `position`: `top \| right \| bottom \| left`. |
 | `tooltip` | `TooltipConfig \| boolean` | `true` | `false` (or `{ show: false }`) disables hover tooltips. |
 | `axes` | `{ x?: AxisConfig, y?: AxisConfig }` | auto | Per‑axis overrides (cartesian charts). |
-| `animation` | `AnimationConfig \| boolean` | theme | `false` disables; `{ enabled?, duration?, easing? }`. |
+| `animation` | `AnimationConfig \| boolean` | on | Brief entrance on first render. `false` disables; `{ enabled?, duration?, easing? }`. Honors `prefers-reduced-motion` (see [Animation](#animation)). |
 | `padding` | `Partial<Insets>` | auto | Extra `{ top, right, bottom, left }` px around the plot. |
 | `background` | `string` | theme bg | CSS color override for the chart surface. |
 
@@ -386,6 +387,30 @@ settles, Envy sets `data-envy-ready="true"` on the surface root and increments
   marks layer — so interaction never triggers a full redraw.
 - **Virtualized tables** window rows so `table`/`matrix` stay responsive at large
   row counts.
+
+### Animation
+
+Charts play a brief **entrance animation** the first time they render (resizes and
+`update()` redraws are instant — no re‑animation, no jank):
+
+- **Cartesian charts** (line/area/bar/scatter/heatmap) sweep their marks in
+  left‑to‑right with a short fade — the axes, gridlines, and labels are drawn
+  immediately so only the data "draws on".
+- **Pie, KPI, tables** fade and rise in subtly.
+
+Tuning via the `animation` field:
+
+```jsonc
+{ "animation": false }                                  // disable entirely
+{ "animation": { "duration": 700, "easing": "cubicOut" } }
+```
+
+- Default duration is **480ms**, default easing **`cubicOut`**.
+- **`prefers-reduced-motion`** is honored automatically — when the OS requests
+  reduced motion, charts render in their final state with no animation.
+- Automation/screenshot harnesses can force‑disable all entrances by setting
+  `window.__ENVY_DISABLE_ANIM = true` before rendering, which keeps captures
+  deterministic without changing any spec.
 
 ---
 

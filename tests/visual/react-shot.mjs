@@ -14,6 +14,9 @@ mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
+await page.addInitScript(() => {
+  window.__ENVY_DISABLE_ANIM = true;
+});
 const errors = [];
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());

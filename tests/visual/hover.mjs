@@ -21,6 +21,9 @@ const h = Number(process.argv[7] ?? '360');
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
+await page.addInitScript(() => {
+  window.__ENVY_DISABLE_ANIM = true;
+});
 await page.setViewportSize({ width: w + 40, height: h + 40 });
 const url = `${BASE}/?shot=${id}&w=${w}&h=${h}&theme=${theme}`;
 await page.goto(url, { waitUntil: 'load' });

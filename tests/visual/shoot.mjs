@@ -28,6 +28,10 @@ const matrix = [
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
+// Keep screenshots deterministic — never capture mid-entrance-animation.
+await page.addInitScript(() => {
+  window.__ENVY_DISABLE_ANIM = true;
+});
 let count = 0;
 
 for (const id of scenarios) {

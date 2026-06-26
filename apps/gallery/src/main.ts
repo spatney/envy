@@ -19,6 +19,12 @@ function withSize(spec: ChartSpec, w: number, h: number, theme?: string): ChartS
 
 /** Deterministic single-chart route for Playwright: ?shot=<id>&w=&h=&theme= */
 async function renderShot(): Promise<void> {
+  // Entrance animations would make screenshots non-deterministic; disable them
+  // for the shot route by default (a test can opt in by pre-setting the flag).
+  {
+    const g = window as unknown as { __ENVY_DISABLE_ANIM?: boolean };
+    if (g.__ENVY_DISABLE_ANIM === undefined) g.__ENVY_DISABLE_ANIM = true;
+  }
   app.remove();
   const id = params.get('shot')!;
   const w = Number(params.get('w') ?? 800);
