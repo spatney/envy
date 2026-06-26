@@ -7,10 +7,12 @@
  */
 
 import type { Size } from '../types';
-import type { ChartSpec } from '../spec/types';
+import type { ChartSpec, ChartType } from '../spec/types';
 import { resolveTheme, type ThemeTokens } from '../theme';
 import { Surface } from '../render/surface';
+import type { CanvasLayer } from '../render/canvasLayer';
 import { getDevicePixelRatio } from '../render/env';
+import { fontsLoading, onFontsReady } from '../render/fonts';
 import { buildCartesianModel, type CartesianChartSpec, type CartesianModel } from './cartesian';
 import { drawAxesUnderlay, drawOverlay } from '../axes';
 import {
@@ -25,6 +27,7 @@ import { applyA11y } from '../a11y';
 import {
   animate,
   resolveEntrance,
+  resolveUpdate,
   prefersReducedMotion,
   type AnimationHandle,
   type ResolvedEntrance,
@@ -48,6 +51,20 @@ declare global {
   // Global kill-switch for entrance animations (screenshot/automation harnesses).
   var __ENVY_DISABLE_ANIM: boolean | undefined;
 }
+
+/**
+ * Chart kinds whose data marks are painted to the `marks` canvas (cartesian
+ * plus pie/heatmap). Updates to these cross-fade the marks layer; the DOM-only
+ * kinds (kpi/table/matrix) update instantly since there's no canvas to dissolve.
+ */
+const CANVAS_MARK_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
+  'line',
+  'area',
+  'bar',
+  'scatter',
+  'pie',
+  'heatmap',
+]);
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {
   if (typeof target === 'string') {
@@ -88,10 +105,20 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
   let observer: ResizeObserver | undefined;
   let interaction: InteractionController | undefined;
   let entrance: AnimationHandle | undefined;
+  let updateTransition: AnimationHandle | undefined;
+  let destroyed = false;
+  // Set when a draw measured text while a web font was still loading. We listen
+  // for the font once and redraw so the final layout uses real metrics.
+  let fontRefreshArmed = false;
+  // Set when the font settles mid-entrance: we defer the corrective redraw until
+  // the entrance finishes so the animation isn't cut short by a snap.
+  let pendingFontRefresh = false;
 
   const draw = (animateEntrance: boolean): void => {
     entrance?.cancel();
     entrance = undefined;
+    updateTransition?.cancel();
+    updateTransition = undefined;
 
     const tokens = resolveTheme(currentSpec.theme);
     const size = resolveSize(container, currentSpec);
@@ -122,8 +149,14 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
       interactionModel = buildCartesianInteraction(model);
 
       if (anim.enabled && renderer) {
-        entrance = runCartesianEntrance(surface, model, renderer, tokens, currentSpec.background, anim, () =>
-          signalReady(surface),
+        entrance = runCartesianEntrance(
+          surface,
+          model,
+          renderer,
+          tokens,
+          currentSpec.background,
+          anim,
+          finishEntrance,
         );
       }
     } else {
@@ -134,7 +167,7 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
         drawPlaceholder(surface, tokens, `“${type}” renderer not yet registered`);
       }
       if (anim.enabled) {
-        entrance = runFadeEntrance(surface, anim, () => signalReady(surface));
+        entrance = runFadeEntrance(surface, anim, finishEntrance);
       }
     }
 
@@ -145,6 +178,37 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
 
     // Animated entrances signal ready on their final frame; everything else now.
     if (!entrance) signalReady(surface);
+
+    // If text was measured with fallback metrics (web font still loading), arm a
+    // one-shot corrective redraw for when the real font arrives.
+    armFontRefresh();
+  };
+
+  // Entrance completion: mark ready, then apply any font-load correction that was
+  // deferred so it wouldn't interrupt the animation.
+  const finishEntrance = (): void => {
+    signalReady(surface);
+    if (pendingFontRefresh && !destroyed) {
+      pendingFontRefresh = false;
+      draw(false);
+    }
+  };
+
+  // Self-healing layout: a chart drawn before its web font loads is measured with
+  // fallback metrics. Listen once for the font and redraw with real metrics. If
+  // an entrance is mid-flight, defer the redraw to its completion to avoid a snap.
+  const armFontRefresh = (): void => {
+    if (fontRefreshArmed || !fontsLoading()) return;
+    fontRefreshArmed = true;
+    onFontsReady(() => {
+      fontRefreshArmed = false;
+      if (destroyed) return;
+      if (entrance) {
+        pendingFontRefresh = true;
+      } else {
+        draw(false);
+      }
+    });
   };
 
   const autoResize =
@@ -174,14 +238,44 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     },
     surface,
     update(next: ChartSpec): void {
+      updateTransition?.cancel();
+      updateTransition = undefined;
+
+      // Decide whether to cross-fade the marks layer: both the outgoing and
+      // incoming chart must be canvas-mark kinds, motion must be enabled, and
+      // the surface size must be unchanged (a dimension change is a resize, not
+      // a data morph — those snap to avoid a stretched bitmap).
+      const prevType = currentSpec.type;
+      const prevW = surface.width;
+      const prevH = surface.height;
+      const anim = resolveUpdate(next.animation, {
+        reducedMotion: prefersReducedMotion(),
+        disabled: globalThis.__ENVY_DISABLE_ANIM === true,
+      });
+      const wantFade =
+        anim.enabled && CANVAS_MARK_TYPES.has(prevType) && CANVAS_MARK_TYPES.has(next.type);
+      const before = wantFade ? snapshotLayer(surface.marks) : undefined;
+
       currentSpec = next;
       draw(false);
+
+      if (
+        before &&
+        surface.width === prevW &&
+        surface.height === prevH &&
+        surface.marks.canvas.width === before.width &&
+        surface.marks.canvas.height === before.height
+      ) {
+        updateTransition = runUpdateCrossfade(surface, before, anim);
+      }
     },
     resize(): void {
       draw(false);
     },
     destroy(): void {
+      destroyed = true;
       entrance?.cancel();
+      updateTransition?.cancel();
       observer?.disconnect();
       interaction?.destroy();
       surface.destroy();
@@ -264,6 +358,58 @@ function runFadeEntrance(
       root.style.transform = '';
       onDone();
     },
+  });
+}
+
+/**
+ * Copy a canvas layer's current backing store into a detached canvas so it can
+ * be composited later (used to cross-fade the previous frame on update()).
+ */
+function snapshotLayer(layer: CanvasLayer): HTMLCanvasElement {
+  const off = document.createElement('canvas');
+  off.width = layer.canvas.width;
+  off.height = layer.canvas.height;
+  if (off.width > 0 && off.height > 0) {
+    const octx = off.getContext('2d');
+    octx?.drawImage(layer.canvas, 0, 0);
+  }
+  return off;
+}
+
+/**
+ * Update transition: cross-fade the marks layer from the previous frame to the
+ * freshly drawn one. The new frame is already live on the canvas when this runs,
+ * so we snapshot it and composite `new` under `old` with `old` fading out. The
+ * final frame is pixel-identical to the static (instant) draw.
+ */
+function runUpdateCrossfade(
+  surface: Surface,
+  before: HTMLCanvasElement,
+  anim: ResolvedEntrance,
+): AnimationHandle {
+  const after = snapshotLayer(surface.marks);
+  const ctx = surface.marks.ctx;
+  const w = surface.marks.width;
+  const h = surface.marks.height;
+
+  const paint = (t: number): void => {
+    surface.marks.clear();
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.drawImage(after, 0, 0, w, h);
+    if (t < 1) {
+      ctx.globalAlpha = 1 - t;
+      ctx.drawImage(before, 0, 0, w, h);
+    }
+    ctx.restore();
+  };
+
+  paint(0);
+  return animate({
+    duration: anim.duration,
+    easing: anim.easing,
+    onUpdate: paint,
+    onComplete: () => paint(1),
   });
 }
 

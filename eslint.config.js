@@ -19,4 +19,20 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  {
+    // Playwright-driven visual harness scripts run under Node (ESM) but also
+    // contain page.evaluate() callbacks that reference browser globals.
+    files: ['tests/visual/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+      },
+    },
+  },
 );

@@ -390,13 +390,20 @@ settles, Envy sets `data-envy-ready="true"` on the surface root and increments
 
 ### Animation
 
-Charts play a brief **entrance animation** the first time they render (resizes and
-`update()` redraws are instant — no re‑animation, no jank):
+Charts play a brief **entrance animation** the first time they render; **resizes**
+are always instant (no re‑animation, no jank while dragging):
 
 - **Cartesian charts** (line/area/bar/scatter/heatmap) sweep their marks in
   left‑to‑right with a short fade — the axes, gridlines, and labels are drawn
   immediately so only the data "draws on".
 - **Pie, KPI, tables** fade and rise in subtly.
+
+On **`update()`** (new data or config), canvas‑mark charts
+(line/area/bar/scatter/pie/heatmap) **cross‑fade** the marks layer from the
+previous frame to the next — a smooth dissolve whose final frame is
+pixel‑identical to an instant redraw. DOM charts (`kpi`/`table`/`matrix`) update
+instantly, and a simultaneous size change snaps (that's a resize, not a data
+morph) to avoid a stretched bitmap.
 
 Tuning via the `animation` field:
 
@@ -405,12 +412,19 @@ Tuning via the `animation` field:
 { "animation": { "duration": 700, "easing": "cubicOut" } }
 ```
 
-- Default duration is **480ms**, default easing **`cubicOut`**.
+- Default entrance duration is **480ms** (easing `cubicOut`); the update
+  cross‑fade is **360ms** (easing `cubicInOut`).
 - **`prefers-reduced-motion`** is honored automatically — when the OS requests
-  reduced motion, charts render in their final state with no animation.
-- Automation/screenshot harnesses can force‑disable all entrances by setting
+  reduced motion, entrances and update cross‑fades are suppressed and charts
+  render directly in their final state.
+- Automation/screenshot harnesses can force‑disable all motion by setting
   `window.__ENVY_DISABLE_ANIM = true` before rendering, which keeps captures
   deterministic without changing any spec.
+- **Web fonts:** axis‑gutter and label widths depend on the chart's font. If a
+  chart renders before its web font has loaded, it lays out with fallback metrics
+  and then **re‑lays‑out automatically once the font loads**, so the final result
+  is always correct. (For pixel‑exact screenshots, also `await
+  document.fonts.ready` before capturing.)
 
 ---
 

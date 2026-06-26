@@ -40,13 +40,19 @@ async function renderShot(): Promise<void> {
   host.style.height = `${h}px`;
   root.appendChild(host);
 
-  await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
-
   if (scenario) {
-    render(host, withSize(scenario.spec(), w, h, theme));
+    const instance = render(host, withSize(scenario.spec(), w, h, theme));
+    // Expose the instance so update()-transition tests can drive it.
+    (window as unknown as { __envyChart?: ChartInstance }).__envyChart = instance;
   } else {
     host.textContent = `Unknown scenario: ${id}`;
   }
+
+  // Web fonts load lazily on first text measurement, so the meaningful wait is
+  // *after* render() has requested them. The runtime also re-lays-out on
+  // fonts.ready, so by the time this resolves the final frame uses real metrics.
+  await (document as Document & { fonts?: FontFaceSet }).fonts?.ready;
+
   document.documentElement.setAttribute('data-shot-ready', 'true');
 }
 
