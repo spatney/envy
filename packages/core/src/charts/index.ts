@@ -12,6 +12,14 @@ import type { ChartSpec, ChartType } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { CartesianModel } from '../runtime/cartesian';
 import { drawLine } from './line';
+import { drawArea } from './area';
+import { drawBar } from './bar';
+import { drawScatter } from './scatter';
+import { drawHeatmap } from './heatmap';
+import { drawPie } from './pie';
+import { drawKpi } from './kpi';
+import { drawTable } from './table';
+import { drawMatrix } from './matrix';
 
 export type CartesianRenderer = (surface: Surface, model: CartesianModel) => void;
 export type CustomRenderer = (
@@ -30,7 +38,15 @@ export const CARTESIAN_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
 
 export const cartesianRenderers: Partial<Record<ChartType, CartesianRenderer>> = {
   line: drawLine,
-  area: drawLine, // area specs fall back to a filled line until the dedicated renderer lands
+  area: drawArea,
+  bar: drawBar,
+  scatter: drawScatter,
 };
 
-export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {};
+export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {
+  heatmap: drawHeatmap,
+  pie: drawPie,
+  kpi: drawKpi,
+  table: drawTable,
+  matrix: drawMatrix,
+};

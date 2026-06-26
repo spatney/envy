@@ -1,0 +1,191 @@
+import { sequential, sequentialColorScale, rgbaToCss } from '../color';
+import { formatValue } from '../format';
+import type { Surface } from '../render/surface';
+import { fontString, measureText } from '../render/text';
+import { bandScale } from '../scales';
+import { roundedRect } from '../shape';
+import type { ChartSpec, HeatmapSpec } from '../spec/types';
+import type { Rect, Size } from '../types';
+import type { ThemeTokens } from '../theme';
+import { accessor, extent, toKey, toNumber, uniqueStrings } from '../util/data';
+import { addOverlayText, CHROME_PAD, drawTitleBlock } from './chrome';
+
+const MIN_GRID_SIZE = 8;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function finite(value: number): boolean {
+  return Number.isFinite(value);
+}
+
+function categoryKey(value: unknown): string {
+  return value instanceof Date ? String(value) : toKey(value);
+}
+
+function measureMax(labels: readonly string[], font: string): number {
+  let max = 0;
+  for (const label of labels) max = Math.max(max, measureText(label, font).width);
+  return max;
+}
+
+function drawRoundedCell(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+  if (!finite(x) || !finite(y) || !finite(width) || !finite(height) || width <= 0 || height <= 0) return;
+  ctx.beginPath();
+  roundedRect(ctx, x, y, width, height, Math.min(radius, width / 2, height / 2));
+  ctx.fill();
+}
+
+function drawLegend(
+  surface: Surface,
+  tokens: ThemeTokens,
+  legend: Rect,
+  min: number,
+  max: number,
+  spec: HeatmapSpec,
+): void {
+  if (legend.width <= 0 || legend.height <= 0) return;
+
+  const ctx = surface.marks.ctx;
+  const interp = sequential(spec.scheme ?? 'teal');
+  const barWidth = Math.floor(clamp(legend.width * 0.48, Math.min(legend.width, 120), Math.min(legend.width, 220)));
+  const barHeight = 10;
+  const barX = Math.round(legend.x + (legend.width - barWidth) / 2);
+  const barY = Math.round(legend.y + 4);
+  const sameDomain = min === max;
+
+  for (let i = 0; i < barWidth; i++) {
+    const t = sameDomain ? 0.5 : barWidth <= 1 ? 0 : i / (barWidth - 1);
+    ctx.fillStyle = rgbaToCss(interp(t));
+    ctx.fillRect(barX + i, barY, 1, barHeight);
+  }
+
+  ctx.strokeStyle = tokens.color.border;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX + 0.5, barY + 0.5, Math.max(0, barWidth - 1), Math.max(0, barHeight - 1));
+
+  const labelTop = barY + barHeight + 3;
+  addOverlayText(surface, tokens, {
+    left: barX,
+    top: labelTop,
+    text: formatValue(min, spec.encoding.color.format),
+    color: tokens.color.textMuted,
+    size: tokens.font.size.small,
+  });
+  addOverlayText(surface, tokens, {
+    left: barX + barWidth,
+    top: labelTop,
+    text: formatValue(max, spec.encoding.color.format),
+    color: tokens.color.textMuted,
+    size: tokens.font.size.small,
+    transform: 'translateX(-100%)',
+  });
+}
+
+export function drawHeatmap(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
+  const heatmap = spec as HeatmapSpec;
+  const content = drawTitleBlock(surface, tokens, size, heatmap.title);
+  const rows = heatmap.data ?? [];
+  const { x, y, color } = heatmap.encoding;
+  const xCats = uniqueStrings(rows, x.field);
+  const yCats = uniqueStrings(rows, y.field);
+  const colorDomain = extent(rows, color.field);
+
+  if (xCats.length === 0 || yCats.length === 0 || !colorDomain || content.width <= 0 || content.height <= 0) return;
+
+  const labelSize = tokens.font.size.small;
+  const labelFont = fontString(labelSize, tokens.font.family, tokens.font.weight.normal);
+  const yLabelWidth = measureMax(yCats, labelFont);
+  const leftGutter = Math.ceil(clamp(yLabelWidth + tokens.spacing.sm, 28, Math.min(110, content.width * 0.32)));
+  const xLabelHeight = Math.ceil(labelSize * 1.7);
+  const legendHeight = Math.ceil(labelSize + 24);
+  const gridTop = content.y + Math.min(tokens.spacing.xs, CHROME_PAD.top);
+  const grid: Rect = {
+    x: content.x + leftGutter,
+    y: gridTop,
+    width: Math.max(0, content.width - leftGutter),
+    height: Math.max(0, content.y + content.height - gridTop - xLabelHeight - legendHeight - tokens.spacing.sm),
+  };
+
+  if (grid.width < MIN_GRID_SIZE || grid.height < MIN_GRID_SIZE) return;
+
+  const xScale = bandScale({ domain: xCats, range: [grid.x, grid.x + grid.width], paddingInner: 0.06, paddingOuter: 0.02 });
+  const yScale = bandScale({ domain: yCats, range: [grid.y, grid.y + grid.height], paddingInner: 0.06, paddingOuter: 0.02 });
+  const interp = sequential(heatmap.scheme ?? 'teal');
+  const cscale = sequentialColorScale({ domain: colorDomain, interpolator: interp });
+  const readX = accessor(x.field);
+  const readY = accessor(y.field);
+  const readColor = accessor(color.field);
+  const ctx = surface.marks.ctx;
+  const cellRadius = Math.min(2, tokens.radius.sm);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(grid.x, grid.y, grid.width, grid.height);
+  ctx.clip();
+
+  for (const row of rows) {
+    const value = toNumber(readColor(row));
+    if (!finite(value)) continue;
+
+    const sx = xScale.map(categoryKey(readX(row)));
+    const sy = yScale.map(categoryKey(readY(row)));
+    if (sx === undefined || sy === undefined) continue;
+
+    ctx.fillStyle = rgbaToCss(cscale.map(value));
+    drawRoundedCell(ctx, sx, sy, xScale.bandwidth, yScale.bandwidth, cellRadius);
+  }
+
+  ctx.restore();
+
+  ctx.strokeStyle = tokens.color.border;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(grid.x + 0.5, grid.y + 0.5, Math.max(0, grid.width - 1), Math.max(0, grid.height - 1));
+
+  for (const cat of yCats) {
+    const sy = yScale.map(cat);
+    if (sy === undefined) continue;
+    addOverlayText(surface, tokens, {
+      left: content.x,
+      top: sy + yScale.bandwidth / 2,
+      width: Math.max(0, leftGutter - tokens.spacing.sm),
+      text: cat,
+      color: tokens.color.textMuted,
+      size: labelSize,
+      align: 'right',
+      transform: 'translateY(-50%)',
+    });
+  }
+
+  const widestX = measureMax(xCats, labelFont);
+  const every = Math.max(1, Math.ceil((widestX + tokens.spacing.md) / Math.max(1, xScale.step)));
+  const xLabelTop = grid.y + grid.height + 6;
+  xCats.forEach((cat, index) => {
+    if (index % every !== 0) return;
+    const sx = xScale.map(cat);
+    if (sx === undefined) return;
+    addOverlayText(surface, tokens, {
+      left: sx + xScale.bandwidth / 2,
+      top: xLabelTop,
+      text: cat,
+      color: tokens.color.textMuted,
+      size: labelSize,
+      transform: 'translateX(-50%)',
+    });
+  });
+
+  drawLegend(
+    surface,
+    tokens,
+    {
+      x: grid.x,
+      y: grid.y + grid.height + xLabelHeight + tokens.spacing.xs,
+      width: grid.width,
+      height: legendHeight,
+    },
+    colorDomain[0],
+    colorDomain[1],
+    heatmap,
+  );
+}

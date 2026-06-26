@@ -201,7 +201,16 @@ export const scenarios: Scenario[] = [
     spec: () => ({
       type: 'kpi',
       value: { field: 'sales', aggregate: 'sum' },
-      data: salesTable({ n: 120 }),
+      data: timeSeries({
+        points: 14,
+        stepDays: 30,
+        base: 5200,
+        trend: 70,
+        seasonAmp: 520,
+        noise: 180,
+        seed: 5,
+        valueField: 'sales',
+      }),
       label: 'Total sales',
       delta: 0.124,
       format: '$,.0f',

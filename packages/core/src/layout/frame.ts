@@ -37,6 +37,13 @@ export interface AxisInput {
   /** Formatted tick labels used to measure the gutter. */
   labels: string[];
   title?: string;
+  /**
+   * True when the first/last ticks sit exactly on the plot's horizontal edges
+   * (linear/time scales), so half of each edge label overflows the plot and the
+   * layout must reserve room for it. Band scales inset their labels, so this is
+   * false/omitted for them.
+   */
+  edgeAnchored?: boolean;
 }
 
 export interface FrameInput {
@@ -212,6 +219,17 @@ export function computeFrame(input: FrameInput): Frame {
     let gutter = lineHeight(font.size.small) + TICK_SIZE + AXIS_LABEL_GAP;
     if (input.xAxis.title) gutter += lineHeight(font.size.base) + AXIS_TITLE_GAP;
     bottom -= gutter;
+    // Edge-anchored x labels (linear/time) center on the first/last ticks, which
+    // sit on the plot's left/right edges — reserve half of each so they don't
+    // overflow (and get clipped) at narrow widths.
+    if (input.xAxis.edgeAnchored && input.xAxis.labels.length) {
+      const wfont = fontString(font.size.small, font.family, font.weight.normal);
+      const labels = input.xAxis.labels;
+      const firstHalf = Math.ceil(measureText(labels[0], wfont).width / 2);
+      const lastHalf = Math.ceil(measureText(labels[labels.length - 1], wfont).width / 2);
+      left = Math.max(left, padding.left + firstHalf);
+      right -= lastHalf;
+    }
   }
 
   frame.plot = {

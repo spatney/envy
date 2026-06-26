@@ -8,7 +8,7 @@
  */
 
 import type { Surface } from '../render/surface';
-import { fontString } from '../render/text';
+import { fontString, measureText } from '../render/text';
 import { crisp } from '../util/math';
 import { TICK_SIZE, type Frame, type PositionedLegendItem } from '../layout';
 import type { CartesianModel } from '../runtime/cartesian';
@@ -161,17 +161,30 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
     }
   }
 
-  // X tick labels (centered under each tick).
+  // X tick labels (centered under each tick, but clamped at the edges so the
+  // first/last labels never overflow the surface — DOM text can render a touch
+  // wider than the canvas measurement the layout reserved for).
   if (model.spec.axes?.x?.labels !== false) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
+    const edgePad = 2;
     for (const t of thinXTicks(model, f.size.small * 0.58)) {
+      const half = measureText(t.label, smallFont).width / 2;
+      let left = t.pos;
+      let transform = 'translateX(-50%)';
+      if (t.pos - half < edgePad) {
+        left = edgePad;
+        transform = 'none';
+      } else if (t.pos + half > frame.width - edgePad) {
+        left = frame.width - edgePad;
+        transform = 'translateX(-100%)';
+      }
       addText(overlay, smallFont, {
-        left: t.pos,
+        left,
         top,
         text: t.label,
         color: tokens.color.textMuted,
         size: f.size.small,
-        transform: 'translateX(-50%)',
+        transform,
       });
     }
   }

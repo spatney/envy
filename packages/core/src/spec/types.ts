@@ -181,7 +181,7 @@ export interface PieSpec extends BaseSpec {
   encoding: Encoding & { theta: FieldDef; color: FieldDef };
   /** true for a default donut, or a 0..1 inner-radius ratio. */
   donut?: boolean | number;
-  /** Show value/percent labels. */
+  /** Show value/percent labels. Defaults to true; set false to hide. */
   labels?: boolean;
 }
 
