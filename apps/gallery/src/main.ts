@@ -22,15 +22,17 @@ import {
 const DASHBOARD_ID = '__dashboard__';
 const REPO_URL = 'https://github.com/spatney/graphein';
 
-/** Inline brand mark — an "E" built from data bars with a mint data node. */
+/** Inline brand mark — the Graphein "g" with its 4-node color ramp.
+ *  The stroke uses currentColor so the mark adapts to the light/dark nav. */
 const GRAPHEIN_MARK_SVG =
-  '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
-  '<rect width="64" height="64" rx="15" fill="#0d9488"/>' +
-  '<rect x="18" y="15.5" width="26" height="9" rx="4.5" fill="#fff"/>' +
-  '<rect x="18" y="27.5" width="16" height="9" rx="4.5" fill="#fff"/>' +
-  '<rect x="18" y="39.5" width="30" height="9" rx="4.5" fill="#fff"/>' +
-  '<circle cx="41.5" cy="32" r="4.4" fill="#5eead4"/>' +
-  '</svg>';
+  '<svg viewBox="0 0 116.85 116.85" aria-hidden="true" focusable="false">' +
+  '<g transform="translate(18.618,2.609)">' +
+  '<path d="M61,29 A23,23 0 1 0 61,53 C61,68 62,82 56,89 C51,95 38,95 30,90" fill="none" stroke="currentColor" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '<circle cx="61.00" cy="29.00" r="6.9" fill="#4F46E5"/>' +
+  '<circle cx="18.57" cy="43.97" r="6.9" fill="#1E88E5"/>' +
+  '<circle cx="61.04" cy="60.15" r="6.9" fill="#06B6D4"/>' +
+  '<circle cx="30.00" cy="90.00" r="6.9" fill="#10B981"/>' +
+  '</g></svg>';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;

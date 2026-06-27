@@ -1,6 +1,13 @@
-# Graphein
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/graphein-logo-horizontal-dark.svg">
+    <img alt="Graphein" src="docs/images/graphein-logo-horizontal.svg" width="360">
+  </picture>
+</p>
 
-> A beautiful, high-performance, **agent-first** data visualization library.
+<p align="center">A beautiful, high-performance, <strong>agent-first</strong> data visualization library.</p>
+
+# Graphein
 
 Graphein is a from-scratch (zero runtime dependency) visualization toolkit designed so that
 **coding agents** can assemble stunning dashboards and reports from declarative,
@@ -207,3 +214,14 @@ Built fresh, with lessons borrowed from the best of open source: **D3** (scale/t
 shape generation), **Vega-Lite** (declarative encoding grammar), **uPlot/ECharts/Chart.js**
 (canvas performance, layered redraw), **Observable Plot** (sensible-defaults API),
 **LTTB** (series decimation), and **OKLab/OKLCH** (perceptual color).
+
+## Brand
+
+The Graphein mark is a lowercase **"g"** whose nodes trace a sequential color ramp —
+indigo → blue → cyan → emerald — the same kind of perceptual scale the library ships for
+data. Logo lockups, icon variants, and favicon-ready marks live in
+[`docs/images`](docs/images).
+
+<p align="center">
+  <img src="docs/images/graphein-brand-showcase.png" alt="Graphein brand showcase — logo lockups, icon variants, and color palette" width="860">
+</p>

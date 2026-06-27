@@ -208,8 +208,6 @@ code {
   width: 30px;
   height: 30px;
   display: block;
-  border-radius: 9px;
-  box-shadow: var(--shadow-sm);
 }
 .brand-name {
   font-family: var(--font-display);
