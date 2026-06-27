@@ -4,6 +4,7 @@ import type { BarSpec } from '../spec/types';
 import { roundedRect } from '../shape';
 import { RoughPen } from '../rough';
 import { accessor, toKey, toNumber } from '../util/data';
+import { rowAlpha } from './emphasis';
 
 type CornerSide = 'top' | 'bottom' | 'none';
 
@@ -18,6 +19,7 @@ interface BarRect {
 
 interface StackSegment extends BarRect {
   stackEndKey: string;
+  alpha: number;
 }
 
 function finite(value: number): boolean {
@@ -40,12 +42,22 @@ function makeRadii(side: CornerSide, radius: number): number | [number, number, 
   return 0;
 }
 
-function drawRect(ctx: CanvasRenderingContext2D, rect: BarRect, radius: number, pen?: RoughPen | null): void {
+function drawRect(
+  ctx: CanvasRenderingContext2D,
+  rect: BarRect,
+  radius: number,
+  pen?: RoughPen | null,
+  alpha = 1,
+): void {
   if (!finite(rect.x) || !finite(rect.y) || !finite(rect.width) || !finite(rect.height)) return;
   if (rect.width <= 0 || rect.height <= 0) return;
 
+  const prevAlpha = ctx.globalAlpha;
+  if (alpha !== 1) ctx.globalAlpha = prevAlpha * alpha;
+
   if (pen) {
     pen.rect(rect.x, rect.y, rect.width, rect.height, { stroke: rect.color, fill: rect.color });
+    if (alpha !== 1) ctx.globalAlpha = prevAlpha;
     return;
   }
 
@@ -54,6 +66,7 @@ function drawRect(ctx: CanvasRenderingContext2D, rect: BarRect, radius: number, 
   roundedRect(ctx, rect.x, rect.y, rect.width, rect.height, makeRadii(rect.cornerSide, r));
   ctx.fillStyle = rect.color;
   ctx.fill();
+  if (alpha !== 1) ctx.globalAlpha = prevAlpha;
 }
 
 function barRect(x: number, width: number, baseY: number, valueY: number, color: string): BarRect | null {
@@ -92,7 +105,7 @@ function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
 
       const left = center - bandWidth / 2 + seriesIndex * subWidth + gap / 2;
       const rect = barRect(left, barWidth, model.y.baseline, model.y.pixel(value), series.color);
-      if (rect) drawRect(ctx, rect, radius, pen);
+      if (rect) drawRect(ctx, rect, radius, pen, rowAlpha(model.emphasis, row));
     }
   });
 }
@@ -126,14 +139,14 @@ function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
       const rect = barRect(center - bandWidth / 2, bandWidth, model.y.pixel(base), model.y.pixel(top), series.color);
       if (!rect) continue;
 
-      segments.push({ ...rect, stackEndKey });
+      segments.push({ ...rect, stackEndKey, alpha: rowAlpha(model.emphasis, row) });
       roundedEnds.set(stackEndKey, segments.length - 1);
     }
   }
 
   segments.forEach((segment, index) => {
     const isOuterSegment = roundedEnds.get(segment.stackEndKey) === index;
-    drawRect(ctx, { ...segment, cornerSide: isOuterSegment ? segment.cornerSide : 'none' }, radius, pen);
+    drawRect(ctx, { ...segment, cornerSide: isOuterSegment ? segment.cornerSide : 'none' }, radius, pen, segment.alpha);
   });
 }
 

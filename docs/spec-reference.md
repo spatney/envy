@@ -35,7 +35,11 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Chart types](#chart-types)
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
-  - [box](#box) · [sankey](#sankey) · [choropleth](#choropleth)
+  - [box](#box) · [funnel](#funnel) · [sankey](#sankey) · [choropleth](#choropleth)
+- [Slicers](#slicers)
+  - [dropdown](#dropdown) · [search](#search) · [list](#list) · [range](#range) · [dateRange](#daterange)
+- [Interactivity (selection · highlight · filter)](#interactivity-selection--highlight--filter)
+- [Dashboards](#dashboards)
 - [Conditional formatting](#conditional-formatting)
 - [Themes](#themes)
 - [Sketch (hand-drawn) mode](#sketchconfig)
@@ -65,6 +69,9 @@ Shared by **all** chart types.
 | `padding` | `Partial<Insets>` | auto | Extra `{ top, right, bottom, left }` px around the plot. |
 | `background` | `string` | theme bg | CSS color override for the chart surface. |
 | `sketch` | `boolean \| SketchConfig` | `false` | Render with the hand‑drawn ("sketch") look — wobbly outlines, hachure fills, and a handwriting font (see [`SketchConfig`](#sketchconfig)). |
+| `params` | `SelectionParam[]` | — | Named selections this visual **publishes** (click/brush/slicer). See [Interactivity](#interactivity-selection--highlight--filter). |
+| `highlight` | `HighlightConfig \| HighlightConfig[]` | — | Emphasize rows matching a param; dim the rest. An array unions sources. |
+| `filter` | `FilterClause[]` | — | Subset rows to those matching **every** clause (a `{ param }` or a literal predicate). |
 
 ### `TitleConfig`
 
@@ -244,9 +251,19 @@ Pie or donut with value/percent labels and slice‑lift hover.
 | --- | --- | --- |
 | `encoding` | requires `theta`, `color` | `theta` = value, `color` = slice category. |
 | `donut` | `boolean \| number` | `true` for a default donut, or a `0..1` inner‑radius ratio. |
-| `labels` | `boolean` | Show value/percent labels (default `true`). |
+| `labels` | `boolean \| PieLabels` | `true`/`false` toggles labels; pass a `PieLabels` object for callout control (default `true` ⇒ auto). |
 
-→ [`examples/pie-donut.json`](./examples/pie-donut.json)
+**`PieLabels`** — auto inside/outside callouts with leader lines:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `show` | `boolean` | Master toggle (default `true`). |
+| `placement` | `'inside' \| 'outside' \| 'auto'` | `auto` (default) keeps a label inside when the text fits, otherwise an outside callout with a leader line. |
+| `content` | `'percent' \| 'value' \| 'category' \| 'category-percent' \| 'category-value'` | What each label says (default: `percent` inside, `category-percent` for outside callouts). |
+| `minShare` | `number` | Hide labels for slices below this share of the total, `0..1` (default `0.01`). |
+| `connector` | `'slice' \| 'muted'` | Leader-line colour for outside callouts (default `slice`). |
+
+→ [`examples/pie-donut.json`](./examples/pie-donut.json) · [`examples/donut-callouts.json`](./examples/donut-callouts.json)
 
 ### heatmap
 
@@ -283,6 +300,8 @@ windowing.
 | --- | --- | --- |
 | `columns` | `TableColumn[]` | Explicit columns; inferred from `data` keys when omitted. |
 | `sort` | `{ field, order? }` | `order`: `asc \| desc`. |
+| `density` | `'comfortable' \| 'standard' \| 'compact'` | Row/header spacing preset. |
+| `totals` | `boolean \| { label? }` | Adds a sticky footer row; measure columns default to `sum`. |
 | `striped` | `boolean` | Zebra striping (off by default — flat aesthetic). |
 | `stickyHeader` | `boolean` | Sticky header (default `true`). |
 
@@ -296,7 +315,14 @@ windowing.
 | `format` | `string` | [Format hint](#format-mini-language). |
 | `align` | `'left' \| 'center' \| 'right'` | Cell/text alignment. |
 | `width` | `number` | Fixed column width in px. |
-| `conditionalFormat` | `ConditionalFormat` | In‑cell bar or color scale. |
+| `conditionalFormat` | `ConditionalFormat` | In‑cell bar, color scale, icons, or rules. |
+| `prefix` / `suffix` | `string` | Display text around formatted numeric values (for example `$`, `%`). |
+| `negativeStyle` | `'sign' \| 'parens' \| 'red' \| 'parens-red'` | Negative number display. |
+| `hidden` | `boolean` | Drops the column from rendering. |
+| `sortable` | `boolean` | Set `false` to remove the sort button for that column. |
+| `wrap` | `boolean` | Allows multi-line cell text. |
+| `group` | `string` | Adds a top header band spanning consecutive columns with the same group. |
+| `total` | `AggOp \| false` | Footer aggregation when `totals` is enabled. |
 
 → [`examples/table.json`](./examples/table.json)
 
@@ -312,6 +338,8 @@ subtotals/grand totals — rendered through the table engine.
 | `values` | `MatrixValueDef[]` | **Required.** Measures to aggregate. |
 | `subtotals` | `boolean` | Group subtotals. |
 | `grandTotals` | `boolean` | Overall totals row/column. |
+| `density` | `'comfortable' \| 'standard' \| 'compact'` | Row/header spacing preset. |
+| `columnSort` | `{ by:'value'\|'label', valueIndex?, order? }` | Sort leaf columns by label or aggregated measure. |
 
 **`MatrixValueDef`**
 
@@ -322,6 +350,9 @@ subtotals/grand totals — rendered through the table engine.
 | `label` | `string` | Header label for the measure. |
 | `format` | `string` | [Format hint](#format-mini-language). |
 | `conditionalFormat` | `ConditionalFormat` | Per‑cell formatting. |
+| `prefix` / `suffix` | `string` | Display text around formatted values. |
+| `negativeStyle` | `TableColumn['negativeStyle']` | Negative number display. |
+| `showAs` | `'value' \| 'percentOfRow' \| 'percentOfColumn' \| 'percentOfTotal'` | Display cell shares as percentages. Denominators are computed from leaf cells even when subtotals/grand totals are off. |
 
 → [`examples/matrix.json`](./examples/matrix.json)
 
@@ -337,6 +368,20 @@ quartiles, median, whiskers, and outliers.
 | `outliers` | `boolean` | Draw outlier points beyond the whiskers (tukey only; default `true`). |
 
 → [`examples/box.json`](./examples/box.json)
+
+### funnel
+
+Conversion funnel: tapering stages stacked top‑to‑bottom, each labeled with its value
+and the share retained. Values are **aggregated by stage** (in first‑seen order), so you
+can pass raw rows.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `stage`, `value` | `stage` = the step (ordered as first seen); `value` = the measure (**summed** per stage). |
+| `labels` | `boolean` | Show stage name, value, and percent inside the funnel (default `true`). |
+| `percent` | `'first' \| 'previous'` | Per‑stage percentage basis: `first` (default) = share retained vs. the top of the funnel; `previous` = step conversion vs. the stage above. |
+
+→ [`examples/funnel.json`](./examples/funnel.json)
 
 ### sankey
 
@@ -375,24 +420,257 @@ planar coordinates and use `projection: 'identity'`.
 
 ---
 
+## Slicers
+
+Interactive controls that **publish a selection** instead of plotting marks. A slicer
+reads one `field` and writes to a `param` (defaulting to the field name), so it
+auto‑connects to any visual that filters/highlights on that param. Options and bounds
+derive from the **unfiltered** data, so a slicer never hides its own choices. Slicers
+render standalone (they're ordinary DOM widgets) and slot into a [dashboard](#dashboards)
+like any other view. They share the [common slicer fields](#common-slicer-fields) below
+plus their own.
+
+#### Common slicer fields
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `field` | `string` | **required** | Column the slicer reads options/bounds from and filters on. |
+| `param` | `string` | `field` | Param name to publish to (the wire other visuals consume). |
+| `label` | `string` | `title`/`field` | Label shown above the control. |
+| `as` | `'filter' \| 'highlight'` | `'filter'` | How consumers react. |
+
+Plus all [`BaseSpec`](#common-fields-basespec) chrome (`theme`, `title`, `sketch`, …).
+
+### dropdown
+
+Choose one (single) or several (multi) of a field's distinct values. Emits a `set`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `multiple` | `boolean` | Allow multiple values. Default `false` (single‑select). |
+| `placeholder` | `string` | Shown when nothing is selected. |
+
+### search
+
+A debounced, case‑insensitive substring filter over a text field. Emits a `text`
+selection (`contains`).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `placeholder` | `string` | Input placeholder. |
+| `debounce` | `number` | Ms before publishing the query (default `200`). |
+
+### list
+
+A scrollable checkbox list of a field's distinct values (multi‑select). Emits a `set`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `selectAll` | `boolean` | Show the "Select all" / "Clear" row (default `true`). |
+| `searchThreshold` | `number` | Show a search‑within box once options exceed this (default `8`). |
+
+### range
+
+A numeric min/max range over a quantitative field (dual‑thumb slider). Emits a `range`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `min` / `max` | `number` | Bounds; default to the data min/max of `field`. |
+| `step` | `number` | Thumb step; defaults to a fraction of the range. |
+| `format` | `string` | Number [format hint](#format-mini-language) for value labels. |
+
+### dateRange
+
+A temporal min/max range over a date field, with relative presets. Emits a `range`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `presets` | `boolean` | Show relative presets (last 7/30/90 days, all). Default `true`. |
+| `format` | `string` | Date [format hint](#format-mini-language) for value labels. |
+
+→ [`examples/slicer-dropdown.json`](./examples/slicer-dropdown.json)
+
+---
+
+## Interactivity (selection · highlight · filter)
+
+The unit of interactivity is a **selection** — a named, JSON‑serializable value a
+visual *publishes* and others *consume*. Selections are plain data (no callbacks), so
+specs still round‑trip through `JSON.stringify`. Inspired by Vega‑Lite params, pared
+down to point/interval definitions and four resolved value shapes.
+
+**Publish — `params`.** A `SelectionParam` names a selection a visual writes when the
+user clicks a mark, brushes, or changes a slicer:
+
+```jsonc
+"params": [{
+  "name": "pick",
+  "select": {
+    "type": "point",        // 'point' (discrete picks) | 'interval' (a range)
+    "on": "click",          // 'click' (default) | 'hover'
+    "fields": ["region"],   // identity fields; default = the chart's key channel
+    "toggle": true,         // click to add/remove (default true for click)
+    "empty": "all"          // empty selection ⇒ match all (default) | none
+  }
+}]
+```
+
+**Consume — `highlight` & `filter`.** `highlight: { param }` emphasizes rows matching a
+param and dims the rest (per‑mark, ~22% dim alpha); an array unions several sources.
+`filter` subsets rows to those matching **every** clause (logical AND). Each clause is a
+named param or a literal predicate:
+
+| Clause | Shape | Meaning |
+| --- | --- | --- |
+| param | `{ "param": "region" }` | Match the param's current value. |
+| equals | `{ "field": "region", "equals": "West" }` | `field === value`. |
+| oneOf | `{ "field": "region", "oneOf": ["West","East"] }` | Membership. |
+| range | `{ "field": "sales", "range": [100, 500] }` | Inclusive numeric/temporal span. |
+| contains | `{ "field": "product", "contains": "wid" }` | Case‑insensitive substring. |
+
+**Resolved value shapes** (`SelectionValue` — what `getSelection` returns and
+`setSelection` accepts):
+
+| `kind` | Shape | Emitted by |
+| --- | --- | --- |
+| `point` | `{ kind, fields, tuples }` | clicking marks |
+| `set` | `{ kind, field, values }` | `dropdown`, `list` |
+| `range` | `{ kind, field, min?, max? }` | `range`, `dateRange`, brushing |
+| `text` | `{ kind, field, query }` | `search` |
+
+To link **independently rendered** charts, pass a shared store:
+
+```ts
+import { render, createSelectionStore } from '@envy/core';
+const store = createSelectionStore();
+render('#a', specA, { store });   // a publishes `params`
+render('#b', specB, { store });   // b consumes via `highlight`/`filter`
+```
+
+---
+
+## Dashboards
+
+A `dashboard` is the single‑JSON, agent‑facing layer that composes charts and slicers
+into one cross‑interacting page. It owns a shared dataset and selection store, lays
+views out on a responsive grid, and **auto‑wires** cross‑interaction. Validated by
+`validateSpec`; rendered with `renderDashboard`.
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `type` | `'dashboard'` | — | Discriminator. |
+| `data` | `Datum[]` | — | Shared dataset; views without their own `data` inherit it. |
+| `views` | `DashboardView[]` | **required** | The placed charts/slicers. |
+| `layout` | `DashboardLayout` | see below | Grid sizing + responsive behavior. |
+| `interactions` | `'auto' \| 'none' \| InteractionLink[]` | `'auto'` | Cross‑interaction policy. |
+| `params` | `SelectionParam[]` | — | Dashboard‑level selections (e.g. seeded initial values). |
+| `subtitle` | `string` | — | Muted line shown under the title in the page header. |
+| `theme` `title` `background` `dimensions` | — | — | Page chrome; `theme` cascades to every view. |
+
+**`DashboardLayout`** — `{ cols?, rowHeight?, gap?, breakpoints?, navigators?, sections?, preset?, maxWidth?, density?, padding? }`:
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `cols` | `number` | `12` | Grid columns at full width. |
+| `rowHeight` | `number` | `96` | Height of one grid row (px). |
+| `gap` | `number` | `14` | Gap between cells (px). |
+| `breakpoints` | `{ maxWidth, cols }[]` | `[{600,1},{960,6}]` | Responsive column counts: when narrower than a breakpoint's `maxWidth`, the grid switches to its `cols` and tiles reflow (DataZen‑style). Smallest match wins. |
+| `navigators` | `'top' \| 'inline'` | `'top'` | `top`: compact slicers (`dropdown`/`search`/`range`/`dateRange`) form a navigator strip above the grid (a BI filter bar); `inline`: every slicer is placed in the grid like a chart. |
+| `sections` | `DashboardSection[]` | — | Stack multiple section grids with header bands; views omitted from all sections render in an implicit trailing section. |
+| `preset` | `'auto' \| 'kpi-first' \| 'sidebar'` | `'auto'` | Auto-arrange unplaced views. Explicit `x`/`y`/`w`/`h` placement always wins. |
+| `maxWidth` | `number` | — | Constrain and center the dashboard page. |
+| `density` | `'compact' \| 'standard' \| 'comfortable'` | `'standard'` | Applies spacing/row-height presets before explicit `gap`/`rowHeight` overrides. |
+| `padding` | `number` | derived from `gap` | Page padding in px. |
+
+**`DashboardSection`**:
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | — | Optional stable id for the section. |
+| `title` / `subtitle` | `string` | — | Header band copy above the section grid. |
+| `views` | `string[]` | **required** | View ids in this section; each id may appear in only one section. |
+| `cols` | `number` | layout `cols` | Section-specific columns. |
+| `rowHeight` | `number` | layout `rowHeight` | Section-specific row height. |
+| `background` | `string` | transparent | Header band tint. |
+| `collapsed` | `boolean` | `false` | Start with the body hidden behind a clickable header. |
+
+**`DashboardView`** — `{ id, spec, x?, y?, w?, h?, title?, subtitle?, frame?, background?, accent?, padding?, responsive? }`.
+`id` is unique within the dashboard (used for layout + link references). `spec` is any
+chart or slicer spec (inherits the dashboard's `data` when it has none). `x`/`y` are
+1‑based grid placement (omit to auto‑flow); `w`/`h` are column/row spans (sensible
+per‑type defaults).
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `title` / `subtitle` | `string` | — | Card header drawn by the dashboard. When present, Envy suppresses the inner chart `title` to avoid duplicate headings. |
+| `frame` | `boolean` | `true` | Draw the framed card chrome. Set `false` for frameless tiles. |
+| `background` | `string` | theme surface | Card background override. |
+| `accent` | `string` | — | Solid left accent bar color. |
+| `padding` | `'none' \| 'standard'` | `'standard'` | Use `'none'` for flush tables/maps. |
+| `responsive` | `{ maxWidth, w?, h?, hidden? }[]` | — | Per-view span overrides at section/dashboard widths; smallest matching `maxWidth` wins. |
+
+**`interactions: 'auto'`** (Power BI semantics):
+
+- **Slicers filter the whole page** — every non‑slicer view whose data contains the
+  field is subset by the slicer (a KPI, a table, a chart that inherits the dashboard
+  data). A filter on a column a view's data doesn't contain is **ignored for that view**,
+  not blanked — so a pre‑aggregated view only reacts to the dimensions it carries.
+- **Chart clicks cross‑highlight** — clicking a mark emphasizes the matching subset in
+  views that encode the same field, and always self‑highlights.
+
+**Explicit links** replace auto‑wiring with an array of `InteractionLink`:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `source` | `string` | View id whose selection drives the interaction. |
+| `target` | `string \| string[] \| '*'` | Target view id(s), or `'*'` for every other view. |
+| `as` | `'highlight' \| 'filter' \| 'none'` | How targets react (defaults by source type). |
+| `fields` | `string[]` | Identity fields to match on; defaults to the source's key field(s). |
+
+```jsonc
+"interactions": [
+  { "source": "region", "target": "*", "as": "filter" },
+  { "source": "byRegion", "target": ["trend"], "as": "highlight", "fields": ["region"] }
+]
+```
+
+`renderDashboard(target, spec, options?)` returns a **`DashboardInstance`**:
+`update(next)`, `resize()`, `destroy()`, `spec`, plus the
+[selection API](#runtime-api) (`getSelection` / `setSelection` / `clearSelection` /
+`on('selectionchange', …)` / `off`) and `views` (the wired view specs).
+
+→ [`examples/dashboard.json`](./examples/dashboard.json)
+
+---
+
 ## Conditional formatting
 
 Used by `table` columns and `matrix` values.
 
 ```jsonc
-// In‑cell horizontal bar sized by value
-{ "type": "bar", "color": "#0d9488", "domain": [0, 10000] }
+// In‑cell horizontal bar sized by value; zero-baseline bars diverge for negatives
+{ "type": "bar", "color": "#0d9488", "negativeColor": "#dc2626", "baseline": "zero" }
 
-// Background color scale
-{ "type": "colorScale", "scheme": "teal", "domain": [0, 1] }
+// Background or text color scale
+{ "type": "colorScale", "scheme": "teal", "domain": [0, 1], "target": "background" }
+
+// Unicode icon set (no icon fonts)
+{ "type": "icon", "set": "arrows", "position": "left" }
+
+// First matching rule wins
+{ "type": "rules", "rules": [{ "when": "lt", "value": 0, "color": "#dc2626", "weight": "bold" }] }
 ```
 
 | Field | Type | Applies to | Notes |
 | --- | --- | --- | --- |
-| `type` | `'bar' \| 'colorScale'` | both | Selects the style. |
-| `color` | `string` | `bar` | Bar fill (defaults to the accent). |
-| `scheme` | `string` | `colorScale` | Sequential ramp name. |
-| `domain` | `[number, number]` | both | Value range; inferred from the column when omitted. |
+| `type` | `'bar' \| 'colorScale' \| 'icon' \| 'rules'` | all | Selects the style. |
+| `domain` | `[number, number]` | `bar`, `colorScale` | Value range; inferred from the column when omitted. |
+| `color`, `negativeColor`, `baseline`, `showValue` | strings/boolean | `bar` | Bar fill, diverging negative fill, zero/min baseline, and value overlay toggle. |
+| `scheme`, `midpoint`, `diverging`, `target` | mixed | `colorScale` | Sequential/diverging ramp controls; `target:'text'` colors text instead of background. |
+| `set`, `rules`, `position` | mixed | `icon` | Built-ins: `arrows`, `triangles`, `dots`, `trafficLights`; rules override thresholds. |
+| `rules` | `ValueRule[]` | `rules` | `when`: `gt`, `gte`, `lt`, `lte`, `eq`, `ne`, `between`; `between` is inclusive and needs `to`. |
+
+Icon glyphs are Unicode: arrows `▲ ▬ ▼`, triangles `▲ ▼`, dots/traffic lights `●` with green/amber/red tones.
 
 ---
 
@@ -440,7 +718,9 @@ A small, dependency‑free subset of d3‑format (numbers) plus strftime‑style
 
 | Name | Values |
 | --- | --- |
-| `ChartType` | `line`, `area`, `bar`, `scatter`, `pie`, `heatmap`, `kpi`, `table`, `matrix`, `box`, `sankey`, `choropleth` |
+| `ChartType` | `line`, `area`, `bar`, `scatter`, `pie`, `funnel`, `heatmap`, `kpi`, `table`, `matrix`, `box`, `sankey`, `choropleth`, `dropdown`, `search`, `list`, `range`, `dateRange` |
+| `SlicerType` | `dropdown`, `search`, `list`, `range`, `dateRange` |
+| `SelectionKind` | `point`, `set`, `range`, `text` |
 | `FieldType` | `quantitative`, `temporal`, `ordinal`, `nominal` |
 | `AggOp` | `sum`, `mean`, `avg`, `min`, `max`, `count`, `countDistinct`, `median`, `first`, `last` |
 | `CurveType` | `linear`, `monotone`, `step`, `stepBefore`, `stepAfter`, `catmullRom` |
@@ -468,6 +748,32 @@ default), the chart tracks its container via `ResizeObserver`. When a render
 settles, Envy sets `data-envy-ready="true"` on the surface root and increments
 `window.__ENVY_READY` — handy for screenshot/automation tooling to wait on.
 
+### Selections & dashboards
+
+Both `ChartInstance` and `DashboardInstance` expose an imperative **selection API**,
+and `renderDashboard` mounts a whole [dashboard](#dashboards) spec:
+
+```ts
+import { renderDashboard, render, createSelectionStore } from '@envy/core';
+
+const d = renderDashboard(target, dashboardSpec);
+d.getSelection(name?);                 // current SelectionValue (or a map when name omitted)
+d.setSelection('region', value);       // drive a param programmatically
+d.clearSelection(name?);               // clear one / all params
+const off = d.on('selectionchange', (name, value) => {/* … */});
+off();                                 // or d.off('selectionchange', fn)
+d.update(next); d.resize(); d.destroy(); d.spec; d.views; d.store;
+
+// Linking standalone charts: share one store across render() calls.
+const store = createSelectionStore();
+const a = render('#a', specA, { store, onSelectionChange: (n, v) => {} });
+```
+
+`render(target, spec, options?)` accepts `{ store?, onSelectionChange? }` (both
+optional, backward compatible). In `@envy/react`, `<Dashboard spec onSelectionChange? />`,
+`<Chart spec store? onSelectionChange? />`, and `useSelection(target, name?) → [value, setValue]`
+mirror this surface.
+
 ### Performance
 
 - **LTTB decimation** downsamples very large line/area series to roughly one point
@@ -486,7 +792,7 @@ are always instant (no re‑animation, no jank while dragging):
 - **Cartesian charts** (line/area/bar/scatter/box/heatmap) sweep their marks in
   left‑to‑right with a short fade — the axes, gridlines, and labels are drawn
   immediately so only the data "draws on".
-- **Pie, KPI, sankey, choropleth, tables** fade and rise in subtly.
+- **Pie, funnel, KPI, sankey, choropleth, tables** fade and rise in subtly.
 
 On **`update()`** (new data or config), canvas‑mark charts
 (line/area/bar/scatter/box/pie/heatmap/sankey/choropleth) **cross‑fade** the marks
@@ -533,4 +839,3 @@ Every rendered chart is wrapped as an accessible **figure**:
   so no fallback is added for those.
 - All titles, axis labels, and legends are real DOM text (not canvas pixels), so
   they're selectable and readable by assistive tech.
-

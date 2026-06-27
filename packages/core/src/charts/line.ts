@@ -12,10 +12,12 @@ import { decimate } from '../decimate';
 import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runtime/cartesian';
 import { RoughPen } from '../rough';
 import { minFinite, verticalFill } from './fill';
+import { seriesAlpha } from './emphasis';
 
 interface SeriesPoints {
   series: ResolvedSeries;
   points: Point[];
+  alpha: number;
 }
 
 function buildSeriesPoints(model: CartesianModel, s: ResolvedSeries): Point[] {
@@ -61,6 +63,7 @@ function finiteRuns(points: readonly Point[]): Point[][] {
 
 /** Hand-drawn path: hachure area fills, wobbly multi-pass strokes, circle markers. */
 function drawLineSketch(
+  ctx: CanvasRenderingContext2D,
   model: CartesianModel,
   allSeries: SeriesPoints[],
   pen: RoughPen,
@@ -68,7 +71,9 @@ function drawLineSketch(
   showPoints: boolean,
 ): void {
   if (filled) {
-    for (const { series, points } of allSeries) {
+    for (const { series, points, alpha } of allSeries) {
+      const prev = ctx.globalAlpha;
+      if (alpha !== 1) ctx.globalAlpha = alpha;
       for (const run of finiteRuns(points)) {
         if (run.length < 2) continue;
         const poly: Point[] = [
@@ -77,15 +82,21 @@ function drawLineSketch(
         ];
         pen.polygon(poly, { fill: series.color, fillAlpha: 0.5 });
       }
+      if (alpha !== 1) ctx.globalAlpha = prev;
     }
   }
 
-  for (const { series, points } of allSeries) {
-    pen.polyline(points, { stroke: series.color });
+  for (const { series, points, alpha } of allSeries) {
+    const prev = ctx.globalAlpha;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
+    pen.trendStroke(points, { stroke: series.color });
+    if (alpha !== 1) ctx.globalAlpha = prev;
   }
 
   if (showPoints) {
-    for (const { series, points } of allSeries) {
+    for (const { series, points, alpha } of allSeries) {
+      const prev = ctx.globalAlpha;
+      if (alpha !== 1) ctx.globalAlpha = alpha;
       for (const p of points) {
         if (Number.isNaN(p.x) || Number.isNaN(p.y)) continue;
         pen.circle(p.x, p.y, 3.4, {
@@ -94,6 +105,7 @@ function drawLineSketch(
           strokeWidth: 1.5,
         });
       }
+      if (alpha !== 1) ctx.globalAlpha = prev;
     }
   }
 }
@@ -109,6 +121,7 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
   const allSeries: SeriesPoints[] = model.series.map((s) => ({
     series: s,
     points: buildSeriesPoints(model, s),
+    alpha: seriesAlpha(model.emphasis, s),
   }));
 
   const showPoints = spec.points || allSeries.some((s) => s.points.filter((p) => !Number.isNaN(p.x)).length === 1);
@@ -119,7 +132,7 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
   ctx.clip();
 
   if (model.sketch) {
-    drawLineSketch(model, allSeries, new RoughPen(ctx, model.sketch), Boolean(areaGen), showPoints);
+    drawLineSketch(ctx, model, allSeries, new RoughPen(ctx, model.sketch), Boolean(areaGen), showPoints);
     ctx.restore();
     return;
   }
@@ -127,7 +140,7 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
   // Area fills first (behind the strokes) — a vertical gradient that's richest
   // just under the line and fades to transparent at the baseline.
   if (areaGen) {
-    for (const { series, points } of allSeries) {
+    for (const { series, points, alpha } of allSeries) {
       const top = minFinite(
         points.map((p) => p.y),
         plot.y,
@@ -137,8 +150,10 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
         points.map((p) => ({ x: p.x, y0: model.y.baseline, y1: p.y })),
         ctx,
       );
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = verticalFill(ctx, series.color, top, model.y.baseline, 0.26, 0.0);
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -146,19 +161,22 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
   ctx.lineCap = 'round';
   ctx.lineWidth = Math.max(1.75, tokens.stroke.thick);
 
-  for (const { series, points } of allSeries) {
+  for (const { series, points, alpha } of allSeries) {
     ctx.beginPath();
     lineGen(points, ctx);
     ctx.strokeStyle = series.color;
+    ctx.globalAlpha = alpha;
     ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   // Point markers.
   if (showPoints) {
-    for (const { series, points } of allSeries) {
+    for (const { series, points, alpha } of allSeries) {
       ctx.fillStyle = series.color;
       ctx.strokeStyle = tokens.color.background;
       ctx.lineWidth = 1.5;
+      ctx.globalAlpha = alpha;
       for (const p of points) {
         if (Number.isNaN(p.x) || Number.isNaN(p.y)) continue;
         ctx.beginPath();
@@ -166,6 +184,7 @@ export function drawLine(surface: Surface, model: CartesianModel): void {
         ctx.fill();
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
     }
   }
 

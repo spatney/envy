@@ -3,12 +3,9 @@
 > The React wrapper for [Envy](https://github.com/spatney/envy) — a beautiful,
 > high-performance, **agent-first** data visualization library.
 
-```bash
-npm install @envy/react @envy/core react
-```
-
-`@envy/core` is a dependency (installed automatically); `react` (18+) is a peer
-dependency.
+> **Not on npm yet.** The scoped `@envy/*` packages aren't published — for now,
+> install the engine from GitHub (see the [root README](https://github.com/spatney/envy#install))
+> and consume the React wrapper from the repo. `react` (18+) is a peer dependency.
 
 ```tsx
 import { Chart } from '@envy/react';

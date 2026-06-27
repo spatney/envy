@@ -47,6 +47,13 @@ export interface RoughContext {
 const MAX_OFFSET = 2;
 const TAU = Math.PI * 2;
 
+// Trend-stroke wobble multipliers (see `RoughPen.trendStroke`). Trend lines are
+// many short segments where the default wobble is barely perceptible; these were
+// tuned so line/area/sparkline strokes read as clearly hand-drawn while still
+// tracking their data points closely.
+const TREND_ROUGHNESS = 1.8;
+const TREND_BOWING = 5;
+
 function isFinitePoint(p: Point): boolean {
   return Number.isFinite(p.x) && Number.isFinite(p.y);
 }
@@ -216,7 +223,7 @@ export class RoughPen {
     ctx.globalAlpha = 1;
   }
 
-  /** Hand-drawn open polyline (line/area edges, sparklines). */
+  /** Hand-drawn open polyline (axis rules, box-plot whiskers, short features). */
   polyline(points: readonly Point[], opts: MarkOptions = {}): void {
     const m = this.resolve(opts);
     if (points.length < 2) return;
@@ -224,6 +231,29 @@ export class RoughPen {
     this.tracePolyline(points, m, false);
     this.applyStroke(m);
   }
+
+  /**
+   * Hand-drawn open stroke for data *trend* lines — line/area tops and KPI
+   * sparklines. A trend line is many short segments, and both the bowing
+   * (length-scaled) and the per-segment endpoint jitter stay tiny on short
+   * segments, so a plain {@link polyline} reads almost ruler-straight — out of
+   * keeping with the confidently wobbly bars/wedges. This amplifies the wobble
+   * so trend lines read as clearly hand-drawn. Axis rules and box-plot features
+   * keep the subtler {@link polyline} (a long axis rule would over-bow here).
+   */
+  trendStroke(points: readonly Point[], opts: MarkOptions = {}): void {
+    const m = this.resolve(opts);
+    if (points.length < 2) return;
+    const wobbly: ResolvedMark = {
+      ...m,
+      roughness: m.roughness * TREND_ROUGHNESS,
+      bowing: m.bowing * TREND_BOWING,
+    };
+    this.ctx.beginPath();
+    this.tracePolyline(points, wobbly, false);
+    this.applyStroke(m);
+  }
+
 
   /** Hand-drawn closed polygon with optional fill (drawn behind the outline). */
   polygon(points: readonly Point[], opts: MarkOptions = {}): void {

@@ -1,8 +1,17 @@
 import type { ConditionalFormat } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { FieldType, Rect } from '../types';
-import { parseColor, readableTextColor, rgbaToCss, sequential, sequentialColorScale } from '../color';
+import {
+  diverging as divergingInterpolator,
+  divergingColorScale,
+  parseColor,
+  readableTextColor,
+  rgbaToCss,
+  sequential,
+  sequentialColorScale,
+} from '../color';
 import { formatValue } from '../format';
+import { evalRules, iconForValue, toneColor } from './condFormat';
 
 const HEADER_ROW_HEIGHT = 32;
 const MIN_COL_WIDTH = 72;
@@ -19,6 +28,12 @@ export interface ViewColumn {
   width?: number;
   conditionalFormat?: ConditionalFormat;
   isMeasure?: boolean;
+  prefix?: string;
+  suffix?: string;
+  negativeStyle?: 'sign' | 'parens' | 'red' | 'parens-red';
+  sortable?: boolean;
+  wrap?: boolean;
+  group?: string;
 }
 
 export interface HeaderCell {
@@ -51,6 +66,8 @@ export interface BuildTableOptions {
   sortState?: { col: number; dir: 'asc' | 'desc' };
   conditionalDomains?: Array<[number, number] | null>;
   headerRows?: HeaderCell[][];
+  footerRow?: { cells: Array<{ value: unknown; raw: number | null; label?: boolean }> };
+  density?: 'comfortable' | 'standard' | 'compact';
   visibleRange?: VisibleRange;
   /** Render hand-drawn chrome (a wobbly container frame) for sketch mode. */
   sketch?: boolean;
@@ -62,12 +79,27 @@ export function formatCellValue(value: unknown, column: Pick<ViewColumn, 'format
   return formatValue(value, column.format);
 }
 
+export function formatDisplayValue(
+  value: unknown,
+  column: Pick<ViewColumn, 'format' | 'prefix' | 'suffix' | 'negativeStyle'>,
+): string {
+  const raw = typeof value === 'number' ? value : Number(value);
+  const negative = Number.isFinite(raw) && raw < 0;
+  const baseValue =
+    negative && (column.negativeStyle === 'parens' || column.negativeStyle === 'parens-red') ? Math.abs(raw) : value;
+  const formatted = formatCellValue(baseValue, column);
+  const wrapped = negative && (column.negativeStyle === 'parens' || column.negativeStyle === 'parens-red')
+    ? `(${formatted})`
+    : formatted;
+  return `${column.prefix ?? ''}${wrapped}${column.suffix ?? ''}`;
+}
+
 export function resolveConditionalDomain(
   conditionalFormat: ConditionalFormat | undefined,
   values: readonly (number | null | undefined)[],
 ): [number, number] | null {
   if (!conditionalFormat) return null;
-  if (conditionalFormat.domain) return conditionalFormat.domain;
+  if ('domain' in conditionalFormat && conditionalFormat.domain) return conditionalFormat.domain;
   let min = Infinity;
   let max = -Infinity;
   for (const value of values) {
@@ -120,6 +152,8 @@ export function buildTable(opts: BuildTableOptions): void {
   table.appendChild(buildColGroup(opts.widths));
   table.appendChild(buildHeader(opts));
   table.appendChild(buildBody(opts));
+  const footer = buildFooter(opts);
+  if (footer) table.appendChild(footer);
   container.appendChild(table);
 }
 
@@ -143,8 +177,9 @@ function scrollbarWidth(): number {
 /** Predicted total content height, used to decide whether the body will scroll. */
 function contentHeight(opts: BuildTableOptions): number {
   const headerRows = opts.headerRows?.length ?? 1;
-  const rowHeight = opts.visibleRange?.rowHeight ?? DEFAULT_BODY_ROW_HEIGHT;
-  return headerRows * HEADER_ROW_HEIGHT + opts.rowCount * rowHeight;
+  const metrics = densityMetrics(opts.density);
+  const rowHeight = opts.visibleRange?.rowHeight ?? metrics.rowHeight;
+  return headerRows * metrics.headerHeight + opts.rowCount * rowHeight + (opts.footerRow ? metrics.rowHeight : 0);
 }
 
 function willScrollVertically(opts: BuildTableOptions): boolean {
@@ -230,23 +265,24 @@ function makeHeaderCell(
   rowIndex = 0,
 ): HTMLTableCellElement {
   const th = document.createElement('th');
+  const metrics = densityMetrics(opts.density);
   th.scope = 'col';
   th.textContent = title;
   const isSorted = colIndex != null && opts.sortState?.col === colIndex;
   if (isSorted) th.setAttribute('aria-sort', opts.sortState?.dir === 'desc' ? 'descending' : 'ascending');
-  setCellBaseStyles(th, opts.tokens, align ?? 'left', opts.stickyHeader !== false);
+  setCellBaseStyles(th, opts.tokens, align ?? 'left', opts.stickyHeader !== false, metrics.padding);
   setStyles(th, {
-    top: `${rowIndex * HEADER_ROW_HEIGHT}px`,
+    top: `${rowIndex * metrics.headerHeight}px`,
     zIndex: '4',
     background: opts.tokens.color.surface,
     color: opts.tokens.color.text,
     fontWeight: String(opts.tokens.font.weight.bold),
     borderBottom: `1px solid ${opts.tokens.color.border}`,
     userSelect: 'none',
-    height: `${HEADER_ROW_HEIGHT}px`,
+    height: `${metrics.headerHeight}px`,
   });
 
-  if (colIndex != null && opts.onSort) {
+  if (colIndex != null && opts.onSort && opts.columns[colIndex]?.sortable !== false) {
     th.textContent = '';
     const button = document.createElement('button');
     button.type = 'button';
@@ -297,30 +333,63 @@ function buildBody(opts: BuildTableOptions): HTMLTableSectionElement {
 function makeBodyRow(opts: BuildTableOptions, rowIndex: number, rowHeight?: number): HTMLTableRowElement {
   const tr = document.createElement('tr');
   const cls = opts.rowClass?.(rowIndex) ?? 'normal';
+  const metrics = densityMetrics(opts.density);
   if (rowHeight) tr.style.height = `${rowHeight}px`;
   opts.columns.forEach((column, colIndex) => {
     const td = document.createElement('td');
     const cell = opts.getCell(rowIndex, colIndex);
     const rowBg = rowBackground(opts, rowIndex, cls);
-    setCellBaseStyles(td, opts.tokens, column.align, false);
+    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding);
     setStyles(td, {
       position: colIndex < (opts.rowHeaderSpan ?? 0) ? 'sticky' : 'relative',
       background: rowBg,
       fontWeight: cls === 'normal' ? String(opts.tokens.font.weight.normal) : String(opts.tokens.font.weight.bold),
       color: opts.tokens.color.text,
       borderBottom: `1px solid ${opts.tokens.color.border}`,
-      height: rowHeight ? `${rowHeight}px` : '30px',
+      height: rowHeight ? `${rowHeight}px` : `${metrics.rowHeight}px`,
+      whiteSpace: column.wrap === true ? 'normal' : 'nowrap',
     });
     const indent = opts.cellIndent?.(rowIndex, colIndex) ?? 0;
-    if (indent > 0) td.style.paddingLeft = `${10 + indent}px`;
+    if (indent > 0) td.style.paddingLeft = `${metrics.paddingX + indent}px`;
     applyConditionalFormatting(td, opts, column, colIndex, cell, rowBg);
-    if (!column.conditionalFormat || column.conditionalFormat.type !== 'bar') {
-      td.textContent = formatCellValue(cell.value, column);
+    if (td.childNodes.length === 0) {
+      td.textContent = formatDisplayValue(cell.value, column);
+      applyNegativeStyle(td, cell.value, column);
     }
     applyStickyColumn(td, opts, colIndex, false);
     tr.appendChild(td);
   });
   return tr;
+}
+
+function buildFooter(opts: BuildTableOptions): HTMLTableSectionElement | null {
+  if (!opts.footerRow) return null;
+  const tfoot = document.createElement('tfoot');
+  const tr = document.createElement('tr');
+  const metrics = densityMetrics(opts.density);
+  opts.columns.forEach((column, colIndex) => {
+    const td = document.createElement('td');
+    const cell = opts.footerRow?.cells[colIndex] ?? { value: null, raw: null };
+    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding);
+    setStyles(td, {
+      position: colIndex < (opts.rowHeaderSpan ?? 0) ? 'sticky' : 'sticky',
+      bottom: '0',
+      zIndex: colIndex < (opts.rowHeaderSpan ?? 0) ? '5' : '4',
+      background: opts.tokens.color.surface,
+      color: opts.tokens.color.text,
+      fontWeight: String(opts.tokens.font.weight.bold),
+      borderTop: `1px solid ${opts.tokens.color.border}`,
+      borderBottom: `1px solid ${opts.tokens.color.border}`,
+      height: `${metrics.rowHeight}px`,
+      whiteSpace: column.wrap === true ? 'normal' : 'nowrap',
+    });
+    td.textContent = cell.label ? String(cell.value ?? '') : formatDisplayValue(cell.value, column);
+    applyNegativeStyle(td, cell.value, column);
+    applyStickyColumn(td, opts, colIndex, false);
+    tr.appendChild(td);
+  });
+  tfoot.appendChild(tr);
+  return tfoot;
 }
 
 function makeSpacerRow(opts: BuildTableOptions, height: number): HTMLTableRowElement {
@@ -349,42 +418,78 @@ function applyConditionalFormatting(
   const cf = column.conditionalFormat;
   const raw = cell.raw;
   const domain = opts.conditionalDomains?.[colIndex] ?? null;
-  if (!cf || raw == null || !Number.isFinite(raw) || !domain) return;
+  if (!cf) return;
+  if ((cf.type === 'colorScale' || cf.type === 'bar' || cf.type === 'icon') && (raw == null || !Number.isFinite(raw))) {
+    return;
+  }
+  const numeric = raw as number;
 
   if (cf.type === 'colorScale') {
-    const scale = sequentialColorScale({ domain, interpolator: sequential(cf.scheme ?? 'blues') });
-    const color = scale.map(raw);
-    td.style.background = rgbaToCss(color);
-    td.style.color = rgbaToCss(readableTextColor(color));
+    if (!domain) return;
+    const midpoint = cf.midpoint ?? (domain[0] + domain[1]) / 2;
+    const scale =
+      cf.diverging === true || cf.midpoint !== undefined
+        ? divergingColorScale({ domain: [domain[0], midpoint, domain[1]], interpolator: divergingInterpolator(cf.scheme ?? 'redblue') })
+        : sequentialColorScale({ domain, interpolator: sequential(cf.scheme ?? 'blues') });
+    const color = scale.map(numeric);
+    if (cf.target === 'text') {
+      td.style.color = rgbaToCss(color);
+    } else {
+      td.style.background = rgbaToCss(color);
+      td.style.color = rgbaToCss(readableTextColor(color));
+    }
     return;
   }
 
-  const ratio = normalized(raw, domain);
+  if (cf.type === 'rules') {
+    const style = evalRules((raw ?? String(cell.value ?? '')) as number | null, cf.rules);
+    if (style.background) td.style.background = style.background;
+    if (style.color) td.style.color = style.color;
+    if (style.weight) td.style.fontWeight = style.weight === 'bold' ? String(opts.tokens.font.weight.bold) : String(opts.tokens.font.weight.normal);
+    if (style.icon) renderIconValue(td, style.icon, style.color ?? td.style.color, formatDisplayValue(cell.value, column), 'left');
+    return;
+  }
+
+  if (cf.type === 'icon') {
+    const semantic = iconForValue(cf.set, numeric, domain, cf.rules);
+    if (!semantic) return;
+    renderIconValue(
+      td,
+      semantic.icon,
+      toneColor(semantic.tone, { up: opts.tokens.color.positive, mid: '#d97706', down: opts.tokens.color.negative }),
+      formatDisplayValue(cell.value, column),
+      cf.position ?? 'left',
+    );
+    applyNegativeStyle(td, cell.value, column);
+    return;
+  }
+
+  if (!domain) return;
+  const ratio = normalized(numeric, domain);
   const bar = document.createElement('div');
-  const barColor = alphaColor(cf.color ?? opts.tokens.color.accent, 0.85);
+  const diverging = cf.negativeColor !== undefined || cf.baseline === 'zero';
+  const positive = numeric >= 0;
+  const barColor = alphaColor(positive ? cf.color ?? opts.tokens.color.accent : cf.negativeColor ?? opts.tokens.color.negative, 0.85);
+  const baseline = diverging ? normalized(0, domain) : 0;
+  const left = diverging ? Math.min(baseline, normalized(numeric, domain)) : 0;
+  const width = diverging ? Math.abs(normalized(numeric, domain) - baseline) : ratio;
   setStyles(bar, {
     position: 'absolute',
-    left: '4px',
+    left: `calc(${Math.round(left * 1000) / 10}% + 4px)`,
     top: '5px',
     bottom: '5px',
-    width: `${Math.round(ratio * 1000) / 10}%`,
+    width: `${Math.round(width * 1000) / 10}%`,
     borderRadius: `${Math.max(2, opts.tokens.radius.sm - 1)}px`,
     background: barColor,
     opacity: '0.9',
     pointerEvents: 'none',
   });
   const text = document.createElement('span');
-  text.textContent = formatCellValue(cell.value, column);
-  setStyles(text, {
-    position: 'relative',
-    zIndex: '1',
-    display: 'block',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    color: opts.tokens.color.text,
-  });
+  text.textContent = cf.showValue === false ? '' : formatDisplayValue(cell.value, column);
+  setStyles(text, overlayTextStyles(opts.tokens.color.text));
   td.style.background = rowBg;
   td.append(bar, text);
+  applyNegativeStyle(text, cell.value, column);
 }
 
 function setCellBaseStyles(
@@ -392,10 +497,11 @@ function setCellBaseStyles(
   tokens: ThemeTokens,
   align: 'left' | 'center' | 'right',
   sticky: boolean,
+  padding = '6px 10px',
 ): void {
   setStyles(cell, {
     boxSizing: 'border-box',
-    padding: '6px 10px',
+    padding,
     textAlign: align,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -404,6 +510,70 @@ function setCellBaseStyles(
     verticalAlign: 'middle',
   });
   if (sticky) cell.style.position = 'sticky';
+}
+
+function renderIconValue(
+  td: HTMLTableCellElement,
+  icon: string,
+  color: string,
+  value: string,
+  position: 'left' | 'right',
+): void {
+  const iconSpan = document.createElement('span');
+  iconSpan.textContent = icon;
+  iconSpan.setAttribute('aria-hidden', 'true');
+  setStyles(iconSpan, { color, fontWeight: '700', flex: '0 0 auto' });
+
+  const valueSpan = document.createElement('span');
+  valueSpan.textContent = value;
+  setStyles(valueSpan, { overflow: 'hidden', textOverflow: 'ellipsis' });
+
+  const wrap = document.createElement('span');
+  setStyles(wrap, {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: td.style.textAlign === 'right' ? 'flex-end' : td.style.textAlign === 'center' ? 'center' : 'flex-start',
+    gap: '6px',
+    maxWidth: '100%',
+    width: '100%',
+  });
+  if (position === 'right') wrap.append(valueSpan, iconSpan);
+  else wrap.append(iconSpan, valueSpan);
+  td.appendChild(wrap);
+}
+
+function overlayTextStyles(color: string): Record<string, string> {
+  return {
+    position: 'relative',
+    zIndex: '1',
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    color,
+  };
+}
+
+function applyNegativeStyle(
+  el: HTMLElement,
+  value: unknown,
+  column: Pick<ViewColumn, 'negativeStyle'>,
+): void {
+  const raw = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(raw) || raw >= 0) return;
+  if (column.negativeStyle === 'red' || column.negativeStyle === 'parens-red') {
+    el.style.color = '#dc2626';
+  }
+}
+
+function densityMetrics(density: BuildTableOptions['density']): {
+  rowHeight: number;
+  headerHeight: number;
+  padding: string;
+  paddingX: number;
+} {
+  if (density === 'comfortable') return { rowHeight: 36, headerHeight: 36, padding: '8px 12px', paddingX: 12 };
+  if (density === 'compact') return { rowHeight: 24, headerHeight: 28, padding: '3px 8px', paddingX: 8 };
+  return { rowHeight: DEFAULT_BODY_ROW_HEIGHT, headerHeight: HEADER_ROW_HEIGHT, padding: '6px 10px', paddingX: 10 };
 }
 
 function applyStickyColumn(

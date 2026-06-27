@@ -11,6 +11,8 @@ import type { Rect, Size } from '../types';
 import type { ThemeTokens } from '../theme';
 import { accessor, extent, toKey, toNumber, uniqueStrings } from '../util/data';
 import type { InteractionModel } from '../interaction/types';
+import type { RenderContext } from './index';
+import { rowAlpha } from './emphasis';
 import { addOverlayText, CHROME_PAD, drawTitleBlock } from './chrome';
 
 const MIN_GRID_SIZE = 8;
@@ -93,8 +95,10 @@ export function drawHeatmap(
   spec: ChartSpec,
   tokens: ThemeTokens,
   size: Size,
+  context?: RenderContext,
 ): InteractionModel | void {
   const heatmap = spec as HeatmapSpec;
+  const emphasis = context?.emphasis ?? null;
   const content = drawTitleBlock(surface, tokens, size, heatmap.title);
   const rows = heatmap.data ?? [];
   const { x, y, color } = heatmap.encoding;
@@ -150,12 +154,15 @@ export function drawHeatmap(
 
     cellValue.set(`${xk}\u0000${yk}`, value);
     const fill = rgbaToCss(cscale.map(value));
+    const alpha = rowAlpha(emphasis, row);
+    if (alpha !== 1) ctx.globalAlpha = alpha;
     if (pen) {
       pen.rect(sx, sy, xScale.bandwidth, yScale.bandwidth, { fill, fillStyle: 'solid' });
     } else {
       ctx.fillStyle = fill;
       drawRoundedCell(ctx, sx, sy, xScale.bandwidth, yScale.bandwidth, cellRadius);
     }
+    if (alpha !== 1) ctx.globalAlpha = 1;
   }
 
   ctx.restore();
@@ -259,6 +266,13 @@ export function drawHeatmap(
           ictx.restore();
         },
       };
+    },
+    pick: (px, py) => {
+      const xc = xPos.find((p) => px >= p.s && px <= p.s + bw);
+      const yc = yPos.find((p) => py >= p.s && py <= p.s + bh);
+      if (!xc || !yc) return null;
+      if (cellValue.get(`${xc.cat}\u0000${yc.cat}`) === undefined) return null;
+      return { kind: 'point', fields: [x.field, y.field], tuples: [[xc.cat, yc.cat]] };
     },
   };
 }

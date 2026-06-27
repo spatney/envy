@@ -21,6 +21,18 @@ export function getField(datum: Datum, field: string): unknown {
   return cur;
 }
 
+/** True when a record carries `field` as a (possibly nested) column key. */
+export function hasField(datum: Datum, field: string): boolean {
+  if (field in datum) return true;
+  if (field.indexOf('.') === -1) return false;
+  let cur: unknown = datum;
+  for (const part of field.split('.')) {
+    if (cur == null || typeof cur !== 'object' || !(part in (cur as object))) return false;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return true;
+}
+
 /** Build a fast accessor for a field. */
 export function accessor(field: string): (d: Datum) => unknown {
   if (field.indexOf('.') === -1) return (d) => d[field];

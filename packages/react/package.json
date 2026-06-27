@@ -1,6 +1,6 @@
 {
   "name": "@envy/react",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "Envy React wrapper — declarative <Chart spec={...} /> for the Envy visualization engine.",
   "license": "MIT",
@@ -56,7 +56,7 @@
     "react": ">=18"
   },
   "dependencies": {
-    "@envy/core": "^0.2.1"
+    "@envy/core": "^0.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

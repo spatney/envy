@@ -1,38 +1,36 @@
 import './style.css';
-import { render, type ChartSpec, type ChartInstance } from '@envy/core';
+import {
+  render,
+  renderDashboard,
+  type ChartSpec,
+  type ChartInstance,
+  type DashboardInstance,
+  type DashboardSpec,
+} from '@envy/core';
 import { scenarios, scenarioById, type Scenario } from './scenarios';
-import { mountPlayground, type PlaygroundHandle } from './playground';
+import { mountPlayground, loadIntoPlayground, type PlaygroundHandle } from './playground';
+import { dashboardDemo } from './interactive';
+import {
+  renderHome,
+  renderGalleryView,
+  renderDetail,
+  renderDashboardView,
+  renderLearn,
+  type GalleryCtx,
+} from './views';
 
-const PLAYGROUND_ID = '__playground__';
-const OVERVIEW_ID = '__overview__';
+const DASHBOARD_ID = '__dashboard__';
 const REPO_URL = 'https://github.com/spatney/envy';
 
-const SIZES = [
-  { name: 'Small', w: 360, h: 240 },
-  { name: 'Medium', w: 580, h: 360 },
-  { name: 'Large', w: 860, h: 480 },
-  { name: 'Wide', w: 980, h: 300 },
-  { name: 'Tall', w: 440, h: 560 },
-];
-
-/**
- * Curated front-page mosaic — one strong example per chart family. `span` cards
- * stretch the full width to give wide charts (flows, maps, tables) room to read.
- */
-const OVERVIEW: { id: string; span?: boolean; h: number }[] = [
-  { id: 'line-multi', h: 300 },
-  { id: 'bar-grouped', h: 300 },
-  { id: 'sankey-energy', span: true, h: 360 },
-  { id: 'area-stacked', h: 300 },
-  { id: 'scatter-groups', h: 300 },
-  { id: 'choropleth-states', span: true, h: 420 },
-  { id: 'donut-basic', h: 300 },
-  { id: 'box-basic', h: 300 },
-  { id: 'heatmap-week', h: 300 },
-  { id: 'kpi-basic', h: 300 },
-  { id: 'table-sales', span: true, h: 420 },
-  { id: 'line-dense', span: true, h: 340 },
-];
+/** Inline brand mark — an "E" built from data bars with a mint data node. */
+const ENVY_MARK_SVG =
+  '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+  '<rect width="64" height="64" rx="15" fill="#0d9488"/>' +
+  '<rect x="18" y="15.5" width="26" height="9" rx="4.5" fill="#fff"/>' +
+  '<rect x="18" y="27.5" width="16" height="9" rx="4.5" fill="#fff"/>' +
+  '<rect x="18" y="39.5" width="30" height="9" rx="4.5" fill="#fff"/>' +
+  '<circle cx="41.5" cy="32" r="4.4" fill="#5eead4"/>' +
+  '</svg>';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app')!;
@@ -50,21 +48,6 @@ function withSize(spec: ChartSpec, w: number, h: number, theme?: string, sketch?
   } else {
     delete next.sketch;
   }
-  return next as ChartSpec;
-}
-
-/** Apply the live theme/sketch but leave sizing to the container (responsive). */
-function themed(spec: ChartSpec): ChartSpec {
-  const next = { ...spec, theme: currentTheme } as ChartSpec & {
-    sketch?: unknown;
-    dimensions?: unknown;
-  };
-  if (currentSketch) {
-    if (next.sketch == null) next.sketch = true;
-  } else {
-    delete next.sketch;
-  }
-  delete next.dimensions;
   return next as ChartSpec;
 }
 
@@ -92,7 +75,11 @@ async function renderShot(): Promise<void> {
   host.style.height = `${h}px`;
   root.appendChild(host);
 
-  if (scenario) {
+  if (id === DASHBOARD_ID) {
+    host.style.height = 'auto';
+    const dash = renderDashboard(host, { ...dashboardDemo(), theme: theme as 'light' | 'dark' });
+    (window as unknown as { __envyDashboard?: DashboardInstance }).__envyDashboard = dash;
+  } else if (scenario) {
     const instance = render(host, withSize(scenario.spec(), w, h, theme, sketch));
     // Expose the instance so update()-transition tests can drive it.
     (window as unknown as { __envyChart?: ChartInstance }).__envyChart = instance;
@@ -108,32 +95,133 @@ async function renderShot(): Promise<void> {
   document.documentElement.setAttribute('data-shot-ready', 'true');
 }
 
+// ===========================================================================
+// Live app shell — built ONCE; only `.content` is swapped per route.
+// ===========================================================================
+
 let currentTheme: 'light' | 'dark' = (params.get('theme') as 'light' | 'dark') ?? 'light';
 let currentSketch = params.get('sketch') === '1' || params.get('sketch') === 'true';
-let activeId = location.hash.slice(1) || OVERVIEW_ID;
+const reducedMotion =
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Per-view instance/teardown tracking for the CURRENT content view.
 const instances: ChartInstance[] = [];
+let dashboardInstance: DashboardInstance | undefined;
 let playground: PlaygroundHandle | undefined;
 let resizeObs: ResizeObserver | undefined;
 const resizeMap = new Map<Element, ChartInstance>();
+const disposers: (() => void)[] = [];
 
-function clearInstances(): void {
+// Shell elements (assigned once in buildShell).
+let scrollEl!: HTMLElement;
+let content!: HTMLElement;
+let themeBtn!: HTMLButtonElement;
+let sketchBtn!: HTMLButtonElement;
+const navLinks = new Map<string, HTMLButtonElement>();
+
+// Scroll memory: restore where you were when returning to a route.
+const scrollMemory = new Map<string, number>();
+let currentRouteKey = '';
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className?: string,
+  html?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (html != null) node.innerHTML = html;
+  return node;
+}
+
+// ---- Routing ---------------------------------------------------------------
+
+type RouteView = 'home' | 'gallery' | 'learn' | 'dashboard' | 'playground' | 'chart';
+interface Route {
+  view: RouteView;
+  id?: string;
+}
+
+/** Parse the hash into a route, honoring legacy `__overview__/__dashboard__/__playground__`
+ *  and bare-id aliases so old deep-links keep working. */
+function parseHash(): Route {
+  const raw = decodeURIComponent(location.hash.slice(1));
+  if (!raw || raw === 'home' || raw === '__overview__') return { view: 'home' };
+  if (raw === 'gallery') return { view: 'gallery' };
+  if (raw === 'learn') return { view: 'learn' };
+  if (raw === 'dashboard' || raw === '__dashboard__') return { view: 'dashboard' };
+  if (raw === 'playground' || raw === '__playground__') return { view: 'playground' };
+  if (raw.startsWith('chart/')) {
+    const id = raw.slice('chart/'.length);
+    if (scenarioById(id)) return { view: 'chart', id };
+  }
+  if (scenarioById(raw)) return { view: 'chart', id: raw };
+  return { view: 'home' };
+}
+
+function routeKey(r: Route): string {
+  return r.view === 'chart' ? `chart/${r.id}` : r.view;
+}
+
+// ---- Instance lifecycle ----------------------------------------------------
+
+function clearContent(): void {
+  for (const d of disposers.splice(0)) {
+    try {
+      d();
+    } catch {
+      /* ignore */
+    }
+  }
   playground?.dispose();
   playground = undefined;
+  try {
+    dashboardInstance?.destroy();
+  } catch {
+    /* ignore */
+  }
+  dashboardInstance = undefined;
   resizeObs?.disconnect();
   resizeObs = undefined;
   resizeMap.clear();
-  for (const i of instances) i.destroy();
+  for (const i of instances) {
+    try {
+      i.destroy();
+    } catch {
+      /* ignore */
+    }
+  }
   instances.length = 0;
 }
 
-/** Render a spec into a container that owns its own (responsive) size. */
-function renderResponsive(host: HTMLElement, spec: ChartSpec): void {
+/** Apply the live theme + sketch but leave sizing to the container (responsive). */
+function themed(spec: ChartSpec): ChartSpec {
+  const next = { ...spec, theme: currentTheme } as ChartSpec & {
+    sketch?: unknown;
+    dimensions?: unknown;
+  };
+  if (currentSketch) {
+    if (next.sketch == null) next.sketch = true;
+  } else {
+    delete next.sketch;
+  }
+  delete next.dimensions;
+  return next as ChartSpec;
+}
+
+function mountChart(host: HTMLElement, spec: ChartSpec): void {
   try {
     const inst = render(host, themed(spec));
     instances.push(inst);
     resizeMap.set(host, inst);
     resizeObs ??= new ResizeObserver((entries) => {
-      for (const e of entries) resizeMap.get(e.target)?.resize();
+      for (const e of entries) {
+        try {
+          resizeMap.get(e.target)?.resize();
+        } catch {
+          /* host detached */
+        }
+      }
     });
     resizeObs.observe(host);
   } catch (err) {
@@ -141,290 +229,176 @@ function renderResponsive(host: HTMLElement, spec: ChartSpec): void {
   }
 }
 
+function mountDashboard(host: HTMLElement, spec: DashboardSpec): void {
+  try {
+    dashboardInstance = renderDashboard(host, { ...spec, theme: currentTheme } as DashboardSpec);
+  } catch (err) {
+    host.textContent = String(err);
+  }
+}
+
+function makeCtx(): GalleryCtx {
+  return {
+    theme: currentTheme,
+    sketch: currentSketch,
+    reducedMotion,
+    navigate,
+    themed,
+    mountChart,
+    mountDashboard,
+    addDisposer: (fn) => disposers.push(fn),
+    openInPlayground: (spec) => {
+      loadIntoPlayground(spec);
+      navigate('playground');
+    },
+  };
+}
+
+// ---- Navigation + render ---------------------------------------------------
+
+function navigate(hash: string): void {
+  const target = hash || 'home';
+  if (location.hash.slice(1) === target) {
+    renderRoute(false);
+    return;
+  }
+  location.hash = target; // triggers hashchange → renderRoute
+}
+
+function setActiveNav(view: RouteView): void {
+  const key = view === 'chart' ? 'gallery' : view;
+  for (const [k, btn] of navLinks) btn.classList.toggle('active', k === key);
+}
+
+function renderRoute(preserveScroll: boolean): void {
+  const route = parseHash();
+  const key = routeKey(route);
+  const targetScroll = preserveScroll ? scrollEl.scrollTop : scrollMemory.get(key) ?? 0;
+
+  clearContent();
+  content.innerHTML = '';
+  setActiveNav(route.view);
+  const ctx = makeCtx();
+
+  switch (route.view) {
+    case 'home':
+      renderHome(content, ctx);
+      break;
+    case 'gallery':
+      renderGalleryView(content, ctx);
+      break;
+    case 'learn':
+      renderLearn(content, ctx);
+      break;
+    case 'dashboard':
+      renderDashboardView(content, ctx);
+      break;
+    case 'playground': {
+      const wrap = el('div', 'page');
+      content.appendChild(wrap);
+      playground = mountPlayground(wrap, { theme: currentTheme });
+      break;
+    }
+    case 'chart': {
+      const scenario = scenarioById(route.id!) ?? scenarios[0];
+      renderDetail(content, scenario, ctx);
+      break;
+    }
+  }
+
+  scrollEl.scrollTop = targetScroll;
+  currentRouteKey = key;
+}
+
+// ---- Chrome (built once) ---------------------------------------------------
+
+function buildShell(): void {
+  app.innerHTML = '';
+
+  const nav = el('header', 'nav');
+  const inner = el('div', 'nav-inner');
+
+  const brand = el('button', 'brand');
+  brand.innerHTML = `<span class="brand-mark">${ENVY_MARK_SVG}</span><span class="brand-name">Envy</span>`;
+  brand.title = 'Home';
+  brand.onclick = () => navigate('home');
+  inner.appendChild(brand);
+
+  const links = el('nav', 'nav-links');
+  const NAV: [string, string][] = [
+    ['home', 'Home'],
+    ['gallery', 'Gallery'],
+    ['dashboard', 'Dashboard'],
+    ['playground', 'Playground'],
+    ['learn', 'Learn'],
+  ];
+  for (const [key, label] of NAV) {
+    const btn = el('button', 'nav-link');
+    btn.textContent = label;
+    btn.onclick = () => navigate(key);
+    navLinks.set(key, btn);
+    links.appendChild(btn);
+  }
+  inner.appendChild(links);
+
+  const actions = el('div', 'nav-actions');
+
+  sketchBtn = el('button', 'icon-btn' + (currentSketch ? ' active' : ''));
+  sketchBtn.textContent = '✏';
+  sketchBtn.title = currentSketch ? 'Sketch mode: on' : 'Sketch mode: off';
+  sketchBtn.onclick = toggleSketch;
+  actions.appendChild(sketchBtn);
+
+  themeBtn = el('button', 'icon-btn');
+  themeBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
+  themeBtn.title = currentTheme === 'dark' ? 'Switch to light' : 'Switch to dark';
+  themeBtn.onclick = toggleTheme;
+  actions.appendChild(themeBtn);
+
+  const gh = el('a', 'btn btn-sm');
+  (gh as HTMLAnchorElement).href = REPO_URL;
+  (gh as HTMLAnchorElement).target = '_blank';
+  (gh as HTMLAnchorElement).rel = 'noreferrer';
+  gh.textContent = 'GitHub ↗';
+  actions.appendChild(gh);
+
+  inner.appendChild(actions);
+  nav.appendChild(inner);
+  app.appendChild(nav);
+
+  scrollEl = el('div', 'scroll');
+  content = el('main', 'content');
+  scrollEl.appendChild(content);
+  app.appendChild(scrollEl);
+}
+
 function toggleTheme(): void {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  renderGallery();
+  document.documentElement.classList.toggle('theme-dark', currentTheme === 'dark');
+  themeBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
+  themeBtn.title = currentTheme === 'dark' ? 'Switch to light' : 'Switch to dark';
+  renderRoute(true);
 }
 
 function toggleSketch(): void {
   currentSketch = !currentSketch;
-  renderGallery();
+  sketchBtn.classList.toggle('active', currentSketch);
+  sketchBtn.title = currentSketch ? 'Sketch mode: on' : 'Sketch mode: off';
+  renderRoute(true);
 }
 
-function navigate(id: string): void {
-  activeId = id;
-  location.hash = id;
-  renderGallery();
-}
-
-// ---- Chrome ----------------------------------------------------------------
-
-function buildTopbar(): HTMLElement {
-  const bar = document.createElement('header');
-  bar.className = 'topbar';
-
-  const brand = document.createElement('button');
-  brand.className = 'brand';
-  brand.title = 'Overview';
-  brand.innerHTML =
-    '<span class="brand-mark">E</span>' +
-    '<span class="brand-text"><span class="brand-name">Envy</span>' +
-    '<span class="tagline">agent-first data visualization</span></span>';
-  brand.onclick = () => navigate(OVERVIEW_ID);
-  bar.appendChild(brand);
-
-  const actions = document.createElement('div');
-  actions.className = 'topbar-actions';
-
-  // Sketch toggle is meaningful for the showcase views; the playground owns its
-  // own (JSON-mutating) sketch button, so hide the global one there.
-  if (activeId !== PLAYGROUND_ID) {
-    const sketchBtn = document.createElement('button');
-    sketchBtn.className = 'btn' + (currentSketch ? ' active' : '');
-    sketchBtn.textContent = currentSketch ? '✏ Sketch: on' : '✐ Sketch: off';
-    sketchBtn.title = 'Toggle the hand-drawn sketch renderer';
-    sketchBtn.onclick = toggleSketch;
-    actions.appendChild(sketchBtn);
-  }
-
-  const themeBtn = document.createElement('button');
-  themeBtn.className = 'btn';
-  themeBtn.textContent = currentTheme === 'dark' ? '☀ Light' : '☾ Dark';
-  themeBtn.onclick = toggleTheme;
-  actions.appendChild(themeBtn);
-
-  const gh = document.createElement('a');
-  gh.className = 'btn btn-ghost';
-  gh.href = REPO_URL;
-  gh.target = '_blank';
-  gh.rel = 'noreferrer';
-  gh.textContent = 'GitHub ↗';
-  actions.appendChild(gh);
-
-  bar.appendChild(actions);
-  return bar;
-}
-
-function buildSidebar(): HTMLElement {
-  const sidebar = document.createElement('aside');
-  sidebar.className = 'sidebar';
-
-  const home = document.createElement('button');
-  home.className = 'nav-item nav-feature' + (activeId === OVERVIEW_ID ? ' active' : '');
-  home.innerHTML = '<span class="nav-ico">◆</span>Overview';
-  home.onclick = () => navigate(OVERVIEW_ID);
-  sidebar.appendChild(home);
-
-  const pgBtn = document.createElement('button');
-  pgBtn.className = 'nav-item nav-feature' + (activeId === PLAYGROUND_ID ? ' active' : '');
-  pgBtn.innerHTML = '<span class="nav-ico">✦</span>Playground';
-  pgBtn.onclick = () => navigate(PLAYGROUND_ID);
-  sidebar.appendChild(pgBtn);
-
-  let lastGroup = '';
-  for (const s of scenarios) {
-    if (s.group !== lastGroup) {
-      const g = document.createElement('div');
-      g.className = 'group-label';
-      g.textContent = s.group;
-      sidebar.appendChild(g);
-      lastGroup = s.group;
-    }
-    const btn = document.createElement('button');
-    btn.className = 'nav-item' + (s.id === activeId ? ' active' : '');
-    btn.textContent = s.title;
-    btn.onclick = () => navigate(s.id);
-    sidebar.appendChild(btn);
-  }
-  return sidebar;
-}
-
-// ---- Views -----------------------------------------------------------------
-
-function renderOverview(main: HTMLElement): void {
-  const hero = document.createElement('section');
-  hero.className = 'hero';
-  hero.innerHTML =
-    '<h1 class="hero-title">Stunning charts from a single <span class="accent">JSON</span> spec.</h1>' +
-    '<p class="hero-sub">A zero-dependency, agent-first visualization engine — Tableau-class visuals ' +
-    'from declarative specs, rendered on a fast hybrid Canvas2D&nbsp;+&nbsp;DOM core.</p>' +
-    '<div class="hero-chips">' +
-    '<span class="chip">11 chart types</span>' +
-    '<span class="chip">Zero dependencies</span>' +
-    '<span class="chip">Light · Dark · Sketch</span>' +
-    '<span class="chip">50k points, smooth</span>' +
-    '<span class="chip">OKLab color</span>' +
-    '</div>';
-  main.appendChild(hero);
-
-  const mosaic = document.createElement('div');
-  mosaic.className = 'mosaic';
-  main.appendChild(mosaic);
-
-  for (const item of OVERVIEW) {
-    const scenario = scenarioById(item.id);
-    if (!scenario) continue;
-    const card = document.createElement('button');
-    card.className = 'ov-card' + (item.span ? ' span' : '');
-    card.onclick = () => navigate(scenario.id);
-
-    const head = document.createElement('div');
-    head.className = 'ov-head';
-    head.innerHTML =
-      `<span class="ov-badge">${scenario.group}</span>` +
-      `<span class="ov-title">${scenario.title}</span>` +
-      '<span class="ov-open">Open ↗</span>';
-    card.appendChild(head);
-
-    const host = document.createElement('div');
-    host.className = 'ov-chart';
-    host.style.height = `${item.h}px`;
-    card.appendChild(host);
-
-    mosaic.appendChild(card);
-    renderResponsive(host, scenario.spec());
-  }
-
-  const footer = document.createElement('footer');
-  footer.className = 'foot';
-  footer.innerHTML =
-    'Every tile above is one <code>ChartSpec</code>. Pick a chart in the sidebar to see it large with its spec, ' +
-    `or open the <a href="#${PLAYGROUND_ID}">Playground</a> to build your own.`;
-  footer.querySelector('a')!.addEventListener('click', (e) => {
-    e.preventDefault();
-    navigate(PLAYGROUND_ID);
-  });
-  main.appendChild(footer);
-}
-
-/** A compact, readable JSON view of a spec: big data arrays + geo are elided. */
-function summarizeSpec(spec: ChartSpec): string {
-  const clone = JSON.parse(
-    JSON.stringify(spec, (_k, v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v)),
-  ) as Record<string, unknown>;
-  const src = spec as unknown as Record<string, unknown>;
-  if (Array.isArray(clone.data) && clone.data.length > 6) {
-    clone.data = [...clone.data.slice(0, 4), `…${clone.data.length - 4} more rows`];
-  }
-  if (clone.geo) {
-    const feats = (src.geo as { features?: unknown[] } | undefined)?.features?.length ?? '?';
-    clone.geo = `‹GeoFeatureCollection · ${feats} features›`;
-  }
-  if (Array.isArray(clone.columns) && clone.columns.length > 8) {
-    clone.columns = [...clone.columns.slice(0, 6), `…${clone.columns.length - 6} more`];
-  }
-  return JSON.stringify(clone, null, 2);
-}
-
-function renderDetail(main: HTMLElement, scenario: Scenario): void {
-  const toolbar = document.createElement('div');
-  toolbar.className = 'toolbar';
-  toolbar.innerHTML =
-    `<div class="title-group"><h2>${scenario.title}</h2>` +
-    `<p class="sub">${scenario.group} · live ${currentTheme}${currentSketch ? ' · sketch' : ''}</p></div>`;
-  main.appendChild(toolbar);
-
-  // Feature render — one large, responsive chart.
-  const feature = document.createElement('div');
-  feature.className = 'card feature-card';
-  const featHost = document.createElement('div');
-  featHost.className = 'feature-host';
-  feature.appendChild(featHost);
-  main.appendChild(feature);
-  renderResponsive(featHost, scenario.spec());
-
-  // Spec snippet — reinforce "one JSON = one chart".
-  const specCard = document.createElement('div');
-  specCard.className = 'card spec-card';
-  const specHead = document.createElement('div');
-  specHead.className = 'spec-head';
-  specHead.innerHTML = '<span class="spec-title">ChartSpec</span>';
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'btn btn-ghost btn-sm';
-  copyBtn.textContent = 'Copy';
-  const specText = summarizeSpec(scenario.spec());
-  copyBtn.onclick = () => {
-    void navigator.clipboard?.writeText(specText);
-    copyBtn.textContent = 'Copied';
-    window.setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
-  };
-  specHead.appendChild(copyBtn);
-  const pre = document.createElement('pre');
-  pre.className = 'spec-pre';
-  pre.textContent = specText;
-  specCard.append(specHead, pre);
-  main.appendChild(specCard);
-
-  // Responsive strip — same spec, several sizes (skip Large; the feature is large).
-  const stripLabel = document.createElement('div');
-  stripLabel.className = 'section-label';
-  stripLabel.textContent = 'Responsive — same spec, different sizes';
-  main.appendChild(stripLabel);
-
-  const grid = document.createElement('div');
-  grid.className = 'grid';
-  main.appendChild(grid);
-
-  for (const size of SIZES.filter((s) => s.name !== 'Large')) {
-    const card = document.createElement('div');
-    card.className = 'card';
-    const label = document.createElement('div');
-    label.className = 'size-label';
-    label.textContent = `${size.name} · ${size.w}×${size.h}`;
-    card.appendChild(label);
-    const host = document.createElement('div');
-    host.className = 'chart-host';
-    host.style.width = `${size.w}px`;
-    host.style.height = `${size.h}px`;
-    card.appendChild(host);
-    grid.appendChild(card);
-    try {
-      instances.push(
-        render(host, withSize(scenario.spec(), size.w, size.h, currentTheme, currentSketch)),
-      );
-    } catch (err) {
-      host.textContent = String(err);
-    }
-  }
-}
-
-function renderGallery(): void {
-  clearInstances();
-  document.documentElement.classList.toggle('theme-dark', currentTheme === 'dark');
-  app.innerHTML = '';
-  app.appendChild(buildTopbar());
-
-  const shell = document.createElement('div');
-  shell.className = 'shell';
-  app.appendChild(shell);
-  shell.appendChild(buildSidebar());
-
-  const main = document.createElement('main');
-  main.className = 'main';
-  shell.appendChild(main);
-
-  if (activeId === PLAYGROUND_ID) {
-    playground = mountPlayground(main, { theme: currentTheme });
-    return;
-  }
-  if (activeId === OVERVIEW_ID) {
-    renderOverview(main);
-    return;
-  }
-  renderDetail(main, scenarioById(activeId) ?? scenarios[0]);
-}
+// ---- Boot ------------------------------------------------------------------
 
 if (params.has('shot')) {
   void renderShot();
 } else {
+  document.documentElement.classList.toggle('theme-dark', currentTheme === 'dark');
+  buildShell();
   window.addEventListener('hashchange', () => {
-    const id = location.hash.slice(1) || OVERVIEW_ID;
-    if (id !== activeId && (id === PLAYGROUND_ID || id === OVERVIEW_ID || scenarioById(id))) {
-      activeId = id;
-      renderGallery();
-    }
+    scrollMemory.set(currentRouteKey, scrollEl.scrollTop);
+    renderRoute(false);
   });
-  renderGallery();
+  renderRoute(false);
 }
 
 export type { Scenario };

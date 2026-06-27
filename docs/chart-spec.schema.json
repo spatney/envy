@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://envy.dev/chart-spec.schema.json",
   "title": "Envy ChartSpec",
-  "description": "A single JSON-serializable Envy chart specification. Discriminated on `type`.",
+  "description": "A single JSON-serializable Envy chart, slicer, or dashboard specification. Discriminated on `type`.",
   "type": "object",
   "required": ["type"],
   "oneOf": [
@@ -11,13 +11,20 @@
     { "$ref": "#/$defs/BarSpec" },
     { "$ref": "#/$defs/ScatterSpec" },
     { "$ref": "#/$defs/PieSpec" },
+    { "$ref": "#/$defs/FunnelSpec" },
     { "$ref": "#/$defs/HeatmapSpec" },
     { "$ref": "#/$defs/KpiSpec" },
     { "$ref": "#/$defs/TableSpec" },
     { "$ref": "#/$defs/MatrixSpec" },
     { "$ref": "#/$defs/BoxSpec" },
     { "$ref": "#/$defs/SankeySpec" },
-    { "$ref": "#/$defs/ChoroplethSpec" }
+    { "$ref": "#/$defs/ChoroplethSpec" },
+    { "$ref": "#/$defs/DropdownSlicerSpec" },
+    { "$ref": "#/$defs/SearchSlicerSpec" },
+    { "$ref": "#/$defs/ListSlicerSpec" },
+    { "$ref": "#/$defs/RangeSlicerSpec" },
+    { "$ref": "#/$defs/DateRangeSlicerSpec" },
+    { "$ref": "#/$defs/DashboardSpec" }
   ],
   "$defs": {
     "FieldType": {
@@ -78,6 +85,7 @@
         "size": { "$ref": "#/$defs/FieldDef" },
         "series": { "$ref": "#/$defs/FieldDef" },
         "theta": { "$ref": "#/$defs/FieldDef" },
+        "stage": { "$ref": "#/$defs/FieldDef" },
         "source": { "$ref": "#/$defs/FieldDef" },
         "target": { "$ref": "#/$defs/FieldDef" },
         "value": { "$ref": "#/$defs/FieldDef" },
@@ -226,7 +234,10 @@
           "properties": {
             "type": { "const": "colorScale" },
             "scheme": { "type": "string" },
-            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            "midpoint": { "type": "number" },
+            "diverging": { "type": "boolean" },
+            "target": { "type": "string", "enum": ["background", "text"] }
           },
           "additionalProperties": false
         },
@@ -236,11 +247,60 @@
           "properties": {
             "type": { "const": "bar" },
             "color": { "type": "string" },
-            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+            "negativeColor": { "type": "string" },
+            "domain": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            "baseline": { "type": "string", "enum": ["zero", "min"] },
+            "showValue": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "icon" },
+            "set": { "type": "string", "enum": ["arrows", "triangles", "dots", "trafficLights"] },
+            "rules": { "type": "array", "items": { "$ref": "#/$defs/IconRule" } },
+            "position": { "type": "string", "enum": ["left", "right"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "rules"],
+          "properties": {
+            "type": { "const": "rules" },
+            "rules": { "type": "array", "items": { "$ref": "#/$defs/ValueRule" }, "minItems": 1 }
           },
           "additionalProperties": false
         }
       ]
+    },
+    "ValueRule": {
+      "type": "object",
+      "required": ["when", "value"],
+      "properties": {
+        "when": { "type": "string", "enum": ["gt", "gte", "lt", "lte", "eq", "ne", "between"] },
+        "value": { "type": ["number", "string"] },
+        "to": { "type": "number" },
+        "background": { "type": "string" },
+        "color": { "type": "string" },
+        "weight": { "type": "string", "enum": ["bold", "normal"] },
+        "icon": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "IconRule": {
+      "type": "object",
+      "required": ["when", "value"],
+      "properties": {
+        "when": { "type": "string", "enum": ["gt", "gte", "lt", "lte", "eq", "ne", "between"] },
+        "value": { "type": "number" },
+        "to": { "type": "number" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "TableColumn": {
       "type": "object",
@@ -252,7 +312,15 @@
         "format": { "type": "string" },
         "align": { "type": "string", "enum": ["left", "center", "right"] },
         "width": { "type": "number" },
-        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" }
+        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" },
+        "negativeStyle": { "type": "string", "enum": ["sign", "parens", "red", "parens-red"] },
+        "hidden": { "type": "boolean" },
+        "sortable": { "type": "boolean" },
+        "wrap": { "type": "boolean" },
+        "group": { "type": "string" },
+        "total": { "oneOf": [{ "$ref": "#/$defs/AggOp" }, { "const": false }] }
       },
       "additionalProperties": false
     },
@@ -264,7 +332,11 @@
         "op": { "$ref": "#/$defs/AggOp" },
         "label": { "type": "string" },
         "format": { "type": "string" },
-        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" }
+        "conditionalFormat": { "$ref": "#/$defs/ConditionalFormat" },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" },
+        "negativeStyle": { "type": "string", "enum": ["sign", "parens", "red", "parens-red"] },
+        "showAs": { "type": "string", "enum": ["value", "percentOfRow", "percentOfColumn", "percentOfTotal"] }
       },
       "additionalProperties": false
     },
@@ -282,7 +354,15 @@
         "animation": { "$ref": "#/$defs/AnimationConfig" },
         "padding": { "$ref": "#/$defs/Insets" },
         "background": { "type": "string" },
-        "sketch": { "$ref": "#/$defs/SketchConfig" }
+        "sketch": { "$ref": "#/$defs/SketchConfig" },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/SelectionParam" } },
+        "highlight": {
+          "oneOf": [
+            { "$ref": "#/$defs/HighlightConfig" },
+            { "type": "array", "items": { "$ref": "#/$defs/HighlightConfig" } }
+          ]
+        },
+        "filter": { "type": "array", "items": { "$ref": "#/$defs/FilterClause" } }
       }
     },
     "LineSpec": {
@@ -353,7 +433,32 @@
           "required": ["theta", "color"]
         },
         "donut": { "oneOf": [{ "type": "boolean" }, { "type": "number", "minimum": 0, "maximum": 1 }] },
-        "labels": { "type": "boolean" }
+        "labels": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/PieLabels" }] }
+      }
+    },
+    "PieLabels": {
+      "type": "object",
+      "properties": {
+        "show": { "type": "boolean" },
+        "placement": { "enum": ["inside", "outside", "auto"] },
+        "content": { "enum": ["percent", "value", "category", "category-percent", "category-value"] },
+        "minShare": { "type": "number", "minimum": 0, "maximum": 1 },
+        "connector": { "enum": ["slice", "muted"] }
+      },
+      "additionalProperties": false
+    },
+    "FunnelSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "funnel" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["stage", "value"]
+        },
+        "labels": { "type": "boolean" },
+        "percent": { "enum": ["first", "previous"] }
       }
     },
     "HeatmapSpec": {
@@ -408,6 +513,17 @@
           },
           "additionalProperties": false
         },
+        "density": { "type": "string", "enum": ["comfortable", "standard", "compact"] },
+        "totals": {
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "properties": { "label": { "type": "string" } },
+              "additionalProperties": false
+            }
+          ]
+        },
         "striped": { "type": "boolean" },
         "stickyHeader": { "type": "boolean" }
       }
@@ -422,7 +538,18 @@
         "columns": { "type": "array", "items": { "type": "string" } },
         "values": { "type": "array", "items": { "$ref": "#/$defs/MatrixValueDef" }, "minItems": 1 },
         "subtotals": { "type": "boolean" },
-        "grandTotals": { "type": "boolean" }
+        "grandTotals": { "type": "boolean" },
+        "density": { "type": "string", "enum": ["comfortable", "standard", "compact"] },
+        "columnSort": {
+          "type": "object",
+          "required": ["by"],
+          "properties": {
+            "by": { "type": "string", "enum": ["value", "label"] },
+            "valueIndex": { "type": "integer", "minimum": 0 },
+            "order": { "type": "string", "enum": ["asc", "desc"] }
+          },
+          "additionalProperties": false
+        }
       }
     },
     "BoxSpec": {
@@ -502,6 +629,319 @@
         }
       },
       "additionalProperties": true
+    },
+    "SelectionDef": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["point", "interval"] },
+        "on": { "type": "string", "enum": ["click", "hover"] },
+        "fields": { "type": "array", "items": { "type": "string" } },
+        "toggle": { "type": "boolean" },
+        "empty": { "type": "string", "enum": ["all", "none"] }
+      },
+      "additionalProperties": false
+    },
+    "SelectionParam": {
+      "type": "object",
+      "required": ["name", "select"],
+      "properties": {
+        "name": { "type": "string" },
+        "select": { "$ref": "#/$defs/SelectionDef" },
+        "value": { "$ref": "#/$defs/SelectionValue" }
+      },
+      "additionalProperties": false
+    },
+    "SelectionValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "fields", "tuples"],
+          "properties": {
+            "kind": { "const": "point" },
+            "fields": { "type": "array", "items": { "type": "string" } },
+            "tuples": { "type": "array", "items": { "type": "array" } }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "field", "values"],
+          "properties": {
+            "kind": { "const": "set" },
+            "field": { "type": "string" },
+            "values": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "field"],
+          "properties": {
+            "kind": { "const": "range" },
+            "field": { "type": "string" },
+            "min": { "type": ["number", "string"] },
+            "max": { "type": ["number", "string"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "field", "query"],
+          "properties": {
+            "kind": { "const": "text" },
+            "field": { "type": "string" },
+            "query": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "HighlightConfig": {
+      "type": "object",
+      "required": ["param"],
+      "properties": { "param": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "LiteralPredicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["field", "equals"],
+          "properties": { "field": { "type": "string" }, "equals": {} },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["field", "oneOf"],
+          "properties": { "field": { "type": "string" }, "oneOf": { "type": "array" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["field", "range"],
+          "properties": {
+            "field": { "type": "string" },
+            "range": { "type": "array", "items": { "type": ["number", "string"] }, "minItems": 2, "maxItems": 2 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["field", "contains"],
+          "properties": { "field": { "type": "string" }, "contains": { "type": "string" } },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FilterClause": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["param"],
+          "properties": { "param": { "type": "string" } },
+          "additionalProperties": false
+        },
+        { "$ref": "#/$defs/LiteralPredicate" }
+      ]
+    },
+    "BaseSlicerProps": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "field": { "type": "string" },
+        "param": { "type": "string" },
+        "label": { "type": "string" },
+        "as": { "type": "string", "enum": ["filter", "highlight"] }
+      }
+    },
+    "DropdownSlicerSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseSlicerProps" }],
+      "type": "object",
+      "required": ["type", "field"],
+      "properties": {
+        "type": { "const": "dropdown" },
+        "multiple": { "type": "boolean" },
+        "placeholder": { "type": "string" }
+      }
+    },
+    "SearchSlicerSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseSlicerProps" }],
+      "type": "object",
+      "required": ["type", "field"],
+      "properties": {
+        "type": { "const": "search" },
+        "placeholder": { "type": "string" },
+        "debounce": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ListSlicerSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseSlicerProps" }],
+      "type": "object",
+      "required": ["type", "field"],
+      "properties": {
+        "type": { "const": "list" },
+        "searchThreshold": { "type": "number", "minimum": 0 },
+        "selectAll": { "type": "boolean" }
+      }
+    },
+    "RangeSlicerSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseSlicerProps" }],
+      "type": "object",
+      "required": ["type", "field"],
+      "properties": {
+        "type": { "const": "range" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" },
+        "format": { "type": "string" }
+      }
+    },
+    "DateRangeSlicerSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseSlicerProps" }],
+      "type": "object",
+      "required": ["type", "field"],
+      "properties": {
+        "type": { "const": "dateRange" },
+        "presets": { "type": "boolean" },
+        "format": { "type": "string" }
+      }
+    },
+    "ChartOrSlicerSpec": {
+      "oneOf": [
+        { "$ref": "#/$defs/LineSpec" },
+        { "$ref": "#/$defs/AreaSpec" },
+        { "$ref": "#/$defs/BarSpec" },
+        { "$ref": "#/$defs/ScatterSpec" },
+        { "$ref": "#/$defs/PieSpec" },
+        { "$ref": "#/$defs/FunnelSpec" },
+        { "$ref": "#/$defs/HeatmapSpec" },
+        { "$ref": "#/$defs/KpiSpec" },
+        { "$ref": "#/$defs/TableSpec" },
+        { "$ref": "#/$defs/MatrixSpec" },
+        { "$ref": "#/$defs/BoxSpec" },
+        { "$ref": "#/$defs/SankeySpec" },
+        { "$ref": "#/$defs/ChoroplethSpec" },
+        { "$ref": "#/$defs/DropdownSlicerSpec" },
+        { "$ref": "#/$defs/SearchSlicerSpec" },
+        { "$ref": "#/$defs/ListSlicerSpec" },
+        { "$ref": "#/$defs/RangeSlicerSpec" },
+        { "$ref": "#/$defs/DateRangeSlicerSpec" }
+      ]
+    },
+    "DashboardLayout": {
+      "type": "object",
+      "properties": {
+        "cols": { "type": "number", "minimum": 1 },
+        "rowHeight": { "type": "number", "minimum": 1 },
+        "gap": { "type": "number", "minimum": 0 },
+        "breakpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["maxWidth", "cols"],
+            "properties": {
+              "maxWidth": { "type": "number", "minimum": 1 },
+              "cols": { "type": "number", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "navigators": { "enum": ["top", "inline"] },
+        "sections": { "type": "array", "items": { "$ref": "#/$defs/DashboardSection" } },
+        "preset": { "type": "string", "enum": ["auto", "kpi-first", "sidebar"] },
+        "maxWidth": { "type": "number", "minimum": 0 },
+        "density": { "type": "string", "enum": ["compact", "standard", "comfortable"] },
+        "padding": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "DashboardSection": {
+      "type": "object",
+      "required": ["views"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "views": { "type": "array", "items": { "type": "string" } },
+        "cols": { "type": "number", "minimum": 1 },
+        "rowHeight": { "type": "number", "minimum": 1 },
+        "background": { "type": "string" },
+        "collapsed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "DashboardResponsiveSpan": {
+      "type": "object",
+      "required": ["maxWidth"],
+      "properties": {
+        "maxWidth": { "type": "number", "minimum": 1 },
+        "w": { "type": "number", "minimum": 1 },
+        "h": { "type": "number", "minimum": 1 },
+        "hidden": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "DashboardView": {
+      "type": "object",
+      "required": ["id", "spec"],
+      "properties": {
+        "id": { "type": "string" },
+        "spec": { "$ref": "#/$defs/ChartOrSlicerSpec" },
+        "x": { "type": "number", "minimum": 1 },
+        "y": { "type": "number", "minimum": 1 },
+        "w": { "type": "number", "minimum": 1 },
+        "h": { "type": "number", "minimum": 1 },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "frame": { "type": "boolean" },
+        "background": { "type": "string" },
+        "accent": { "type": "string" },
+        "padding": { "type": "string", "enum": ["none", "standard"] },
+        "responsive": { "type": "array", "items": { "$ref": "#/$defs/DashboardResponsiveSpan" } }
+      },
+      "additionalProperties": false
+    },
+    "InteractionLink": {
+      "type": "object",
+      "required": ["source", "target"],
+      "properties": {
+        "source": { "type": "string" },
+        "target": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "as": { "type": "string", "enum": ["highlight", "filter", "none"] },
+        "fields": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "DashboardSpec": {
+      "type": "object",
+      "required": ["type", "views"],
+      "properties": {
+        "type": { "const": "dashboard" },
+        "data": { "type": "array", "items": { "$ref": "#/$defs/Datum" } },
+        "theme": { "$ref": "#/$defs/ThemeInput" },
+        "title": { "$ref": "#/$defs/TitleConfig" },
+        "subtitle": { "type": "string" },
+        "background": { "type": "string" },
+        "dimensions": { "$ref": "#/$defs/Dimensions" },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/SelectionParam" } },
+        "layout": { "$ref": "#/$defs/DashboardLayout" },
+        "views": { "type": "array", "items": { "$ref": "#/$defs/DashboardView" } },
+        "interactions": {
+          "oneOf": [
+            { "const": "auto" },
+            { "const": "none" },
+            { "type": "array", "items": { "$ref": "#/$defs/InteractionLink" } }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

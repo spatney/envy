@@ -1,0 +1,26 @@
+{
+  "type": "matrix",
+  "title": { "text": "Revenue mix by region", "subtitle": "Sales and percent of total by category" },
+  "data": [
+    { "region": "North", "segment": "Enterprise", "category": "Hardware", "sales": 128000 },
+    { "region": "North", "segment": "Enterprise", "category": "Software", "sales": 186000 },
+    { "region": "North", "segment": "SMB", "category": "Hardware", "sales": 84000 },
+    { "region": "North", "segment": "SMB", "category": "Services", "sales": 52000 },
+    { "region": "South", "segment": "Enterprise", "category": "Software", "sales": 142000 },
+    { "region": "South", "segment": "Enterprise", "category": "Services", "sales": 76000 },
+    { "region": "South", "segment": "SMB", "category": "Hardware", "sales": 67000 },
+    { "region": "South", "segment": "SMB", "category": "Software", "sales": 91000 },
+    { "region": "West", "segment": "Enterprise", "category": "Hardware", "sales": 153000 },
+    { "region": "West", "segment": "Enterprise", "category": "Services", "sales": 98000 },
+    { "region": "West", "segment": "SMB", "category": "Software", "sales": 73000 },
+    { "region": "West", "segment": "SMB", "category": "Services", "sales": 49000 }
+  ],
+  "rows": ["region", "segment"],
+  "columns": ["category"],
+  "values": [
+    { "field": "sales", "op": "sum", "label": "Sales", "format": "$,.0f", "conditionalFormat": { "type": "colorScale", "scheme": "teal" } },
+    { "field": "sales", "op": "sum", "label": "% total", "showAs": "percentOfTotal", "conditionalFormat": { "type": "bar", "color": "#14b8a6" } }
+  ],
+  "density": "compact",
+  "columnSort": { "by": "value", "valueIndex": 0, "order": "desc" }
+}

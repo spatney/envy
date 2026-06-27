@@ -5,12 +5,14 @@ import type { Datum } from '../types';
 import { accessor, extent, toNumber } from '../util/data';
 import { RoughPen } from '../rough';
 import { clamp } from '../util/math';
+import { rowAlpha } from './emphasis';
 
 interface ScatterPoint {
   x: number;
   y: number;
   r: number;
   color: string;
+  alpha: number;
 }
 
 function isMissing(value: unknown): boolean {
@@ -84,6 +86,7 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
         y: py,
         r: readSize ? radius(readSize(row)) : radius(),
         color: series.color,
+        alpha: rowAlpha(model.emphasis, row),
       });
     }
   }
@@ -98,12 +101,15 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
   if (model.sketch) {
     const pen = new RoughPen(ctx, model.sketch);
     for (const point of points) {
+      const prev = ctx.globalAlpha;
+      if (point.alpha !== 1) ctx.globalAlpha = point.alpha;
       pen.circle(point.x, point.y, point.r, {
         fill: point.color,
         fillAlpha: 0.7,
         stroke: tokens.color.background,
         strokeWidth: 1,
       });
+      if (point.alpha !== 1) ctx.globalAlpha = prev;
     }
     ctx.restore();
     return;
@@ -116,11 +122,12 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
     ctx.beginPath();
     ctx.arc(point.x, point.y, point.r, 0, Math.PI * 2);
     ctx.fillStyle = point.color;
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = 0.7 * point.alpha;
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = point.alpha;
     ctx.stroke();
   }
 
+  ctx.globalAlpha = 1;
   ctx.restore();
 }

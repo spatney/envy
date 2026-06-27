@@ -1,0 +1,26 @@
+{
+  "type": "pie",
+  "title": "Browser share",
+  "donut": 0.55,
+  "data": [
+    { "browser": "Chrome", "share": 53.02 },
+    { "browser": "Safari", "share": 18.61 },
+    { "browser": "Edge", "share": 11.4 },
+    { "browser": "Firefox", "share": 7.07 },
+    { "browser": "Samsung Internet", "share": 4.12 },
+    { "browser": "Opera", "share": 2.43 },
+    { "browser": "UC Browser", "share": 1.74 },
+    { "browser": "Other", "share": 1.61 }
+  ],
+  "encoding": {
+    "theta": { "field": "share", "title": "Share", "format": ".1f" },
+    "color": { "field": "browser" }
+  },
+  "labels": {
+    "placement": "auto",
+    "content": "category-percent",
+    "connector": "slice",
+    "minShare": 0.01
+  },
+  "legend": false
+}

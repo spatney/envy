@@ -1,6 +1,7 @@
 import type { Surface } from '../render/surface';
 import type { CartesianModel } from '../runtime/cartesian';
 import type { BoxSpec } from '../spec/types';
+import type { Datum } from '../types';
 import { withAlpha } from '../color';
 import { formatValue } from '../format';
 import { roundedRect } from '../shape';
@@ -22,6 +23,10 @@ interface BoxGeom {
   key: string;
   title: string;
   color: string;
+  /** Raw x-category value backing this box (for selection identity). */
+  xValue: unknown;
+  /** Raw series value, or undefined for single-series box plots. */
+  seriesValue: unknown;
   cx: number;
   boxW: number;
   left: number;
@@ -125,6 +130,8 @@ function computeBoxes(model: CartesianModel): BoxLayout | null {
         key: grouped ? `${k}\u0000${series.key}` : k,
         title: grouped ? `${k} · ${series.label}` : k,
         color: series.color,
+        xValue: g.value,
+        seriesValue: grouped ? series.value : undefined,
         cx,
         boxW,
         left: cx - boxW / 2,
@@ -213,18 +220,32 @@ function drawOneBox(
   ctx.restore();
 }
 
+/** Build the synthetic row a box represents, for emphasis/selection matching. */
+function boxProbe(model: CartesianModel, geom: BoxGeom): Datum {
+  const probe: Datum = { [model.x.field]: geom.xValue };
+  if (model.seriesField) probe[model.seriesField] = geom.seriesValue;
+  return probe;
+}
+
 export function drawBox(surface: Surface, model: CartesianModel): void {
   const layout = computeBoxes(model);
   if (!layout) return;
   const ctx = surface.marks.ctx;
   const { plot } = model;
+  const emphasis = model.emphasis ?? null;
   const pen = model.sketch ? new RoughPen(ctx, model.sketch) : null;
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(plot.x, plot.y - 2, plot.width, plot.height + 4);
   ctx.clip();
-  for (const geom of layout.geoms) drawOneBox(ctx, model, geom, layout.showOutliers, pen);
+  for (const geom of layout.geoms) {
+    const alpha = emphasis ? (emphasis.match(boxProbe(model, geom)) ? 1 : emphasis.dim) : 1;
+    const prev = ctx.globalAlpha;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
+    drawOneBox(ctx, model, geom, layout.showOutliers, pen);
+    if (alpha !== 1) ctx.globalAlpha = prev;
+  }
   ctx.restore();
 }
 
@@ -274,6 +295,13 @@ export function buildBoxInteraction(model: CartesianModel): InteractionModel | v
           ictx.restore();
         },
       };
+    },
+    pick: (px, py) => {
+      const hit = geoms.find(
+        (g) => px >= g.left - 4 && px <= g.right + 4 && py >= g.top - 6 && py <= g.bottom + 6,
+      );
+      if (!hit) return null;
+      return { kind: 'point', fields: [model.x.field], tuples: [[hit.xValue]] };
     },
   };
 }

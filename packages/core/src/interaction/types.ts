@@ -8,7 +8,8 @@
  * never *how* to wire events.
  */
 
-import type { Rect } from '../types';
+import type { Rect, Datum } from '../types';
+import type { SelectionValue } from '../spec/selection';
 
 /** One line in a tooltip card. */
 export interface TooltipRow {
@@ -55,4 +56,22 @@ export interface InteractionModel {
   region: Rect;
   /** Resolve the datum under a CSS-px point, or `null` for none. */
   hitTest(px: number, py: number): Hover | null;
+  /**
+   * Resolve the *selection* under a CSS-px point (for click/tap), or `null` when
+   * the point hits no mark (which clears the selection). Optional: charts without
+   * a `pick` are hover-only.
+   */
+  pick?(px: number, py: number): SelectionValue | null;
+}
+
+/**
+ * Resolved emphasis for the current frame: which rows are "in" the active
+ * selection, and how strongly to fade the rest. Renderers dim non-matching marks
+ * to `dim` (a 0..1 alpha multiplier) and keep matching marks at full strength.
+ */
+export interface Emphasis {
+  /** True when a row is part of the active selection (drawn at full strength). */
+  match(row: Datum): boolean;
+  /** Alpha multiplier applied to non-matching marks (e.g. 0.22). */
+  dim: number;
 }

@@ -5,7 +5,7 @@
  * be dropped straight into the editor.
  */
 
-import type { ChartSpec, GeoFeatureCollection } from '@envy/core';
+import type { ChartSpec, DashboardSpec, GeoFeatureCollection } from '@envy/core';
 import {
   boxDistributions,
   categorical,
@@ -17,6 +17,7 @@ import {
   timeSeries,
   type Datum,
 } from './data';
+import { dashboardDemo, funnelData, interactiveData } from './interactive';
 
 export interface Preset {
   id: string;
@@ -24,7 +25,7 @@ export interface Preset {
   group: string;
   /** Short note about the data size/shape. */
   note: string;
-  build: () => ChartSpec;
+  build: () => ChartSpec | DashboardSpec;
 }
 
 const REGIONS = ['West', 'East', 'North', 'South'];
@@ -224,6 +225,47 @@ export const presets: Preset[] = [
       labels: true,
     }),
   },
+  {
+    id: 'donut-callouts',
+    label: 'Donut · callout labels',
+    group: 'Pie',
+    note: '8 slices',
+    build: () => ({
+      type: 'pie',
+      title: 'Browser share',
+      data: [
+        { browser: 'Chrome', share: 53.02 },
+        { browser: 'Safari', share: 18.61 },
+        { browser: 'Edge', share: 11.4 },
+        { browser: 'Firefox', share: 7.07 },
+        { browser: 'Samsung Internet', share: 4.12 },
+        { browser: 'Opera', share: 2.43 },
+        { browser: 'UC Browser', share: 1.74 },
+        { browser: 'Other', share: 1.61 },
+      ],
+      encoding: {
+        theta: { field: 'share', title: 'Share', format: '.1f' },
+        color: { field: 'browser' },
+      },
+      donut: 0.55,
+      labels: { placement: 'auto', content: 'category-percent', connector: 'slice', minShare: 0.01 },
+      legend: false,
+    }),
+  },
+  // --- Funnel ---
+  {
+    id: 'funnel',
+    label: 'Funnel · conversion',
+    group: 'Funnel',
+    note: '5 stages, retained %',
+    build: () => ({
+      type: 'funnel',
+      title: { text: 'Signup funnel', subtitle: 'Users retained at each stage' },
+      data: funnelData(),
+      encoding: { stage: { field: 'stage' }, value: { field: 'users', title: 'Users' } },
+      percent: 'first',
+    }),
+  },
   // --- Heatmap ---
   {
     id: 'heatmap',
@@ -278,13 +320,15 @@ export const presets: Preset[] = [
       title: 'Orders',
       data: salesTable({ n: 25 }),
       columns: [
-        { field: 'order', title: 'Order' },
-        { field: 'region', title: 'Region' },
-        { field: 'category', title: 'Category' },
-        { field: 'units', title: 'Units', align: 'right' },
-        { field: 'sales', title: 'Sales', format: '$,.0f', align: 'right', conditionalFormat: { type: 'bar' } },
-        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', conditionalFormat: { type: 'colorScale' } },
+        { field: 'order', title: 'Order', group: 'Order', sortable: false },
+        { field: 'region', title: 'Region', group: 'Customer' },
+        { field: 'category', title: 'Category', group: 'Customer' },
+        { field: 'units', title: 'Units', align: 'right', group: 'Performance', total: 'sum' },
+        { field: 'sales', title: 'Sales', format: ',.0f', prefix: '$', align: 'right', group: 'Performance', conditionalFormat: { type: 'bar', color: '#0d9488' } },
+        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', group: 'Performance', conditionalFormat: { type: 'icon', set: 'trafficLights' } },
       ],
+      totals: true,
+      density: 'compact',
       sort: { field: 'sales', order: 'desc' },
     }),
   },
@@ -302,9 +346,10 @@ export const presets: Preset[] = [
         { field: 'date', title: 'Date', format: '%b %e, %Y' },
         { field: 'region', title: 'Region' },
         { field: 'category', title: 'Category' },
-        { field: 'sales', title: 'Sales', format: '$,.0f', align: 'right', conditionalFormat: { type: 'bar' } },
-        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', conditionalFormat: { type: 'colorScale' } },
+        { field: 'sales', title: 'Sales', format: ',.0f', prefix: '$', align: 'right', conditionalFormat: { type: 'bar', showValue: false } },
+        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', conditionalFormat: { type: 'rules', rules: [{ when: 'lt', value: 0.18, color: '#dc2626', weight: 'bold', icon: '!' }] } },
       ],
+      density: 'compact',
       sort: { field: 'sales', order: 'desc' },
     }),
   },
@@ -320,9 +365,14 @@ export const presets: Preset[] = [
       data: salesTable({ n: 120 }),
       rows: ['region', 'segment'],
       columns: ['category'],
-      values: [{ field: 'sales', op: 'sum', format: '$,.0f' }],
+      values: [
+        { field: 'sales', op: 'sum', label: 'Sales', format: '$,.0f', conditionalFormat: { type: 'colorScale', scheme: 'teal' } },
+        { field: 'sales', op: 'sum', label: '% total', showAs: 'percentOfTotal', conditionalFormat: { type: 'bar', color: '#14b8a6' } },
+      ],
       subtotals: true,
       grandTotals: true,
+      density: 'compact',
+      columnSort: { by: 'value', valueIndex: 0, order: 'desc' },
     }),
   },
   // --- Box ---
@@ -406,6 +456,51 @@ export const presets: Preset[] = [
         scheme: 'teal',
       };
     },
+  },
+  // --- Interactive (slicers + dashboard) ---
+  {
+    id: 'dropdown',
+    label: 'Slicer · dropdown',
+    group: 'Interactive',
+    note: 'multi-select a field',
+    build: () => ({
+      type: 'dropdown',
+      title: 'Region',
+      data: interactiveData(),
+      field: 'region',
+      multiple: true,
+    }),
+  },
+  {
+    id: 'list',
+    label: 'Slicer · checkbox list',
+    group: 'Interactive',
+    note: 'select-all + search',
+    build: () => ({
+      type: 'list',
+      title: 'Regions',
+      data: interactiveData(),
+      field: 'region',
+    }),
+  },
+  {
+    id: 'range',
+    label: 'Slicer · numeric range',
+    group: 'Interactive',
+    note: 'dual-handle min/max',
+    build: () => ({
+      type: 'range',
+      title: 'Sales range',
+      data: interactiveData(),
+      field: 'sales',
+    }),
+  },
+  {
+    id: 'dashboard',
+    label: 'Dashboard · auto-wired',
+    group: 'Interactive',
+    note: 'cross-filter + cross-highlight',
+    build: () => dashboardDemo(),
   },
 ];
 

@@ -2,6 +2,7 @@ import type { Datum, FieldType, Insets } from '../types';
 import type { AggOp } from '../pivot';
 import type { ThemeInput } from '../theme';
 import type { FillStyle } from '../rough';
+import type { FilterClause, HighlightConfig, SelectionParam } from './selection';
 
 /**
  * Envy declarative chart specs.
@@ -72,6 +73,8 @@ export interface Encoding {
   value?: FieldDef;
   /** Geographic key matching a GeoJSON feature (choropleth). */
   key?: FieldDef;
+  /** Funnel stage (ordered category, one bar per stage). */
+  stage?: FieldDef;
 }
 
 export interface Dimensions {
@@ -177,6 +180,24 @@ export interface BaseSpec {
    * to tune it. Omit (or `false`) for the default clean rendering.
    */
   sketch?: boolean | SketchConfig;
+  /**
+   * Named selections this visual publishes. Clicking marks, brushing, or
+   * changing a slicer updates the param's value on the shared selection store,
+   * which other visuals can consume via {@link BaseSpec.highlight} or
+   * {@link BaseSpec.filter}. Pure data — no callbacks.
+   */
+  params?: SelectionParam[];
+  /**
+   * Emphasize rows matching a selection and dim the rest. References a param by
+   * name (typically published by another visual for cross-highlighting). An array
+   * unions several sources: a row is emphasized if it matches *any* active one.
+   */
+  highlight?: HighlightConfig | HighlightConfig[];
+  /**
+   * Subset this visual's rows to those matching every clause (logical AND).
+   * Each clause is a named param (cross-filter) or a literal predicate.
+   */
+  filter?: FilterClause[];
 }
 
 export type CurveType =
@@ -226,8 +247,35 @@ export interface PieSpec extends BaseSpec {
   encoding: Encoding & { theta: FieldDef; color: FieldDef };
   /** true for a default donut, or a 0..1 inner-radius ratio. */
   donut?: boolean | number;
-  /** Show value/percent labels. Defaults to true; set false to hide. */
-  labels?: boolean;
+  /**
+   * Value/percent labels. `true` (default) / `false` toggles them; pass a
+   * {@link PieLabels} object to control placement (inside vs. outside callouts),
+   * what each label says, and the connector style.
+   */
+  labels?: boolean | PieLabels;
+}
+
+/** Fine-grained control over pie/donut slice labels. */
+export interface PieLabels {
+  /** Master toggle (default true). */
+  show?: boolean;
+  /**
+   * Where labels sit:
+   * - 'auto' (default): inside the slice when the text fits, otherwise an
+   *   outside callout with a leader line.
+   * - 'inside': always inside (small slices are dropped if they don't fit).
+   * - 'outside': always an outside callout with a leader line.
+   */
+  placement?: 'inside' | 'outside' | 'auto';
+  /**
+   * What each label says (default: 'percent' inside, 'category-percent' for
+   * outside callouts).
+   */
+  content?: 'percent' | 'value' | 'category' | 'category-percent' | 'category-value';
+  /** Hide labels for slices below this share of the total (0..1, default 0.01). */
+  minShare?: number;
+  /** Leader-line colour for outside callouts: the slice colour or a muted grey. */
+  connector?: 'slice' | 'muted';
 }
 
 export interface HeatmapSpec extends BaseSpec {
@@ -235,6 +283,25 @@ export interface HeatmapSpec extends BaseSpec {
   encoding: Encoding & { x: FieldDef; y: FieldDef; color: FieldDef };
   /** Sequential/diverging ramp name. */
   scheme?: string;
+}
+
+/**
+ * A funnel chart: ordered `stage`s drawn as stacked, centered trapezoids whose
+ * width encodes `value`. Ideal for conversion / drop-off across a pipeline. Each
+ * stage shows its value and the share retained relative to the first (or the
+ * previous) stage.
+ */
+export interface FunnelSpec extends BaseSpec {
+  type: 'funnel';
+  encoding: Encoding & { stage: FieldDef; value: FieldDef };
+  /** Show stage labels + value/percent inside the funnel (default true). */
+  labels?: boolean;
+  /**
+   * What the per-stage percentage is measured against:
+   * - 'first' (default): share retained vs. the top of the funnel.
+   * - 'previous': step conversion vs. the stage above.
+   */
+  percent?: 'first' | 'previous';
 }
 
 export type ValueRef = number | { field: string; aggregate?: AggOp };
@@ -252,8 +319,47 @@ export interface KpiSpec extends BaseSpec {
 }
 
 export type ConditionalFormat =
-  | { type: 'colorScale'; scheme?: string; domain?: [number, number] }
-  | { type: 'bar'; color?: string; domain?: [number, number] };
+  | {
+      type: 'colorScale';
+      scheme?: string;
+      domain?: [number, number];
+      midpoint?: number;
+      diverging?: boolean;
+      target?: 'background' | 'text';
+    }
+  | {
+      type: 'bar';
+      color?: string;
+      negativeColor?: string;
+      domain?: [number, number];
+      baseline?: 'zero' | 'min';
+      showValue?: boolean;
+    }
+  | {
+      type: 'icon';
+      set?: 'arrows' | 'triangles' | 'dots' | 'trafficLights';
+      rules?: IconRule[];
+      position?: 'left' | 'right';
+    }
+  | { type: 'rules'; rules: ValueRule[] };
+
+export interface ValueRule {
+  when: 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'ne' | 'between';
+  value: number | string;
+  to?: number;
+  background?: string;
+  color?: string;
+  weight?: 'bold' | 'normal';
+  icon?: string;
+}
+
+export interface IconRule {
+  when: ValueRule['when'];
+  value: number;
+  to?: number;
+  icon?: string;
+  color?: string;
+}
 
 export interface TableColumn {
   field: string;
@@ -263,6 +369,14 @@ export interface TableColumn {
   align?: 'left' | 'center' | 'right';
   width?: number;
   conditionalFormat?: ConditionalFormat;
+  prefix?: string;
+  suffix?: string;
+  negativeStyle?: 'sign' | 'parens' | 'red' | 'parens-red';
+  hidden?: boolean;
+  sortable?: boolean;
+  wrap?: boolean;
+  group?: string;
+  total?: AggOp | false;
 }
 
 export interface TableSpec extends BaseSpec {
@@ -270,6 +384,8 @@ export interface TableSpec extends BaseSpec {
   /** Explicit columns; inferred from data keys when omitted. */
   columns?: TableColumn[];
   sort?: { field: string; order?: 'asc' | 'desc' };
+  density?: 'comfortable' | 'standard' | 'compact';
+  totals?: boolean | { label?: string };
   /** Zebra striping (off by default — flat aesthetic). */
   striped?: boolean;
   /** Sticky header (default true). */
@@ -282,6 +398,10 @@ export interface MatrixValueDef {
   label?: string;
   format?: string;
   conditionalFormat?: ConditionalFormat;
+  prefix?: string;
+  suffix?: string;
+  negativeStyle?: TableColumn['negativeStyle'];
+  showAs?: 'value' | 'percentOfRow' | 'percentOfColumn' | 'percentOfTotal';
 }
 
 export interface MatrixSpec extends BaseSpec {
@@ -293,6 +413,8 @@ export interface MatrixSpec extends BaseSpec {
   values: MatrixValueDef[];
   subtotals?: boolean;
   grandTotals?: boolean;
+  density?: 'comfortable' | 'standard' | 'compact';
+  columnSort?: { by: 'value' | 'label'; valueIndex?: number; order?: 'asc' | 'desc' };
 }
 
 export interface BoxSpec extends BaseSpec {
@@ -387,6 +509,96 @@ export interface ChoroplethSpec extends BaseSpec {
   scheme?: string;
 }
 
+/**
+ * Slicer visuals — interactive controls that *publish* a selection (rather than
+ * plotting marks). A slicer cross-filters (or cross-highlights) every visual that
+ * consumes its param. They are ordinary DOM widgets, so they validate and render
+ * standalone, and slot into a dashboard like any other view.
+ *
+ * Every slicer reads a single `field` and writes to a named param (defaulting to
+ * the field name, so a chart's `filter: [{ param: 'region' }]` auto-connects to a
+ * `field: 'region'` slicer). Options/bounds are derived from the *unfiltered*
+ * data so a slicer never hides its own choices.
+ */
+export interface BaseSlicerSpec extends BaseSpec {
+  /** The data field this slicer reads its options/bounds from and filters on. */
+  field: string;
+  /**
+   * The param name this slicer publishes to. Defaults to `field`, which makes a
+   * slicer auto-wire to any visual filtering/highlighting on that param name.
+   */
+  param?: string;
+  /** Label shown above the control. Defaults to `title` or the field name. */
+  label?: string;
+  /** How consumers should react: emphasize matches or subset rows. Default 'filter'. */
+  as?: 'filter' | 'highlight';
+}
+
+/** Choose one (single) or several (multi) of a field's distinct values. */
+export interface DropdownSlicerSpec extends BaseSlicerSpec {
+  type: 'dropdown';
+  /** Allow choosing multiple values (emits a set). Default false (single-select). */
+  multiple?: boolean;
+  /** Placeholder shown when nothing is selected. */
+  placeholder?: string;
+}
+
+/** A debounced case-insensitive substring filter over a text field. */
+export interface SearchSlicerSpec extends BaseSlicerSpec {
+  type: 'search';
+  placeholder?: string;
+  /** Debounce in ms before publishing the query (default 200). */
+  debounce?: number;
+}
+
+/** A scrollable checkbox list of a field's distinct values (multi-select). */
+export interface ListSlicerSpec extends BaseSlicerSpec {
+  type: 'list';
+  /** Show a search-within box once options exceed this count (default 8). */
+  searchThreshold?: number;
+  /** Show the "Select all" / "Clear" row (default true). */
+  selectAll?: boolean;
+}
+
+/** A numeric min/max range over a quantitative field (dual-thumb slider). */
+export interface RangeSlicerSpec extends BaseSlicerSpec {
+  type: 'range';
+  /** Lower bound; defaults to the data minimum of `field`. */
+  min?: number;
+  /** Upper bound; defaults to the data maximum of `field`. */
+  max?: number;
+  /** Thumb step; defaults to a sensible fraction of the range. */
+  step?: number;
+  /** Number format hint for the value labels (e.g. ',.0f'). */
+  format?: string;
+}
+
+/** A temporal min/max range over a date field, with relative presets. */
+export interface DateRangeSlicerSpec extends BaseSlicerSpec {
+  type: 'dateRange';
+  /** Show relative presets (last 7 / 30 / 90 days, all). Default true. */
+  presets?: boolean;
+  /** Date format hint for the value labels (e.g. '%b %e, %Y'). */
+  format?: string;
+}
+
+export type SlicerSpec =
+  | DropdownSlicerSpec
+  | SearchSlicerSpec
+  | ListSlicerSpec
+  | RangeSlicerSpec
+  | DateRangeSlicerSpec;
+
+export type SlicerType = SlicerSpec['type'];
+
+export const SLICER_TYPES: readonly SlicerType[] = [
+  'dropdown',
+  'search',
+  'list',
+  'range',
+  'dateRange',
+];
+
 export type ChartSpec =
   | LineSpec
   | AreaSpec
@@ -394,12 +606,18 @@ export type ChartSpec =
   | ScatterSpec
   | PieSpec
   | HeatmapSpec
+  | FunnelSpec
   | KpiSpec
   | TableSpec
   | MatrixSpec
   | BoxSpec
   | SankeySpec
-  | ChoroplethSpec;
+  | ChoroplethSpec
+  | DropdownSlicerSpec
+  | SearchSlicerSpec
+  | ListSlicerSpec
+  | RangeSlicerSpec
+  | DateRangeSlicerSpec;
 
 export type ChartType = ChartSpec['type'];
 
@@ -410,10 +628,16 @@ export const CHART_TYPES: readonly ChartType[] = [
   'scatter',
   'pie',
   'heatmap',
+  'funnel',
   'kpi',
   'table',
   'matrix',
   'box',
   'sankey',
   'choropleth',
+  'dropdown',
+  'search',
+  'list',
+  'range',
+  'dateRange',
 ];

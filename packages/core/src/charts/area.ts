@@ -18,10 +18,12 @@ import { resolveCurve, type CartesianModel, type ResolvedSeries } from '../runti
 import { RoughPen } from '../rough';
 import type { Point } from '../types';
 import { maxFinite, minFinite, verticalFill } from './fill';
+import { seriesAlpha } from './emphasis';
 
 interface BandPoints {
   series: ResolvedSeries;
   points: AreaPoint[];
+  alpha: number;
 }
 
 /** Build per-series area bands, stacking cumulatively in value-space when asked. */
@@ -71,13 +73,21 @@ function buildBands(model: CartesianModel, stacked: boolean): BandPoints[] {
           gap: () => ({ x: NaN, y0: NaN, y1: NaN }),
         })
       : band;
-    return { series, points: reduced };
+    return { series, points: reduced, alpha: seriesAlpha(model.emphasis, series) };
   });
 }
 
 /** Hand-drawn path: hachure-filled bands with wobbly top edges (gap-aware). */
-function drawAreaSketch(model: CartesianModel, bands: BandPoints[], pen: RoughPen, stacked: boolean): void {
-  for (const { series, points } of bands) {
+function drawAreaSketch(
+  ctx: CanvasRenderingContext2D,
+  model: CartesianModel,
+  bands: BandPoints[],
+  pen: RoughPen,
+  stacked: boolean,
+): void {
+  for (const { series, points, alpha } of bands) {
+    const prev = ctx.globalAlpha;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
     let run: AreaPoint[] = [];
     const flush = (): void => {
       if (run.length >= 2) {
@@ -95,13 +105,17 @@ function drawAreaSketch(model: CartesianModel, bands: BandPoints[], pen: RoughPe
       else run.push(p);
     }
     flush();
+    if (alpha !== 1) ctx.globalAlpha = prev;
   }
 
-  for (const { series, points } of bands) {
-    pen.polyline(
+  for (const { series, points, alpha } of bands) {
+    const prev = ctx.globalAlpha;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
+    pen.trendStroke(
       points.map((p) => ({ x: p.x, y: p.y1 })),
       { stroke: series.color },
     );
+    if (alpha !== 1) ctx.globalAlpha = prev;
   }
 }
 
@@ -124,14 +138,14 @@ export function drawArea(surface: Surface, model: CartesianModel): void {
   ctx.clip();
 
   if (model.sketch) {
-    drawAreaSketch(model, bands, new RoughPen(ctx, model.sketch), stacked);
+    drawAreaSketch(ctx, model, bands, new RoughPen(ctx, model.sketch), stacked);
     ctx.restore();
     return;
   }
 
   // Gradient fills: overlapping bands fade to near-transparent at the baseline;
   // stacked bands stay mostly opaque with a subtle vertical sheen for depth.
-  for (const { series, points } of bands) {
+  for (const { series, points, alpha } of bands) {
     const top = minFinite(
       points.map((p) => p.y1),
       plot.y,
@@ -144,24 +158,26 @@ export function drawArea(surface: Surface, model: CartesianModel): void {
       : model.y.baseline;
     ctx.beginPath();
     areaGen(points, ctx);
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = stacked
       ? verticalFill(ctx, series.color, top, bottom, 0.96, 0.74)
       : verticalFill(ctx, series.color, top, bottom, 0.3, 0.02);
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // Top edge strokes for crisp band separation.
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.lineWidth = Math.max(1.5, tokens.stroke.base);
-  for (const { series, points } of bands) {
+  for (const { series, points, alpha } of bands) {
     ctx.beginPath();
     lineGen(
       points.map((p) => ({ x: p.x, y: p.y1 })),
       ctx,
     );
     ctx.strokeStyle = series.color;
-    ctx.globalAlpha = stacked ? 1 : 0.95;
+    ctx.globalAlpha = (stacked ? 1 : 0.95) * alpha;
     ctx.stroke();
     ctx.globalAlpha = 1;
   }

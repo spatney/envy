@@ -25,6 +25,18 @@ import {
 } from '../charts';
 import { InteractionController, buildCartesianInteraction } from '../interaction';
 import type { InteractionModel } from '../interaction';
+import { createSelectionStore, type SelectionStore } from '../interaction/store';
+import {
+  applyPick,
+  resolveEmphasis,
+  resolveFilterValues,
+  dependentParams,
+  DIM_ALPHA,
+  type SelectConfig,
+} from '../interaction/select';
+import { filterRows } from '../interaction/predicate';
+import type { RenderContext } from '../charts';
+import type { SelectionValue } from '../spec/selection';
 import { applyA11y } from '../a11y';
 import {
   animate,
@@ -34,6 +46,25 @@ import {
   type AnimationHandle,
   type ResolvedEntrance,
 } from '../animation';
+
+/** A change to a named selection: the param name and its new value (or null). */
+export type SelectionChangeListener = (name: string, value: SelectionValue | null) => void;
+
+/** Options for {@link render}. */
+export interface RenderOptions {
+  /**
+   * A shared selection bus. Pass the same store to multiple `render()` calls to
+   * link them (cross-highlight / cross-filter). Omit to give the chart its own
+   * private store.
+   */
+  store?: SelectionStore;
+  /**
+   * The chart is mounted inside a host that already provides card chrome (e.g. a
+   * dashboard cell). Renderers that normally draw their own card (KPI) render
+   * flat so the chrome isn't doubled. Optional; defaults to false.
+   */
+  frame?: boolean;
+}
 
 export interface ChartInstance {
   /** Re-render with a new spec (data or config changes). */
@@ -46,6 +77,18 @@ export interface ChartInstance {
   readonly spec: ChartSpec;
   /** The mounted surface (advanced/imperative use). */
   readonly surface: Surface;
+  /** The selection bus this chart is bound to (advanced/linking use). */
+  readonly store: SelectionStore;
+  /** Read a param's current value, or a snapshot of all params when omitted. */
+  getSelection(name?: string): SelectionValue | null | Record<string, SelectionValue | null>;
+  /** Set a param's value (drives highlight/filter across linked visuals). */
+  setSelection(name: string, value: SelectionValue | null): void;
+  /** Clear one param, or every param when `name` is omitted. */
+  clearSelection(name?: string): void;
+  /** Subscribe to selection changes; returns an unsubscribe function. */
+  on(event: 'selectionchange', listener: SelectionChangeListener): () => void;
+  /** Remove a previously-registered selection listener. */
+  off(event: 'selectionchange', listener: SelectionChangeListener): void;
 }
 
 declare global {
@@ -109,7 +152,11 @@ function paintBackground(surface: Surface, tokens: ThemeTokens, override?: strin
   ctx.restore();
 }
 
-export function render(target: HTMLElement | string, spec: ChartSpec): ChartInstance {
+export function render(
+  target: HTMLElement | string,
+  spec: ChartSpec,
+  options?: RenderOptions,
+): ChartInstance {
   const container = resolveContainer(target);
   const surface = new Surface(container);
 
@@ -119,6 +166,12 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
   let entrance: AnimationHandle | undefined;
   let updateTransition: AnimationHandle | undefined;
   let destroyed = false;
+  // The size we last actually drew at. The resize observer redraws only when the
+  // container's measured size diverges from this, so a resize that lands between
+  // render() and the observer's first delivery (e.g. a dashboard that mounts a
+  // view and then reflows its grid) is honored instead of dropped.
+  let lastDrawnW = -1;
+  let lastDrawnH = -1;
   // Set when a draw measured text while a web font was still loading. We listen
   // for the font once and redraw so the final layout uses real metrics.
   let fontRefreshArmed = false;
@@ -128,6 +181,16 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
   // One-shot guard so the lazy sketch-font load only ever arms a single redraw.
   let sketchFontArmed = false;
 
+  // Selection bus: shared (linked charts) or private to this instance. Seed any
+  // initial param values that aren't already present so a shared store wins.
+  const store = options?.store ?? createSelectionStore();
+  for (const param of currentSpec.params ?? []) {
+    if (param.value !== undefined && store.get(param.name) == null) {
+      store.set(param.name, param.value ?? null);
+    }
+  }
+  const hostListeners = new Set<SelectionChangeListener>();
+
   const draw = (animateEntrance: boolean): void => {
     entrance?.cancel();
     entrance = undefined;
@@ -136,6 +199,8 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
 
     const tokens = resolveSketchTokens(currentSpec);
     const size = resolveSize(container, currentSpec);
+    lastDrawnW = size.width;
+    lastDrawnH = size.height;
     surface.resize(size.width, size.height, getDevicePixelRatio());
     surface.root.removeAttribute('data-envy-ready');
     surface.root.style.opacity = '';
@@ -148,11 +213,22 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
       disabled: !animateEntrance || globalThis.__ENVY_DISABLE_ANIM === true,
     });
 
+    // Resolve interactivity for this frame: the rows after cross-filtering, and
+    // the highlight (emphasis) to dim non-selected marks.
+    const filterValues = resolveFilterValues(currentSpec.filter, store);
+    const baseData = currentSpec.data ?? [];
+    const filtered = filterValues.length ? filterRows(baseData, filterValues) : baseData;
+    const effectiveSpec =
+      filtered === baseData ? currentSpec : ({ ...currentSpec, data: filtered } as ChartSpec);
+    const emphasis = resolveEmphasis(currentSpec.highlight, store, DIM_ALPHA);
+    const ownParam = currentSpec.params?.[0];
+
     let interactionModel: InteractionModel | null = null;
     const type = currentSpec.type;
     if (CARTESIAN_TYPES.has(type)) {
       const renderer = cartesianRenderers[type];
-      const model = buildCartesianModel(currentSpec as CartesianChartSpec, tokens, size);
+      const model = buildCartesianModel(effectiveSpec as CartesianChartSpec, tokens, size);
+      model.emphasis = emphasis;
       // When animating, the marks (and their gridline underlay) are painted by
       // the entrance loop frame-by-frame; otherwise paint them once now.
       if (!anim.enabled) {
@@ -179,7 +255,18 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     } else {
       const renderer = customRenderers[type];
       if (renderer) {
-        interactionModel = renderer(surface, currentSpec, tokens, size) ?? null;
+        const ctx: RenderContext = {
+          emphasis,
+          store,
+          param: ownParam?.name,
+          def: ownParam?.select,
+          sourceData: baseData,
+          framed: options?.frame === true,
+          requestRedraw: () => {
+            if (!destroyed) draw(false);
+          },
+        };
+        interactionModel = renderer(surface, effectiveSpec, tokens, size, ctx) ?? null;
       } else {
         drawPlaceholder(surface, tokens, `“${type}” renderer not yet registered`);
       }
@@ -190,6 +277,14 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
 
     if (!interaction) interaction = new InteractionController(surface, tokens);
     interaction.setModel(interactionModel, tokens);
+    // Wire click/tap selection when this chart defines a param and its model can
+    // resolve a pick. Slicers publish via the render context instead.
+    if (ownParam && interactionModel?.pick) {
+      const cfg: SelectConfig = { store, param: ownParam.name, def: ownParam.select };
+      interaction.setSelect({ onPick: (value) => applyPick(cfg, value) });
+    } else {
+      interaction.setSelect(null);
+    }
 
     applyA11y(surface, currentSpec);
 
@@ -248,19 +343,32 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     (currentSpec.dimensions?.width == null || currentSpec.dimensions?.height == null);
 
   if (autoResize && typeof ResizeObserver !== 'undefined') {
-    // ResizeObserver fires once on observe(); that initial pass is redundant
-    // with the explicit draw below, so skip it (and never animate on resize —
-    // resizes must be instant to avoid jank while dragging).
-    let firstObservation = true;
+    // Redraw on container resize, but only when the measured size actually
+    // diverges from what we last drew. That skips the redundant delivery the
+    // observer fires on observe() (same size as the explicit draw below) while
+    // still honoring a resize that lands before the first delivery — e.g. a
+    // dashboard that mounts a view and then reflows its grid. (Unconditionally
+    // skipping the first delivery dropped that reflow, leaving the chart stuck at
+    // its pre-reflow size on any redraw where a font load didn't mask it.)
+    // Resizes never animate — they must be instant to avoid jank while dragging.
     observer = new ResizeObserver(() => {
-      if (firstObservation) {
-        firstObservation = false;
-        return;
-      }
+      if (destroyed) return;
+      const s = resolveSize(container, currentSpec);
+      if (s.width === lastDrawnW && s.height === lastDrawnH) return;
       draw(false);
     });
     observer.observe(container);
   }
+
+  // React to selection changes: notify host listeners, then redraw if the change
+  // touches a param this chart consumes (its highlight or a filter clause).
+  const unsubscribe = store.subscribe((name, value) => {
+    for (const listener of [...hostListeners]) listener(name, value);
+    if (destroyed) return;
+    if (dependentParams(currentSpec.highlight, currentSpec.filter).has(name)) {
+      draw(false);
+    }
+  });
 
   draw(true);
 
@@ -269,9 +377,33 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
       return currentSpec;
     },
     surface,
+    store,
+    getSelection(name?: string): SelectionValue | null | Record<string, SelectionValue | null> {
+      return name === undefined ? store.all() : store.get(name);
+    },
+    setSelection(name: string, value: SelectionValue | null): void {
+      store.set(name, value);
+    },
+    clearSelection(name?: string): void {
+      store.clear(name);
+    },
+    on(_event: 'selectionchange', listener: SelectionChangeListener): () => void {
+      hostListeners.add(listener);
+      return () => hostListeners.delete(listener);
+    },
+    off(_event: 'selectionchange', listener: SelectionChangeListener): void {
+      hostListeners.delete(listener);
+    },
     update(next: ChartSpec): void {
       updateTransition?.cancel();
       updateTransition = undefined;
+
+      // Seed any newly-introduced initial param values from the next spec.
+      for (const param of next.params ?? []) {
+        if (param.value !== undefined && store.get(param.name) == null) {
+          store.set(param.name, param.value ?? null);
+        }
+      }
 
       // Decide whether to cross-fade the marks layer: both the outgoing and
       // incoming chart must be canvas-mark kinds, motion must be enabled, and
@@ -306,6 +438,8 @@ export function render(target: HTMLElement | string, spec: ChartSpec): ChartInst
     },
     destroy(): void {
       destroyed = true;
+      unsubscribe();
+      hostListeners.clear();
       entrance?.cancel();
       updateTransition?.cancel();
       observer?.disconnect();

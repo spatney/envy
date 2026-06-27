@@ -8,8 +8,11 @@ One chart is one JSON object. Hand the engine a declarative, JSON-serializable
 scales, ticks, color, shapes, the pivot engine, and the renderer are all hand-written
 (no D3/charting dependencies).
 
+> **Not on npm yet** — install straight from GitHub. The engine is then importable
+> under the bare name **`envy`** (swap `envy` for `@envy/core` in the snippets below):
+
 ```bash
-npm install @envy/core
+npm install github:spatney/envy#v0.3.0
 ```
 
 ```ts

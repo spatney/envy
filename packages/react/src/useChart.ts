@@ -1,9 +1,24 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { render, type ChartInstance, type ChartSpec } from '@envy/core';
+import {
+  render,
+  type ChartInstance,
+  type ChartSpec,
+  type SelectionChangeListener,
+  type SelectionStore,
+} from '@envy/core';
 
 export interface UseChartOptions {
   /** Called with the live instance after each mount and update. */
   onReady?: (instance: ChartInstance) => void;
+  /**
+   * A shared selection bus. Pass the same store to several charts (or a
+   * dashboard) to link them — cross-highlight / cross-filter. Should be stable
+   * across renders (e.g. `useMemo(() => createSelectionStore(), [])`); changing
+   * its identity remounts the chart.
+   */
+  store?: SelectionStore;
+  /** Called whenever any selection this chart is bound to changes. */
+  onSelectionChange?: SelectionChangeListener;
 }
 
 /**
@@ -31,22 +46,34 @@ export function useChart<T extends HTMLElement = HTMLDivElement>(
   specRef.current = spec;
   const onReadyRef = useRef(options.onReady);
   onReadyRef.current = options.onReady;
+  const onSelectionChangeRef = useRef(options.onSelectionChange);
+  onSelectionChangeRef.current = options.onSelectionChange;
+  const storeRef = useRef(options.store);
+  storeRef.current = options.store;
   const skipNextUpdate = useRef(true);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const instance = render(el, specRef.current);
+    const instance = render(
+      el,
+      specRef.current,
+      storeRef.current ? { store: storeRef.current } : undefined,
+    );
     instanceRef.current = instance;
+    const offSelection = instance.on('selectionchange', (name, value) =>
+      onSelectionChangeRef.current?.(name, value),
+    );
     // The update effect runs once right after this on mount; skip that pass so
     // we don't redundantly re-render the freshly created chart.
     skipNextUpdate.current = true;
     onReadyRef.current?.(instance);
     return () => {
+      offSelection();
       instance.destroy();
       instanceRef.current = null;
     };
-  }, []);
+  }, [options.store]);
 
   useEffect(() => {
     if (skipNextUpdate.current) {

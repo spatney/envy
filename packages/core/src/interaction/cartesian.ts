@@ -16,6 +16,7 @@ import { accessor, toKey, toNumber } from '../util/data';
 import { formatValue } from '../format';
 import { withAlpha } from '../color';
 import type { Hover, InteractionModel, TooltipRow } from './types';
+import type { SelectionValue } from '../spec/selection';
 
 const HIT_RADIUS = 26; // scatter nearest-point pickup radius (px)
 
@@ -93,9 +94,7 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
   if (stops.length === 0) return null;
   const multi = series.length > 1;
 
-  const hitTest = (px: number, py: number): Hover | null => {
-    if (!inside(plot, px, py, 6)) return null;
-
+  const nearestStop = (px: number): Stop => {
     let best = stops[0];
     let bestDist = Math.abs(px - best.px);
     for (let i = 1; i < stops.length; i++) {
@@ -105,6 +104,13 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
         best = stops[i];
       }
     }
+    return best;
+  };
+
+  const hitTest = (px: number, py: number): Hover | null => {
+    if (!inside(plot, px, py, 6)) return null;
+
+    const best = nearestStop(px);
 
     const rows: TooltipRow[] = [];
     const dots: { py: number; color: string }[] = [];
@@ -175,7 +181,13 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
     };
   };
 
-  return { region: plot, hitTest };
+  const pick = (px: number, py: number): SelectionValue | null => {
+    if (!inside(plot, px, py, 6)) return null;
+    const best = nearestStop(px);
+    return { kind: 'point', fields: [xField], tuples: [[best.value]] };
+  };
+
+  return { region: plot, hitTest, pick };
 }
 
 /* ------------------------------------------------------------------ */
@@ -187,6 +199,7 @@ interface ScatterPoint {
   py: number;
   color: string;
   seriesLabel: string;
+  seriesValue: unknown;
   xVal: unknown;
   yVal: unknown;
   sizeVal?: unknown;
@@ -218,6 +231,7 @@ function scatterInteraction(model: CartesianModel): InteractionModel | null {
         py,
         color: s.color,
         seriesLabel: s.label,
+        seriesValue: s.value,
         xVal: xv,
         yVal: yv,
         sizeVal: readSize ? readSize(row) : undefined,
@@ -226,8 +240,8 @@ function scatterInteraction(model: CartesianModel): InteractionModel | null {
   }
   if (points.length === 0) return null;
 
-  const hitTest = (px: number, py: number): Hover | null => {
-    if (!inside(plot, px, py, HIT_RADIUS)) return null;
+  const nearest = (px: number, py: number): number => {
+    if (!inside(plot, px, py, HIT_RADIUS)) return -1;
     let best = -1;
     let bestSq = HIT_RADIUS * HIT_RADIUS;
     for (let i = 0; i < points.length; i++) {
@@ -239,6 +253,11 @@ function scatterInteraction(model: CartesianModel): InteractionModel | null {
         best = i;
       }
     }
+    return best;
+  };
+
+  const hitTest = (px: number, py: number): Hover | null => {
+    const best = nearest(px, py);
     if (best < 0) return null;
     const p = points[best];
 
@@ -276,5 +295,15 @@ function scatterInteraction(model: CartesianModel): InteractionModel | null {
     };
   };
 
-  return { region: plot, hitTest };
+  const pick = (px: number, py: number): SelectionValue | null => {
+    const best = nearest(px, py);
+    if (best < 0) return null;
+    const p = points[best];
+    if (model.seriesField) {
+      return { kind: 'point', fields: [model.seriesField], tuples: [[p.seriesValue]] };
+    }
+    return { kind: 'point', fields: [xField, yField], tuples: [[p.xVal, p.yVal]] };
+  };
+
+  return { region: plot, hitTest, pick };
 }

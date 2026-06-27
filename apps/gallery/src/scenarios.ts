@@ -11,6 +11,7 @@ import {
   type Datum,
 } from './data';
 import usStatesRaw from './us-states.albers.json';
+import { funnelData, slicerSpecs } from './interactive';
 
 const usStates = usStatesRaw as unknown as GeoFeatureCollection;
 const usStateNames = usStates.features
@@ -22,11 +23,19 @@ export interface Scenario {
   title: string;
   group: string;
   spec: () => ChartSpec;
+  /** One-line description shown on gallery cards. */
+  blurb?: string;
+  /** Extra search terms (title + group are always searched). */
+  keywords?: string;
+  /** Surface on the Home featured grid. */
+  featured?: boolean;
+  /** Span two columns in the gallery grid (wide charts: flows, maps, tables). */
+  wide?: boolean;
 }
 
 const REGIONS = ['West', 'East', 'North', 'South'];
 
-export const scenarios: Scenario[] = [
+const baseScenarios: Scenario[] = [
   // --- Line ---
   {
     id: 'line-single',
@@ -196,6 +205,45 @@ export const scenarios: Scenario[] = [
       title: 'Sales by category',
     }),
   },
+  {
+    id: 'donut-callouts',
+    title: 'Donut — callout labels',
+    group: 'Pie',
+    spec: () => ({
+      type: 'pie',
+      data: [
+        { browser: 'Chrome', share: 53.02 },
+        { browser: 'Safari', share: 18.61 },
+        { browser: 'Edge', share: 11.4 },
+        { browser: 'Firefox', share: 7.07 },
+        { browser: 'Samsung Internet', share: 4.12 },
+        { browser: 'Opera', share: 2.43 },
+        { browser: 'UC Browser', share: 1.74 },
+        { browser: 'Other', share: 1.61 },
+      ],
+      encoding: {
+        theta: { field: 'share', title: 'Share', format: '.1f' },
+        color: { field: 'browser' },
+      },
+      donut: 0.55,
+      labels: { placement: 'auto', content: 'category-percent', connector: 'slice', minShare: 0.01 },
+      legend: false,
+      title: 'Browser share',
+    }),
+  },
+  // --- Funnel ---
+  {
+    id: 'funnel-conversion',
+    title: 'Funnel — conversion',
+    group: 'Funnel',
+    spec: () => ({
+      type: 'funnel',
+      data: funnelData(),
+      encoding: { stage: { field: 'stage' }, value: { field: 'users', title: 'Users' } },
+      title: { text: 'Signup funnel', subtitle: 'Users retained at each stage' },
+      percent: 'first',
+    }),
+  },
   // --- Heatmap ---
   {
     id: 'heatmap-week',
@@ -246,14 +294,16 @@ export const scenarios: Scenario[] = [
       type: 'table',
       data: salesTable({ n: 200 }),
       columns: [
-        { field: 'order', title: 'Order' },
-        { field: 'date', title: 'Date', format: '%b %e, %Y' },
-        { field: 'region', title: 'Region' },
-        { field: 'category', title: 'Category' },
-        { field: 'units', title: 'Units', align: 'right' },
-        { field: 'sales', title: 'Sales', format: '$,.0f', align: 'right', conditionalFormat: { type: 'bar' } },
-        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', conditionalFormat: { type: 'colorScale' } },
+        { field: 'order', title: 'Order', group: 'Order', sortable: false },
+        { field: 'date', title: 'Date', format: '%b %e, %Y', group: 'Order' },
+        { field: 'region', title: 'Region', group: 'Customer' },
+        { field: 'category', title: 'Category', group: 'Customer' },
+        { field: 'units', title: 'Units', align: 'right', group: 'Performance', total: 'sum' },
+        { field: 'sales', title: 'Sales', format: ',.0f', prefix: '$', align: 'right', group: 'Performance', conditionalFormat: { type: 'bar', color: '#0d9488', showValue: true } },
+        { field: 'margin', title: 'Margin', format: '.1%', align: 'right', group: 'Performance', conditionalFormat: { type: 'icon', set: 'trafficLights' } },
       ],
+      density: 'compact',
+      totals: { label: 'Total' },
       sort: { field: 'sales', order: 'desc' },
       title: 'Orders',
     }),
@@ -392,7 +442,71 @@ export const scenarios: Scenario[] = [
       title: 'Population by state',
     }),
   },
+  // --- Matrix (pivot table) ---
+  {
+    id: 'matrix-region',
+    title: 'Matrix — pivot table',
+    group: 'Matrix',
+    spec: () => ({
+      type: 'matrix',
+      data: salesTable({ n: 120 }),
+      rows: ['region', 'segment'],
+      columns: ['category'],
+      values: [
+        { field: 'sales', op: 'sum', label: 'Sales', format: '$,.0f', conditionalFormat: { type: 'colorScale', scheme: 'teal' } },
+        { field: 'sales', op: 'sum', label: '% total', showAs: 'percentOfTotal', conditionalFormat: { type: 'bar', color: '#14b8a6' } },
+      ],
+      subtotals: true,
+      grandTotals: true,
+      density: 'compact',
+      columnSort: { by: 'value', valueIndex: 0, order: 'desc' },
+      title: { text: 'Sales pivot', subtitle: 'Region × segment × category' },
+    }),
+  },
+  // --- Slicer (interactive controls) ---
+  ...slicerSpecs().map((s) => ({ ...s, group: 'Slicer' })),
 ];
+
+/**
+ * Per-scenario presentation metadata for the gallery shell: a one-line `blurb`,
+ * extra `keywords` for search, whether to `feature` it on the Home grid, and
+ * whether it should span two columns (`wide`) because the mark needs the room.
+ */
+const META: Record<string, Omit<Partial<Scenario>, 'id' | 'title' | 'group' | 'spec'>> = {
+  'line-single': { blurb: 'A single metric over time — the everyday trend line.', keywords: 'trend time temporal' },
+  'line-multi': { blurb: 'Compare several series at once with an auto legend.', keywords: 'compare series legend', featured: true },
+  'line-smooth': { blurb: 'Monotone-curve interpolation with emphasized points.', keywords: 'curve interpolation smooth' },
+  'line-dense': { blurb: '50k points downsampled with LTTB — still crisp.', keywords: 'big data lttb downsample performance', wide: true },
+  'area-single': { blurb: 'A filled line for a single cumulative quantity.', keywords: 'fill cumulative' },
+  'area-stacked': { blurb: 'Part-to-whole over time, stacked by series.', keywords: 'stack part-to-whole composition', featured: true },
+  'bar-simple': { blurb: 'Compare values across a handful of categories.', keywords: 'category compare column' },
+  'bar-grouped': { blurb: 'Side-by-side bars for two-way category breakdowns.', keywords: 'grouped clustered category', wide: true },
+  'bar-stacked': { blurb: 'Stacked bars for composition within each category.', keywords: 'stack composition', featured: true },
+  'scatter-groups': { blurb: 'Correlation across groups with size + color.', keywords: 'correlation bubble size color', featured: true },
+  'pie-basic': { blurb: 'The classic part-to-whole — best for a few slices.', keywords: 'share proportion slice', featured: true },
+  'donut-basic': { blurb: 'A pie with a hole — room for a center label.', keywords: 'share proportion ring' },
+  'donut-callouts': { blurb: 'Many small slices stay readable with outside leader-line callouts.', keywords: 'donut pie labels callout leader line share percent', featured: true },
+  'funnel-conversion': { blurb: 'Stage-by-stage drop-off with retained %.', keywords: 'funnel conversion stages drop-off pipeline retention', featured: true },
+  'heatmap-week': { blurb: 'Density across two categories as a color grid.', keywords: 'grid density calendar color', featured: true, wide: true },
+  'kpi-basic': { blurb: 'A headline number with delta and sparkline.', keywords: 'metric number delta sparkline scorecard', featured: true },
+  'table-sales': { blurb: 'Sortable, formatted tabular detail.', keywords: 'grid rows columns detail', wide: true },
+  'matrix-region': { blurb: 'A cross-tab pivot with subtotals and grand totals.', keywords: 'pivot cross-tab crosstab subtotal aggregate', wide: true },
+  'box-basic': { blurb: 'Spread and outliers by group, Tukey-style.', keywords: 'distribution quartile whisker outlier' },
+  'box-grouped': { blurb: 'Box plots split into grouped series.', keywords: 'distribution grouped quartile' },
+  'box-long': { blurb: 'Many groups with long, rotated labels.', keywords: 'distribution many labels', wide: true },
+  'sankey-energy': { blurb: 'Flows between nodes sized by value.', keywords: 'flow nodes links energy alluvial', featured: true, wide: true },
+  'sankey-budget': { blurb: 'A P&L walk from revenue to net income.', keywords: 'flow finance budget waterfall', wide: true },
+  'choropleth-states': { blurb: 'Values shaded across US state regions.', keywords: 'map geo region states', featured: true, wide: true },
+  'choropleth-blues': { blurb: 'A sequential color ramp over the same map.', keywords: 'map geo sequential scheme', wide: true },
+  'slicer-dropdown': { blurb: 'Pick one or many values from a menu.', keywords: 'filter control select menu interactive' },
+  'slicer-search': { blurb: 'Type to filter on a text field.', keywords: 'filter control search text interactive' },
+  'slicer-list': { blurb: 'A checkbox list with select-all.', keywords: 'filter control checkbox list interactive' },
+  'slicer-range': { blurb: 'A dual-handle numeric min/max slider.', keywords: 'filter control range slider numeric interactive' },
+  'slicer-daterange': { blurb: 'A temporal range with relative presets.', keywords: 'filter control date time range interactive' },
+};
+
+/** The public catalog — base scenarios enriched with gallery presentation metadata. */
+export const scenarios: Scenario[] = baseScenarios.map((s) => ({ ...s, ...META[s.id] }));
 
 export function scenarioById(id: string): Scenario | undefined {
   return scenarios.find((s) => s.id === id);

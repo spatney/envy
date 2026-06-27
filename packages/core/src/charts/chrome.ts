@@ -42,6 +42,8 @@ interface TextSpec {
   transform?: string;
   whiteSpace?: 'nowrap' | 'normal';
   opacity?: number;
+  /** Render the text inside a rounded "pill" badge (solid fill + hairline border). */
+  pill?: { background: string; border?: string; radius?: number; padX?: number; padY?: number };
 }
 
 /** Append an absolutely-positioned text node to the overlay. Returns the node. */
@@ -57,6 +59,17 @@ export function addOverlayText(surface: Surface, tokens: ThemeTokens, o: TextSpe
   if (o.width != null) {
     el.style.width = `${o.width}px`;
     el.style.textAlign = o.align ?? 'left';
+  }
+  if (o.pill) {
+    // A shrink-to-fit badge: solid fill keeps the text readable on any colour
+    // beneath it, so labels look identical across every segment/fill.
+    el.style.display = 'inline-block';
+    el.style.lineHeight = '1';
+    el.style.boxSizing = 'border-box';
+    el.style.background = o.pill.background;
+    el.style.borderRadius = `${o.pill.radius ?? 999}px`;
+    el.style.padding = `${o.pill.padY ?? 2}px ${o.pill.padX ?? 7}px`;
+    if (o.pill.border) el.style.border = `1px solid ${o.pill.border}`;
   }
   if (o.transform) el.style.transform = o.transform;
   if (o.opacity != null) el.style.opacity = String(o.opacity);

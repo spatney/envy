@@ -1,0 +1,16 @@
+{
+  "type": "funnel",
+  "title": { "text": "Signup funnel", "subtitle": "Share retained vs. the top" },
+  "data": [
+    { "stage": "Visited", "users": 12480 },
+    { "stage": "Signed up", "users": 5210 },
+    { "stage": "Activated", "users": 3120 },
+    { "stage": "Subscribed", "users": 1430 },
+    { "stage": "Renewed", "users": 820 }
+  ],
+  "encoding": {
+    "stage": { "field": "stage" },
+    "value": { "field": "users" }
+  },
+  "percent": "first"
+}

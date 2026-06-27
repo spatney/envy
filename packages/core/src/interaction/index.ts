@@ -8,11 +8,33 @@
  */
 
 export type {
+  Emphasis,
   Hover,
   InteractionModel,
   TooltipContent,
   TooltipRow,
 } from './types';
-export { InteractionController } from './controller';
+export { InteractionController, type ControllerSelect } from './controller';
 export { Tooltip } from './tooltip';
 export { buildCartesianInteraction, tooltipEnabled } from './cartesian';
+export {
+  createSelectionStore,
+  type SelectionStore,
+  type SelectionListener,
+} from './store';
+export {
+  matchesValue,
+  makeMatcher,
+  filterRows,
+  isEmptyValue,
+  literalToValue,
+  isParamClause,
+} from './predicate';
+export {
+  applyPick,
+  resolveEmphasis,
+  resolveFilterValues,
+  dependentParams,
+  DIM_ALPHA,
+  type SelectConfig,
+} from './select';

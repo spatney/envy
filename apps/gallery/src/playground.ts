@@ -7,10 +7,12 @@
 
 import {
   render,
+  renderDashboard,
   validateSpec,
   type ChartSpec,
   type ChartInstance,
-  type ChartType,
+  type DashboardInstance,
+  type DashboardSpec,
 } from '@envy/core';
 import { presetGroups, presetById, presets, type Preset } from './presets';
 
@@ -39,8 +41,18 @@ function deepDate(v: unknown): unknown {
   return v;
 }
 
-function toEditable(spec: ChartSpec): string {
+function toEditable(spec: ChartSpec | DashboardSpec): string {
   return JSON.stringify(deepDate(spec), null, 2);
+}
+
+/**
+ * Seed the playground's editor with a spec before it next mounts — powers the
+ * detail page's "Edit in Playground" action. Stored in the same module-level
+ * slot the editor restores from, so navigating to the Playground route picks it
+ * up exactly as if the user had typed it.
+ */
+export function loadIntoPlayground(spec: ChartSpec | DashboardSpec): void {
+  savedText = toEditable(spec);
 }
 
 /** Perturb every numeric leaf inside `data` by ±~18% (keeps shape, animates). */
@@ -63,8 +75,8 @@ function shuffleData(spec: Record<string, unknown>): Record<string, unknown> {
 export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): PlaygroundHandle {
   mainEl.innerHTML = '';
 
-  let instance: ChartInstance | undefined;
-  let renderedType: ChartType | undefined;
+  let instance: ChartInstance | DashboardInstance | undefined;
+  let renderedType: string | undefined;
   let debounce: number | undefined;
   let disposed = false;
 
@@ -203,12 +215,16 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     })();
 
     try {
-      const type = parsed.type as ChartType | undefined;
+      const type = typeof parsed.type === 'string' ? parsed.type : undefined;
+      const isDash = type === 'dashboard';
       if (instance && renderedType === type) {
-        instance.update(previewSpec);
+        if (isDash) (instance as DashboardInstance).update(previewSpec as unknown as DashboardSpec);
+        else (instance as ChartInstance).update(previewSpec);
       } else {
         instance?.destroy();
-        instance = render(host, previewSpec);
+        instance = isDash
+          ? renderDashboard(host, previewSpec as unknown as DashboardSpec)
+          : render(host, previewSpec);
         renderedType = type;
       }
     } catch (e) {

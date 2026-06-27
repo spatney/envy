@@ -12,6 +12,11 @@ vi.mock('@envy/core', () => ({
     update: vi.fn(),
     resize: vi.fn(),
     destroy: vi.fn(),
+    on: vi.fn(() => () => {}),
+    off: vi.fn(),
+    getSelection: vi.fn(),
+    setSelection: vi.fn(),
+    clearSelection: vi.fn(),
   })),
 }));
 

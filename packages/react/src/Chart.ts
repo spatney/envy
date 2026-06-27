@@ -24,8 +24,8 @@ const FILL: CSSProperties = { width: '100%', height: '100%' };
  * </div>
  * ```
  */
-export function Chart({ spec, className, style, onReady }: ChartProps): ReactElement {
-  const ref = useChart<HTMLDivElement>(spec, { onReady });
+export function Chart({ spec, className, style, ...options }: ChartProps): ReactElement {
+  const ref = useChart<HTMLDivElement>(spec, options);
   return createElement('div', {
     ref,
     className,

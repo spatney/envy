@@ -9,6 +9,7 @@ import type { ThemeTokens } from '../theme';
 import type { Datum, Point, Rect, Size } from '../types';
 import { accessor, toNumber } from '../util/data';
 import { CHROME_PAD, drawTitleBlock } from './chrome';
+import type { RenderContext } from './index';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -51,7 +52,7 @@ function cardRectFor(surface: Surface, tokens: ThemeTokens, size: Size, spec: Kp
   };
 }
 
-function createCard(tokens: ThemeTokens, rect: Rect, hasSparkline: boolean): HTMLDivElement {
+function createCard(tokens: ThemeTokens, rect: Rect, hasSparkline: boolean, framed = false): HTMLDivElement {
   const card = document.createElement('div');
   const pad = tokens.spacing.lg;
   const sparkReserve = hasSparkline ? Math.min(44, Math.max(28, rect.height * 0.18)) + tokens.spacing.sm : 0;
@@ -61,10 +62,12 @@ function createCard(tokens: ThemeTokens, rect: Rect, hasSparkline: boolean): HTM
   card.style.width = `${rect.width}px`;
   card.style.height = `${rect.height}px`;
   card.style.boxSizing = 'border-box';
-  card.style.background = tokens.color.surface;
-  card.style.border = `1px solid ${tokens.color.border}`;
+  // When framed (e.g. inside a dashboard cell) the host already draws the card,
+  // so render flat to avoid a doubled border/background.
+  card.style.background = framed ? 'transparent' : tokens.color.surface;
+  card.style.border = framed ? 'none' : `1px solid ${tokens.color.border}`;
   card.style.borderRadius = `${tokens.radius.lg}px`;
-  card.style.padding = `${pad}px ${pad}px ${pad + sparkReserve}px`;
+  card.style.padding = framed ? `0 0 ${sparkReserve}px` : `${pad}px ${pad}px ${pad + sparkReserve}px`;
   card.style.display = 'flex';
   card.style.flexDirection = 'column';
   card.style.justifyContent = 'center';
@@ -219,11 +222,17 @@ function buildSparklineCanvas(
     return canvas;
   }
   const points: Point[] = values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
-  pen.polyline(points, { stroke: tokens.color.accent, strokeWidth: stroke });
+  pen.trendStroke(points, { stroke: tokens.color.accent, strokeWidth: stroke });
   return canvas;
 }
 
-export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
+export function drawKpi(
+  surface: Surface,
+  spec: ChartSpec,
+  tokens: ThemeTokens,
+  size: Size,
+  context?: RenderContext,
+): void {
   const kpi = spec as KpiSpec;
   const data = kpi.data ?? [];
   const value = resolveValue(kpi.value, data);
@@ -232,8 +241,9 @@ export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, 
   const sparkValues = sparkField ? sparklineValues(data, sparkField) : [];
   const hasSparkline = sparkValues.length > 0;
   const sketch = resolveSketch(spec);
+  const framed = context?.framed === true;
   const rect = cardRectFor(surface, tokens, size, kpi);
-  const card = createCard(tokens, rect, hasSparkline);
+  const card = createCard(tokens, rect, hasSparkline, framed);
   if (sketch) card.style.borderRadius = SKETCH_BORDER_RADIUS;
 
   if (kpi.label) {
@@ -284,7 +294,7 @@ export function drawKpi(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, 
 
   surface.overlay.appendChild(card);
   if (hasSparkline) {
-    const pad = tokens.spacing.lg;
+    const pad = framed ? 0 : tokens.spacing.lg;
     const sparkH = clamp(rect.height * 0.18, 24, 40);
     const sparkW = Math.max(0, rect.width - pad * 2);
     const node = sketch

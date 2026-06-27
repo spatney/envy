@@ -32,7 +32,9 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
     sort: 'asc',
   });
 
-  const leafValueColumns = flattenLeafValueColumns(result.columnLeaves, spec);
+  const sortedLeaves = sortColumnLeaves(result.columnLeaves, result.rows, spec);
+  const denominators = computeShowAsDenominators(result.rows, sortedLeaves, spec);
+  const leafValueColumns = flattenLeafValueColumns(sortedLeaves, spec);
   const columns: ViewColumn[] = [
     {
       key: '__row__',
@@ -49,10 +51,13 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
         title,
         align: 'right' as const,
         type: 'quantitative' as const,
-        format: valueDef.format,
+        format: valueDef.showAs && valueDef.showAs !== 'value' ? '.1%' : valueDef.format,
         width: 118,
         conditionalFormat: valueDef.conditionalFormat,
         isMeasure: true,
+        prefix: valueDef.showAs && valueDef.showAs !== 'value' ? undefined : valueDef.prefix,
+        suffix: valueDef.showAs && valueDef.showAs !== 'value' ? undefined : valueDef.suffix,
+        negativeStyle: valueDef.negativeStyle,
       };
     }),
   ];
@@ -64,8 +69,11 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
     return resolveConditionalDomain(
       column.conditionalFormat,
       result.rows
-        .filter((row) => row.isSubtotal !== true && row.isGrandTotal !== true)
-        .map((row) => row.cellsByColumnKey.get(colKey)?.values[valueIndex] ?? null),
+        .map((row, rowIndex) =>
+          row.isSubtotal === true || row.isGrandTotal === true
+            ? null
+            : displayMatrixValue(row.cellsByColumnKey.get(colKey)?.values[valueIndex] ?? null, rowIndex, colIndex - 1, denominators, spec),
+        ),
     );
   });
 
@@ -82,7 +90,8 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
       if (colIndex === 0) return { value: rowLabel(row), raw: null };
       const { leaf, valueIndex } = leafValueColumns[colIndex - 1];
       const value = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR))?.values[valueIndex] ?? null;
-      return { value, raw: value };
+      const display = displayMatrixValue(value, rowIndex, colIndex - 1, denominators, spec);
+      return { value: display, raw: display };
     },
     rowClass(rowIndex) {
       const row = result.rows[rowIndex];
@@ -95,7 +104,8 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
     stickyHeader: true,
     striped: false,
     conditionalDomains: bodyDomains,
-    headerRows: buildMatrixHeaderRows(result.columnTree, result.columnLeaves, spec),
+    headerRows: buildMatrixHeaderRows(result.columnTree, sortedLeaves, spec, sortedLeaves !== result.columnLeaves),
+    density: spec.density,
     sketch: resolveSketch(spec) != null,
   });
 }
@@ -120,11 +130,105 @@ function flattenLeafValueColumns(
   return out;
 }
 
+interface ShowAsDenominators {
+  rowTotals: number[][];
+  columnTotals: number[][];
+  grandTotals: number[];
+}
+
+export function computeShowAsValue(
+  value: number | null,
+  showAs: NonNullable<MatrixSpec['values'][number]['showAs']> | undefined,
+  denominator: number,
+): number | null {
+  if (value == null) return null;
+  if (!showAs || showAs === 'value') return value;
+  return denominator === 0 ? null : value / denominator;
+}
+
+function computeShowAsDenominators(
+  rows: readonly PivotFlatRow[],
+  leaves: readonly PivotHeaderNode[],
+  spec: MatrixSpec,
+): ShowAsDenominators {
+  const valueCount = spec.values.length;
+  const rowTotals = rows.map((row) => {
+    const totals = Array.from({ length: valueCount }, () => 0);
+    leaves.forEach((leaf) => {
+      const cell = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR));
+      for (let i = 0; i < valueCount; i += 1) totals[i] += cell?.values[i] ?? 0;
+    });
+    return totals;
+  });
+  const columnTotals = leaves.map((leaf) => {
+    const totals = Array.from({ length: valueCount }, () => 0);
+    rows.forEach((row) => {
+      if (row.isSubtotal || row.isGrandTotal) return;
+      const cell = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR));
+      for (let i = 0; i < valueCount; i += 1) totals[i] += cell?.values[i] ?? 0;
+    });
+    return totals;
+  });
+  const grandTotals = Array.from({ length: valueCount }, (_, valueIndex) =>
+    columnTotals.reduce((sum, totals) => sum + totals[valueIndex], 0),
+  );
+  return { rowTotals, columnTotals, grandTotals };
+}
+
+function displayMatrixValue(
+  value: number | null,
+  rowIndex: number,
+  leafValueIndex: number,
+  denominators: ShowAsDenominators,
+  spec: MatrixSpec,
+): number | null {
+  const valueIndex = leafValueIndex % spec.values.length;
+  const leafIndex = Math.floor(leafValueIndex / spec.values.length);
+  const showAs = spec.values[valueIndex].showAs;
+  if (!showAs || showAs === 'value') return value;
+  const denominator =
+    showAs === 'percentOfRow'
+      ? denominators.rowTotals[rowIndex]?.[valueIndex] ?? 0
+      : showAs === 'percentOfColumn'
+        ? denominators.columnTotals[leafIndex]?.[valueIndex] ?? 0
+        : denominators.grandTotals[valueIndex] ?? 0;
+  return computeShowAsValue(value, showAs, denominator);
+}
+
+function sortColumnLeaves(
+  leaves: readonly PivotHeaderNode[],
+  rows: readonly PivotFlatRow[],
+  spec: MatrixSpec,
+): readonly PivotHeaderNode[] {
+  const order = spec.columnSort?.order === 'desc' ? -1 : 1;
+  if (!spec.columnSort) return leaves;
+  const sorted = [...leaves];
+  if (spec.columnSort.by === 'label') {
+    return sorted.sort((left, right) => left.key.localeCompare(right.key, undefined, { numeric: true }) * order);
+  }
+  const valueIndex = spec.columnSort.valueIndex ?? 0;
+  return sorted.sort((left, right) => {
+    const leftTotal = columnTotal(rows, left, valueIndex);
+    const rightTotal = columnTotal(rows, right, valueIndex);
+    return (leftTotal === rightTotal ? left.key.localeCompare(right.key) : leftTotal - rightTotal) * order;
+  });
+}
+
+function columnTotal(rows: readonly PivotFlatRow[], leaf: PivotHeaderNode, valueIndex: number): number {
+  const key = leaf.path.join(PATH_SEPARATOR);
+  return rows.reduce((sum, row) => {
+    if (row.isSubtotal || row.isGrandTotal) return sum;
+    return sum + (row.cellsByColumnKey.get(key)?.values[valueIndex] ?? 0);
+  }, 0);
+}
+
 function buildMatrixHeaderRows(
   columnTree: readonly PivotHeaderNode[],
   columnLeaves: readonly PivotHeaderNode[],
   spec: MatrixSpec,
+  flatLeaves = false,
 ): HeaderCell[][] {
+  if (flatLeaves) return buildFlatMatrixHeaderRows(columnLeaves, spec);
   const groupRows = Math.max(1, maxDepth(columnTree) + 1);
   const showMeasureRow = spec.values.length > 1;
   const totalRows = groupRows + (showMeasureRow ? 1 : 0);
@@ -153,6 +257,36 @@ function buildMatrixHeaderRows(
   return rows;
 }
 
+
+function buildFlatMatrixHeaderRows(columnLeaves: readonly PivotHeaderNode[], spec: MatrixSpec): HeaderCell[][] {
+  const showMeasureRow = spec.values.length > 1;
+  const rows: HeaderCell[][] = [[], ...(showMeasureRow ? [[]] : [])];
+  rows[0].push({
+    title: spec.rows.join(' / ') || 'Rows',
+    rowSpan: showMeasureRow ? 2 : 1,
+    align: 'left',
+    colIndex: 0,
+  });
+  columnLeaves.forEach((leaf, leafIndex) => {
+    rows[0].push({
+      title: leaf.path.join(' / ') || leaf.key,
+      colSpan: spec.values.length,
+      align: 'center',
+      colIndex: showMeasureRow ? undefined : 1 + leafIndex,
+    });
+    if (showMeasureRow) {
+      spec.values.forEach((value, valueIndex) =>
+        rows[1].push({
+          title: value.label ?? value.field,
+          align: 'right',
+          colIndex: 1 + leafIndex * spec.values.length + valueIndex,
+        }),
+      );
+    }
+  });
+  return rows;
+}
+
 function appendHeaderNode(
   rows: HeaderCell[][],
   node: PivotHeaderNode,
@@ -177,4 +311,3 @@ function maxDepth(nodes: readonly PivotHeaderNode[]): number {
   }
   return depth;
 }
-

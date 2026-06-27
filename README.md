@@ -62,38 +62,31 @@ The same `box` chart in light, dark, and hand-drawn (`"sketch": true`) modes —
 
 ## Install
 
-From npm (recommended):
-
-```bash
-npm install @envy/core
-# React wrapper (optional):
-npm install @envy/react react
-```
-
-### Install from GitHub
-
-You can also install straight from the repo — handy for trying unreleased work or
-pinning an exact ref. Reference a **version tag** (or any branch/commit):
+> **Heads up:** Envy isn't on npm yet — install it **straight from GitHub**.
+> Reference a **version tag** (recommended) or any branch/commit.
 
 ```bash
 # the zero-dependency engine, importable as `envy`
-npm install github:spatney/envy#v0.1.0
-
-import { render } from 'envy';
+npm install github:spatney/envy#v0.3.0
 ```
 
 ```jsonc
 // package.json
 {
   "dependencies": {
-    "envy": "github:spatney/envy#v0.1.0"
+    "envy": "github:spatney/envy#v0.3.0"
   }
 }
 ```
 
-> The GitHub install exposes the core engine under the bare name **`envy`**. For
-> the scoped packages (`@envy/core`, `@envy/react`) and fine-grained versioning,
-> install from npm. Tags are published as `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`).
+```ts
+import { render, validateSpec } from 'envy';
+```
+
+> The GitHub install exposes the core engine under the bare name **`envy`**. The
+> quick-start and docs below use the scoped name **`@envy/core`** — the name Envy
+> will publish under once it lands on npm — so when installing from GitHub, import
+> from `envy` instead. Tags are published as `vMAJOR.MINOR.PATCH` (e.g. `v0.3.0`).
 
 ## Quick start
 

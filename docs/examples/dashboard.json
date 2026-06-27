@@ -1,0 +1,63 @@
+{
+  "type": "dashboard",
+  "title": "Regional sales — interactive",
+  "layout": { "cols": 12, "rowHeight": 116, "gap": 14 },
+  "data": [
+    { "region": "West", "month": "2024-01", "sales": 120 },
+    { "region": "West", "month": "2024-02", "sales": 135 },
+    { "region": "West", "month": "2024-03", "sales": 150 },
+    { "region": "West", "month": "2024-04", "sales": 145 },
+    { "region": "East", "month": "2024-01", "sales": 90 },
+    { "region": "East", "month": "2024-02", "sales": 100 },
+    { "region": "East", "month": "2024-03", "sales": 110 },
+    { "region": "East", "month": "2024-04", "sales": 105 },
+    { "region": "North", "month": "2024-01", "sales": 60 },
+    { "region": "North", "month": "2024-02", "sales": 72 },
+    { "region": "North", "month": "2024-03", "sales": 80 },
+    { "region": "North", "month": "2024-04", "sales": 76 }
+  ],
+  "views": [
+    {
+      "id": "region",
+      "spec": { "type": "dropdown", "field": "region", "title": "Region", "multiple": true },
+      "w": 3,
+      "h": 2
+    },
+    {
+      "id": "total",
+      "spec": { "type": "kpi", "title": "Total sales", "value": { "field": "sales", "aggregate": "sum" }, "format": "$,.0f" },
+      "w": 3,
+      "h": 2
+    },
+    {
+      "id": "byRegion",
+      "spec": {
+        "type": "bar",
+        "title": "Sales by region",
+        "data": [
+          { "region": "West", "sales": 550 },
+          { "region": "East", "sales": 405 },
+          { "region": "North", "sales": 288 }
+        ],
+        "encoding": { "x": { "field": "region" }, "y": { "field": "sales", "title": "Sales" } }
+      },
+      "w": 6,
+      "h": 3
+    },
+    {
+      "id": "trend",
+      "spec": {
+        "type": "line",
+        "title": "Monthly trend",
+        "encoding": {
+          "x": { "field": "month", "type": "temporal" },
+          "y": { "field": "sales", "title": "Sales" },
+          "series": { "field": "region" }
+        }
+      },
+      "w": 6,
+      "h": 3
+    }
+  ],
+  "interactions": "auto"
+}

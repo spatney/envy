@@ -59,14 +59,19 @@ To compare groups, add a `series` channel (line/area/bar) instead of widening:
 | Density across two categories | `heatmap` | `x`, `y`, `color` |
 | Distribution / spread by group | `box` | `x` category, `y` observations, optional `series` |
 | Flow between nodes / stages | `sankey` | `source`, `target`, `value` |
+| Conversion through stages | `funnel` | `stage`, `value` |
 | Values across a geography | `choropleth` | `geo`, `key`, `color` |
 | Headline metric | `kpi` | `value`, `delta`, `sparkline` |
-| Raw/detail records | `table` | `columns` |
-| Aggregated cross‑tab | `matrix` | `rows`, `columns`, `values` |
+| Raw/detail records | `table` | `columns` (+ optional totals, groups, bars/icons/rules) |
+| Aggregated cross‑tab | `matrix` | `rows`, `columns`, `values` (+ `showAs` percentages) |
+| Slice/filter a field | `dropdown` · `list` · `search` · `range` · `dateRange` | `field` (+ `param?`) |
+| Cross‑filtered page | `dashboard` | `views`, `interactions` |
 
 Rules of thumb: prefer `bar` over `pie` beyond ~6 slices; use `stack` for
 part‑to‑whole and grouped bars for direct comparison; reserve `pie` for a small
-number of shares.
+number of shares. For a donut with several small slices, set `labels` to a
+`PieLabels` object — `placement:'auto'` keeps tight labels readable by moving
+them outside onto leader lines.
 
 ## Recipes
 
@@ -108,11 +113,12 @@ number of shares.
   "columns": [
     { "field": "order", "title": "Order" },
     { "field": "date", "title": "Date", "format": "%b %e, %Y" },
-    { "field": "sales", "title": "Sales", "format": "$,.0f", "align": "right",
-      "conditionalFormat": { "type": "bar" } },
+    { "field": "sales", "title": "Sales", "format": ",.0f", "prefix": "$", "align": "right",
+      "group": "Revenue", "conditionalFormat": { "type": "bar", "showValue": true } },
     { "field": "margin", "title": "Margin", "format": ".1%", "align": "right",
-      "conditionalFormat": { "type": "colorScale" } }
+      "group": "Revenue", "conditionalFormat": { "type": "icon", "set": "trafficLights" } }
   ],
+  "totals": { "label": "Total" },
   "sort": { "field": "sales", "order": "desc" }
 }
 ```
@@ -125,7 +131,8 @@ number of shares.
   "data": [/* { region, segment, category, sales } rows */],
   "rows": ["region", "segment"],
   "columns": ["category"],
-  "values": [{ "field": "sales", "op": "sum", "format": "$,.0f" }],
+  "values": [{ "field": "sales", "op": "sum", "format": "$,.0f" },
+             { "field": "sales", "op": "sum", "label": "% total", "showAs": "percentOfTotal" }],
   "subtotals": true,
   "grandTotals": true
 }
@@ -181,34 +188,123 @@ number of shares.
 
 Copy‑paste starting points for **every** type live in [`docs/examples/`](./examples).
 
+## Interactivity (selection, highlight, filter)
+
+Visuals can react to one another. The unit of interactivity is a **selection** — a
+named, JSON‑serializable value a visual *publishes* (clicking a mark, brushing, or
+changing a slicer) that others *consume* as either a **highlight** (emphasize the
+matches, dim the rest) or a **filter** (subset the rows). Selections are plain data, so
+specs still round‑trip through `JSON.stringify`. Three optional fields on any spec:
+
+```jsonc
+{
+  // publish: clicking a bar writes a "point" selection to the param `pick`
+  "params": [{ "name": "pick", "select": { "type": "point", "fields": ["region"] } }],
+  // consume (emphasize): dim rows that don't match another visual's param
+  "highlight": { "param": "pick" },
+  // consume (subset): keep only rows matching every clause (param or literal)
+  "filter": [{ "param": "region" }, { "field": "sales", "range": [100, 500] }]
+}
+```
+
+- `params[].select.type` is `point` (discrete picks; toggles/multi‑selects) or
+  `interval` (a continuous range). `fields` defaults to the chart's key channel.
+- `highlight` references a param by name; pass an array to union several sources.
+- `filter` clauses are a `{ param }` (cross‑filter) or a literal predicate:
+  `{ field, equals }`, `{ field, oneOf }`, `{ field, range:[min,max] }`,
+  `{ field, contains }`. An empty/absent selection matches everything (`empty:'all'`).
+
+**Slicers** are first‑class visuals that publish a selection from a control:
+
+| Slicer | Emits | Notable fields |
+| --- | --- | --- |
+| `dropdown` | set (or single) | `multiple`, `placeholder` |
+| `list` | set (checkboxes) | `selectAll`, `searchThreshold` |
+| `search` | text (contains) | `placeholder`, `debounce` |
+| `range` | numeric range | `min`, `max`, `step`, `format` |
+| `dateRange` | temporal range | `presets`, `format` |
+
+Each reads one `field` and writes to `param` (default = the field name), so a slicer
+auto‑connects to any visual that filters/highlights on that param name. Options and
+bounds derive from the *unfiltered* data, so a slicer never hides its own choices.
+
+```jsonc
+{ "type": "dropdown", "field": "region", "multiple": true, "title": "Region" }
+```
+
 ## Building dashboards
 
-Envy renders **one chart per container**. To compose a dashboard, lay out a grid
-of elements and `render()` a spec into each — Envy charts are responsive by default
-and fill their container.
-
-```html
-<div class="grid">
-  <div id="kpi-sales"></div>
-  <div id="trend"></div>
-  <div id="by-region"></div>
-  <div id="orders"></div>
-</div>
-```
+A `dashboard` spec composes charts and slicers into one cross‑interacting page — a
+single JSON object, validated by `validateSpec`, rendered with `renderDashboard`.
 
 ```ts
-render('#kpi-sales', kpiSpec);
-render('#trend', lineSpec);
-render('#by-region', barSpec);
-render('#orders', tableSpec);
+import { renderDashboard, validateSpec } from '@envy/core';
+
+const dash = {
+  type: 'dashboard',
+  data: rows,                       // shared dataset; views inherit it
+  layout: {
+    cols: 12,
+    density: 'comfortable',
+    sections: [
+      { title: 'Overview', views: ['region', 'total'] },
+      { title: 'Sales detail', views: ['byRegion', 'trend'] },
+    ],
+  },
+  views: [
+    { id: 'region', title: 'Region filter', spec: { type: 'dropdown', field: 'region', multiple: true }, w: 3, h: 2 },
+    { id: 'total', title: 'Total sales', accent: '#14b8a6',
+      spec: { type: 'kpi', value: { field: 'sales', aggregate: 'sum' } }, w: 3, h: 2 },
+    { id: 'byRegion', spec: { type: 'bar', data: salesByRegionProduct,
+        encoding: { x: { field: 'region' }, y: { field: 'sales' }, series: { field: 'product' } }, stack: true }, w: 9, h: 3 },
+    { id: 'trend',  spec: { type: 'line',
+        encoding: { x: { field: 'month', type: 'temporal' }, y: { field: 'sales' }, series: { field: 'region' } } }, w: 9, h: 3 },
+  ],
+  interactions: 'auto',
+};
+
+validateSpec(dash);
+const d = renderDashboard('#app', dash);
+// d.getSelection(name?) · d.setSelection(name, value) · d.clearSelection(name?)
+// d.on('selectionchange', (name, value) => …) · d.update(next) · d.resize() · d.destroy()
 ```
 
-Tips:
-- Give each container an explicit size (CSS grid/flex). Charts track resizes via
-  `ResizeObserver`; you don't need to set `dimensions`.
-- Share one `theme` across all specs for a cohesive look (e.g. all `'dark'`, or all
-  with the same `accent`).
-- Keep the data per chart minimal — pre‑filter to what each visual needs.
+**Auto‑wiring** (`interactions:'auto'`, the default) follows Power BI semantics:
+
+- **Slicers filter the whole page** — every non‑slicer view whose **data contains the
+  field** is subset by the slicer (a KPI total, a table, a chart). A view that inherits
+  the dashboard's `data` carries every column, so it responds. A view with its own
+  pre‑aggregated `data` only responds to the dimensions it actually carries — a filter on
+  a column that view's data lacks is **ignored for that view** (it is *not* blanked). So
+  if you want a pre‑aggregated chart to react to a slicer, include that field in its
+  rows (e.g. aggregate by `region × product`, not `region` alone).
+- **Chart clicks cross‑highlight** — clicking a mark emphasizes the matching subset in
+  views that encode the same field (and always self‑highlights). Highlight is per‑mark,
+  so it only applies where the field is plotted.
+
+Opt out with `interactions:'none'`, or replace auto‑wiring with explicit links:
+
+```jsonc
+"interactions": [
+  { "source": "region", "target": "*", "as": "filter" },
+  { "source": "byRegion", "target": ["trend"], "as": "highlight", "fields": ["region"] }
+]
+```
+
+Layout is a responsive 12‑column grid; give a view `x`/`y`/`w`/`h` to place it, or omit
+them to auto‑flow. Use `layout.sections` to create stacked BI bands (unlisted views land
+in an implicit trailing section), `layout.preset:'kpi-first'|'sidebar'` for good default
+placement, and page chrome like `maxWidth`, `density`, and `padding`. Each view can add
+dashboard card chrome (`title`, `subtitle`, `accent`, `background`, `frame:false`,
+`padding:'none'`) and per-view `responsive:[{maxWidth,w,h,hidden}]` spans. The grid still
+reflows at `layout.breakpoints`, and compact slicers gather into a **navigator strip**
+unless `layout.navigators:'inline'`. Theme cascades to every view.
+
+> **Prefer the `dashboard` spec** for cross‑interaction. You can still hand‑place
+> independent `render()` calls in your own grid for a static dashboard — share one
+> `theme`, give each container a size (charts track resizes via `ResizeObserver`), and
+> pass a shared `store` (`createSelectionStore()`) to `render(el, spec, { store })` if
+> you want them to cross‑interact manually.
 
 ## Formatting & dates
 
@@ -255,8 +351,12 @@ charts. The output is deterministic, so the same spec always looks identical.
   values).
 - **Don't pre‑pivot** for charts — pass tidy rows and split with `series`. Use `matrix`
   when you actually want an aggregated cross‑tab.
-- **Aggregation:** `kpi.value`, `matrix.values[].op`, and `FieldDef.aggregate` do the
-  summing/averaging — you generally don't pre‑aggregate.
+- **Aggregation:** `kpi.value` and `matrix.values[].op` aggregate for you. Cartesian
+  charts (`bar`/`line`/…) plot rows **as‑is** — `FieldDef.aggregate` is ignored there,
+  so pre‑aggregate to one row per mark (or split with `series`, or use `matrix`).
+- **Tables/matrices:** conditional-format icons are Unicode glyphs (no icon fonts).
+  Matrix `showAs` percentages compute denominators from leaf cells even when
+  subtotals/grand totals are not shown.
 - Everything is plain JSON: no functions, no DOM nodes, no `Date` objects inside a spec.
 
 ## Lifecycle

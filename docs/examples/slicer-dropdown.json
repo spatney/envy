@@ -1,0 +1,13 @@
+{
+  "type": "dropdown",
+  "title": "Region",
+  "field": "region",
+  "multiple": true,
+  "placeholder": "All regions",
+  "data": [
+    { "region": "West", "sales": 550 },
+    { "region": "East", "sales": 405 },
+    { "region": "North", "sales": 288 },
+    { "region": "South", "sales": 332 }
+  ]
+}

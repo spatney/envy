@@ -6,6 +6,7 @@ import type { ChartSpec, TableSpec } from '../spec/types';
 import type { ThemeTokens } from '../theme';
 import type { Datum, FieldType, Size } from '../types';
 import { accessor, inferType, toNumber } from '../util/data';
+import { aggregateValues } from '../pivot';
 
 const ROW_HEIGHT = 30;
 const BUFFER_ROWS = 8;
@@ -36,8 +37,9 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
   let frame = 0;
   const renderWindow = (): void => {
     const scrollTop = host.scrollTop || 0;
-    const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_ROWS);
-    const visible = Math.ceil(Math.max(rect.height, host.clientHeight || rect.height) / ROW_HEIGHT) + BUFFER_ROWS * 2;
+    const rowHeight = densityRowHeight(spec.density);
+    const start = Math.max(0, Math.floor(scrollTop / rowHeight) - BUFFER_ROWS);
+    const visible = Math.ceil(Math.max(rect.height, host.clientHeight || rect.height) / rowHeight) + BUFFER_ROWS * 2;
     const end = Math.min(sortedRows.length, start + visible);
     buildTable({
       container: host,
@@ -62,7 +64,10 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
       },
       sortState: sortState ?? undefined,
       conditionalDomains: domains,
-      visibleRange: { start, end, rowHeight: ROW_HEIGHT },
+      headerRows: buildTableHeaderRows(columns),
+      footerRow: buildTotalsRow(sortedRows, columns, read, spec),
+      density: spec.density,
+      visibleRange: { start, end, rowHeight },
       sketch,
     });
   };
@@ -80,9 +85,10 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
 
 function resolveColumns(data: readonly Datum[], spec: TableSpec): ViewColumn[] {
   const declared = spec.columns;
-  const fields = declared ? declared.map((column) => column.field) : Object.keys(data[0] ?? {});
+  const declaredVisible = declared?.filter((column) => column.hidden !== true);
+  const fields = declaredVisible ? declaredVisible.map((column) => column.field) : Object.keys(data[0] ?? {});
   return fields.map((field, index) => {
-    const declaredColumn = declared?.[index];
+    const declaredColumn = declaredVisible?.[index];
     const type = declaredColumn?.type ?? inferColumnType(data, field);
     const align = declaredColumn?.align ?? (type === 'quantitative' ? 'right' : 'left');
     return {
@@ -94,8 +100,57 @@ function resolveColumns(data: readonly Datum[], spec: TableSpec): ViewColumn[] {
       width: declaredColumn?.width,
       conditionalFormat: declaredColumn?.conditionalFormat,
       isMeasure: type === 'quantitative',
+      prefix: declaredColumn?.prefix,
+      suffix: declaredColumn?.suffix,
+      negativeStyle: declaredColumn?.negativeStyle,
+      sortable: declaredColumn?.sortable,
+      wrap: declaredColumn?.wrap,
+      group: declaredColumn?.group,
     };
   });
+}
+
+function buildTableHeaderRows(columns: readonly ViewColumn[]) {
+  if (!columns.some((column) => column.group)) return undefined;
+  const groups = [];
+  let index = 0;
+  while (index < columns.length) {
+    const group = columns[index].group ?? '';
+    let span = 1;
+    while (index + span < columns.length && (columns[index + span].group ?? '') === group) span += 1;
+    groups.push({ title: group, colSpan: span, align: 'center' as const });
+    index += span;
+  }
+  return [
+    groups,
+    columns.map((column, colIndex) => ({
+      title: column.title,
+      align: column.align,
+      colIndex,
+    })),
+  ];
+}
+
+function buildTotalsRow(
+  rows: readonly Datum[],
+  columns: readonly ViewColumn[],
+  read: readonly ((row: Datum) => unknown)[],
+  spec: TableSpec,
+) {
+  if (!spec.totals) return undefined;
+  const label = typeof spec.totals === 'object' ? spec.totals.label ?? 'Total' : 'Total';
+  const labelIndex = Math.max(0, columns.findIndex((column) => !column.isMeasure));
+  const declaredVisible = spec.columns?.filter((column) => column.hidden !== true);
+  return {
+    cells: columns.map((column, colIndex) => {
+      if (colIndex === labelIndex) return { value: label, raw: null, label: true };
+      const declared = declaredVisible?.find((entry) => entry.field === column.key);
+      const op = declared?.total === false ? false : declared?.total ?? (column.isMeasure ? 'sum' : false);
+      if (!op) return { value: null, raw: null };
+      const value = aggregateValues(rows.map((row) => read[colIndex](row)), op);
+      return { value, raw: value };
+    }),
+  };
 }
 
 function inferColumnType(data: readonly Datum[], field: string): FieldType {
@@ -147,7 +202,12 @@ function numericRaw(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function densityRowHeight(density: TableSpec['density']): number {
+  if (density === 'comfortable') return 36;
+  if (density === 'compact') return 24;
+  return ROW_HEIGHT;
+}
+
 function requestFrame(callback: () => void): number {
   return typeof requestAnimationFrame === 'function' ? requestAnimationFrame(callback) : window.setTimeout(callback, 16);
 }
-

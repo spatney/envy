@@ -58,6 +58,7 @@ import { rgbaToCss } from '../color';
 import { formatNumber, formatValue, smartDate } from '../format';
 import { computeFrame, type Frame, type LegendItem } from '../layout';
 import { resolveSketch, type ResolvedSketch } from '../spec/sketch';
+import type { Emphasis } from '../interaction/types';
 
 export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec | BoxSpec;
 
@@ -117,6 +118,12 @@ export interface CartesianModel {
   colorOf(key: string): string;
   /** Hand-drawn render settings, or null for the default clean rendering. */
   sketch: ResolvedSketch | null;
+  /**
+   * Active highlight for this frame (matching rows full strength, the rest dimmed),
+   * or null when nothing is selected. Set externally by the runtime from the spec's
+   * `highlight` param + the shared store; `buildCartesianModel` leaves it null.
+   */
+  emphasis?: Emphasis | null;
 }
 
 const CURVES: Record<CurveType, Curve> = {

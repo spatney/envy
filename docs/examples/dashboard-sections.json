@@ -1,0 +1,135 @@
+{
+  "type": "dashboard",
+  "title": "Northwind revenue cockpit",
+  "subtitle": "Sections, card chrome, responsive spans, and auto-wired filters",
+  "data": [
+    { "month": "2024-01", "region": "West", "segment": "Enterprise", "sales": 128, "orders": 21 },
+    { "month": "2024-01", "region": "East", "segment": "SMB", "sales": 96, "orders": 18 },
+    { "month": "2024-02", "region": "West", "segment": "Enterprise", "sales": 142, "orders": 24 },
+    { "month": "2024-02", "region": "East", "segment": "SMB", "sales": 104, "orders": 20 },
+    { "month": "2024-03", "region": "West", "segment": "SMB", "sales": 118, "orders": 23 },
+    { "month": "2024-03", "region": "South", "segment": "Enterprise", "sales": 132, "orders": 19 },
+    { "month": "2024-04", "region": "West", "segment": "Enterprise", "sales": 156, "orders": 27 },
+    { "month": "2024-04", "region": "East", "segment": "Enterprise", "sales": 122, "orders": 22 },
+    { "month": "2024-05", "region": "North", "segment": "SMB", "sales": 88, "orders": 17 },
+    { "month": "2024-05", "region": "South", "segment": "SMB", "sales": 114, "orders": 21 },
+    { "month": "2024-06", "region": "North", "segment": "Enterprise", "sales": 136, "orders": 20 },
+    { "month": "2024-06", "region": "South", "segment": "Enterprise", "sales": 148, "orders": 25 }
+  ],
+  "layout": {
+    "cols": 12,
+    "density": "comfortable",
+    "maxWidth": 1180,
+    "padding": 18,
+    "preset": "kpi-first",
+    "sections": [
+      {
+        "id": "overview",
+        "title": "Overview",
+        "subtitle": "Executive scorecards for the selected slice",
+        "views": ["revenue", "orders", "markets"],
+        "background": "rgba(20, 184, 166, 0.08)",
+        "rowHeight": 92
+      },
+      {
+        "id": "sales",
+        "title": "Sales performance",
+        "subtitle": "Trends and mix by market",
+        "views": ["trend", "region-mix", "efficiency"]
+      }
+    ]
+  },
+  "views": [
+    {
+      "id": "region-filter",
+      "title": "Region",
+      "accent": "#14b8a6",
+      "spec": { "type": "dropdown", "field": "region", "multiple": true }
+    },
+    {
+      "id": "month-filter",
+      "title": "Month range",
+      "spec": { "type": "dateRange", "field": "month" }
+    },
+    {
+      "id": "revenue",
+      "title": "Revenue",
+      "subtitle": "Total sales",
+      "accent": "#14b8a6",
+      "w": 4,
+      "h": 2,
+      "spec": { "type": "kpi", "value": { "field": "sales", "aggregate": "sum" }, "format": ",.0f", "delta": 0.12 }
+    },
+    {
+      "id": "orders",
+      "title": "Orders",
+      "subtitle": "Total transactions",
+      "accent": "#0ea5e9",
+      "w": 4,
+      "h": 2,
+      "spec": { "type": "kpi", "value": { "field": "orders", "aggregate": "sum" }, "format": ",.0f", "delta": 0.06 }
+    },
+    {
+      "id": "markets",
+      "title": "Markets",
+      "subtitle": "Active regions",
+      "accent": "#f59e0b",
+      "w": 4,
+      "h": 2,
+      "spec": { "type": "kpi", "value": { "field": "region", "aggregate": "countDistinct" }, "format": ",.0f" }
+    },
+    {
+      "id": "trend",
+      "title": "Revenue trend",
+      "subtitle": "Monthly sales by region",
+      "accent": "#14b8a6",
+      "w": 8,
+      "h": 4,
+      "responsive": [{ "maxWidth": 760, "w": 12, "h": 4 }],
+      "spec": {
+        "type": "line",
+        "encoding": {
+          "x": { "field": "month", "type": "temporal" },
+          "y": { "field": "sales", "title": "Sales" },
+          "series": { "field": "region" }
+        }
+      }
+    },
+    {
+      "id": "region-mix",
+      "title": "Regional mix",
+      "subtitle": "Sales by segment",
+      "accent": "#8b5cf6",
+      "w": 4,
+      "h": 4,
+      "responsive": [{ "maxWidth": 760, "w": 12, "h": 4 }],
+      "spec": {
+        "type": "bar",
+        "encoding": {
+          "x": { "field": "region" },
+          "y": { "field": "sales", "title": "Sales" },
+          "series": { "field": "segment" }
+        },
+        "stack": true
+      }
+    },
+    {
+      "id": "efficiency",
+      "title": "Order efficiency",
+      "subtitle": "Orders vs. revenue",
+      "accent": "#0ea5e9",
+      "w": 12,
+      "h": 4,
+      "spec": {
+        "type": "scatter",
+        "encoding": {
+          "x": { "field": "orders", "title": "Orders" },
+          "y": { "field": "sales", "title": "Sales" },
+          "color": { "field": "segment" },
+          "size": { "field": "sales" }
+        }
+      }
+    }
+  ],
+  "interactions": "auto"
+}

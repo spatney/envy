@@ -1,0 +1,27 @@
+{
+  "type": "table",
+  "title": "Regional order health",
+  "data": [
+    { "account": "Northwind", "region": "West", "owner": "Avery", "orders": 42, "revenue": 128400, "profit": 18400, "margin": 0.143, "risk": "Low", "riskScore": 1 },
+    { "account": "Contoso", "region": "East", "owner": "Riley", "orders": 35, "revenue": 96400, "profit": -8200, "margin": -0.085, "risk": "High", "riskScore": 3 },
+    { "account": "Fabrikam", "region": "Central", "owner": "Morgan", "orders": 58, "revenue": 152900, "profit": 26700, "margin": 0.175, "risk": "Low", "riskScore": 1 },
+    { "account": "Adventure Works", "region": "South", "owner": "Jordan", "orders": 27, "revenue": 73400, "profit": 6100, "margin": 0.083, "risk": "Medium", "riskScore": 2 },
+    { "account": "Tailspin", "region": "West", "owner": "Casey", "orders": 64, "revenue": 188200, "profit": 39200, "margin": 0.208, "risk": "Low", "riskScore": 1 },
+    { "account": "Litware", "region": "East", "owner": "Quinn", "orders": 19, "revenue": 51200, "profit": -3100, "margin": -0.061, "risk": "High", "riskScore": 3 }
+  ],
+  "columns": [
+    { "field": "account", "title": "Account", "group": "Customer", "wrap": true, "sortable": false },
+    { "field": "region", "title": "Region", "group": "Customer" },
+    { "field": "owner", "title": "Owner", "group": "Customer" },
+    { "field": "orders", "title": "Orders", "align": "right", "group": "Volume", "total": "sum" },
+    { "field": "revenue", "title": "Revenue", "format": ",.0f", "prefix": "$", "align": "right", "group": "Financials", "total": "sum", "conditionalFormat": { "type": "bar", "color": "#0d9488", "showValue": true } },
+    { "field": "profit", "title": "Profit", "format": ",.0f", "prefix": "$", "align": "right", "group": "Financials", "total": "sum", "negativeStyle": "parens-red", "conditionalFormat": { "type": "bar", "color": "#16a34a", "negativeColor": "#dc2626", "baseline": "zero" } },
+    { "field": "margin", "title": "Margin", "format": ".1%", "align": "right", "group": "Financials", "conditionalFormat": { "type": "colorScale", "scheme": "teal", "diverging": true, "midpoint": 0.08 } },
+    { "field": "margin", "title": "Trend", "format": ".1%", "align": "right", "group": "Signals", "conditionalFormat": { "type": "icon", "set": "arrows", "position": "left" } },
+    { "field": "risk", "title": "Risk", "group": "Signals" },
+    { "field": "riskScore", "title": "Risk score", "align": "right", "group": "Signals", "conditionalFormat": { "type": "rules", "rules": [{ "when": "gte", "value": 3, "background": "#fee2e2", "color": "#991b1b", "weight": "bold", "icon": "!" }, { "when": "between", "value": 2, "to": 2, "background": "#fef3c7", "color": "#92400e" }] } }
+  ],
+  "density": "compact",
+  "totals": { "label": "Portfolio" },
+  "sort": { "field": "revenue", "order": "desc" }
+}
