@@ -5,7 +5,7 @@ import type { FillStyle } from '../rough';
 import type { FilterClause, HighlightConfig, SelectionParam } from './selection';
 
 /**
- * Envy declarative chart specs.
+ * Graphein declarative chart specs.
  *
  * One chart = one JSON-serializable `ChartSpec`. The shape is intentionally
  * Vega-Lite-flavored (data + encoding channels) so coding agents can generate

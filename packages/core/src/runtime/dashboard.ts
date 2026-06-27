@@ -108,7 +108,7 @@ export function resolveDashboardLayout(layout?: DashboardLayout): ResolvedLayout
 function resolveContainer(target: HTMLElement | string): HTMLElement {
   if (typeof target === 'string') {
     const el = document.querySelector(target);
-    if (!el) throw new Error(`Envy: no element matches selector "${target}"`);
+    if (!el) throw new Error(`Graphein: no element matches selector "${target}"`);
     return el as HTMLElement;
   }
   return target;
@@ -252,7 +252,7 @@ export function renderDashboard(
     }
 
     root = document.createElement('div');
-    root.className = 'envy-dashboard';
+    root.className = 'graphein-dashboard';
     Object.assign(root.style, {
       boxSizing: 'border-box',
       width: currentSpec.dimensions?.width ? `${currentSpec.dimensions.width}px` : '100%',
@@ -458,7 +458,7 @@ export function renderDashboard(
       let body: HTMLElement | undefined;
       if (plan.explicit) {
         const section = document.createElement('section');
-        section.className = 'envy-dashboard-section';
+        section.className = 'graphein-dashboard-section';
         if (plan.section?.id) section.setAttribute('data-section-id', plan.section.id);
         Object.assign(section.style, {
           display: 'flex',

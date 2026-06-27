@@ -1,13 +1,13 @@
-# Envy example specs
+# Graphein example specs
 
 Each file is a complete, runnable [`ChartSpec`](../spec-reference.md) (or
 [`DashboardSpec`](../spec-reference.md#dashboards)) with small inline data. Drop one
 into `render()` — or `renderDashboard()` for the dashboard example:
 
 ```ts
-import { render, renderDashboard } from '@envy/core';
-import line from 'envy/docs/examples/line.json';
-import dashboard from 'envy/docs/examples/dashboard.json';
+import { render, renderDashboard } from 'graphein';
+import line from 'graphein/docs/examples/line.json';
+import dashboard from 'graphein/docs/examples/dashboard.json';
 render('#app', line);
 renderDashboard('#app', dashboard);
 ```

@@ -22,7 +22,7 @@ export class Tooltip {
     tokens: ThemeTokens,
   ) {
     this.tokens = tokens;
-    this.el = createDiv('envy-tooltip');
+    this.el = createDiv('graphein-tooltip');
     this.applyShell();
     this.root.appendChild(this.el);
   }
@@ -65,7 +65,7 @@ export class Tooltip {
     this.el.replaceChildren();
 
     if (content.title) {
-      const head = createDiv('envy-tooltip-title', {
+      const head = createDiv('graphein-tooltip-title', {
         fontWeight: String(t.font.weight.bold),
         fontSize: `${t.font.size.base}px`,
         color: t.color.text,
@@ -76,7 +76,7 @@ export class Tooltip {
     }
 
     for (const row of content.rows) {
-      const line = createDiv('envy-tooltip-row', {
+      const line = createDiv('graphein-tooltip-row', {
         display: 'flex',
         alignItems: 'center',
         gap: `${t.spacing.sm}px`,
@@ -86,7 +86,7 @@ export class Tooltip {
       });
 
       if (row.swatch) {
-        const chip = createDiv('envy-tooltip-swatch', {
+        const chip = createDiv('graphein-tooltip-swatch', {
           flex: '0 0 auto',
           width: '9px',
           height: '9px',
@@ -96,7 +96,7 @@ export class Tooltip {
         line.appendChild(chip);
       }
 
-      const label = createDiv('envy-tooltip-label', {
+      const label = createDiv('graphein-tooltip-label', {
         flex: '1 1 auto',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -105,7 +105,7 @@ export class Tooltip {
       label.textContent = row.label;
       line.appendChild(label);
 
-      const value = createDiv('envy-tooltip-value', {
+      const value = createDiv('graphein-tooltip-value', {
         flex: '0 0 auto',
         marginLeft: 'auto',
         fontVariantNumeric: 'tabular-nums',

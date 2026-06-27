@@ -169,7 +169,7 @@ describe('validateSpec', () => {
   });
 
   it('assertValidSpec throws with a readable message', () => {
-    expect(() => assertValidSpec({ type: 'line' })).toThrow(/Invalid Envy chart spec/);
+    expect(() => assertValidSpec({ type: 'line' })).toThrow(/Invalid Graphein chart spec/);
   });
 
   describe('slicers', () => {

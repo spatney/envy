@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 // Mock the core runtime so we exercise the wrapper's lifecycle without needing
 // a real canvas / ResizeObserver (those are verified in the browser harness).
-vi.mock('@envy/core', () => ({
+vi.mock('graphein', () => ({
   render: vi.fn((el: HTMLElement, spec: unknown) => ({
     surface: { root: el },
     spec,
@@ -20,8 +20,8 @@ vi.mock('@envy/core', () => ({
   })),
 }));
 
-import { render as coreRender } from '@envy/core';
-import type { ChartSpec } from '@envy/core';
+import { render as coreRender } from 'graphein';
+import type { ChartSpec } from 'graphein';
 import { Chart } from './Chart';
 import { useChart } from './useChart';
 
@@ -49,7 +49,7 @@ function lastInstance() {
   };
 }
 
-describe('@envy/react <Chart>', () => {
+describe('@graphein/react <Chart>', () => {
   beforeEach(() => {
     mockRender.mockClear();
   });
@@ -123,7 +123,7 @@ describe('@envy/react <Chart>', () => {
   });
 });
 
-describe('@envy/react useChart', () => {
+describe('@graphein/react useChart', () => {
   beforeEach(() => {
     mockRender.mockClear();
   });

@@ -13,7 +13,7 @@ import {
   type ChartInstance,
   type DashboardInstance,
   type DashboardSpec,
-} from '@envy/core';
+} from 'graphein';
 import { presetGroups, presetById, presets, type Preset } from './presets';
 
 interface MountOpts {

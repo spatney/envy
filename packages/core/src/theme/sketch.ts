@@ -22,7 +22,7 @@ let injected = false;
 
 function injectViaStyle(dataUrl: string): void {
   const style = document.createElement('style');
-  style.setAttribute('data-envy-sketch-font', '');
+  style.setAttribute('data-graphein-sketch-font', '');
   style.textContent =
     `@font-face{font-family:'${SKETCH_FONT_NAME}';font-style:normal;font-weight:400;` +
     `font-display:swap;src:url("${dataUrl}") format("woff2");}`;

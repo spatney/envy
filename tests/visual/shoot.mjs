@@ -5,11 +5,11 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 const OUT =
-  process.env.ENVY_SHOTS ??
+  process.env.GRAPHEIN_SHOTS ??
   'C:/Users/sapatney/.copilot/session-state/50c7b4d8-37fe-4e29-abd7-0188f62da234/files/shots';
-const SKETCH = process.env.ENVY_SKETCH === '1' || process.env.ENVY_SKETCH === 'true';
+const SKETCH = process.env.GRAPHEIN_SKETCH === '1' || process.env.GRAPHEIN_SKETCH === 'true';
 
 mkdirSync(OUT, { recursive: true });
 
@@ -31,7 +31,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 // Keep screenshots deterministic — never capture mid-entrance-animation.
 await page.addInitScript(() => {
-  window.__ENVY_DISABLE_ANIM = true;
+  window.__GRAPHEIN_DISABLE_ANIM = true;
 });
 let count = 0;
 

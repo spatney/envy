@@ -1,6 +1,6 @@
 import type { Datum, FieldType } from '../types';
 
-/** Detect whether a string looks like a date Envy can parse. */
+/** Detect whether a string looks like a date Graphein can parse. */
 function looksTemporal(value: string): boolean {
   if (value.length < 4) return false;
   // ISO-ish dates / datetimes, or YYYY, YYYY-MM, YYYY-MM-DD

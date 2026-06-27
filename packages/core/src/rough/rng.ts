@@ -3,7 +3,7 @@
  *
  * Every wobble in a sketched chart comes from this PRNG, seeded from the spec so
  * a given chart renders pixel-identically on every paint — a hard requirement
- * for the screenshot harness (which waits on a stable `data-envy-ready`).
+ * for the screenshot harness (which waits on a stable `data-graphein-ready`).
  */
 
 /** A seeded pseudo-random source returning floats in [0, 1). */

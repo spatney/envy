@@ -1,4 +1,4 @@
-import type { ChartSpec, GeoFeatureCollection } from '@envy/core';
+import type { ChartSpec, GeoFeatureCollection } from 'graphein';
 import {
   boxDistributions,
   categorical,

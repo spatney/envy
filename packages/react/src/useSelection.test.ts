@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { SelectionStore, SelectionValue } from '@envy/core';
+import type { SelectionStore, SelectionValue } from 'graphein';
 import { useSelection } from './useSelection';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -30,7 +30,7 @@ function fakeStore(): SelectionStore {
   };
 }
 
-describe('@envy/react useSelection', () => {
+describe('@graphein/react useSelection', () => {
   it('reflects store changes and publishes via the setter', () => {
     const store = fakeStore();
     let api: ReturnType<typeof useSelection> | undefined;

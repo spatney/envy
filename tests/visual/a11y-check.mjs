@@ -4,7 +4,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 
 // type: 'canvas' charts must expose a hidden data-table fallback;
 // 'dom' charts (table/matrix/kpi) must NOT (their data is already real DOM).
@@ -26,18 +26,18 @@ let failures = 0;
 for (const c of cases) {
   await page.goto(`${BASE}/?shot=${c.id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
   try {
-    await page.waitForSelector('[data-envy-ready="true"]', { timeout: 6000 });
+    await page.waitForSelector('[data-graphein-ready="true"]', { timeout: 6000 });
   } catch {
     console.log(`✗ ${c.id}: never signaled ready`);
     failures++;
     continue;
   }
 
-  const result = await page.$eval('.envy-root', (root) => {
-    const marks = root.querySelector('.envy-layer-marks');
-    const inter = root.querySelector('.envy-layer-interaction');
-    const fallback = root.querySelector('.envy-a11y table');
-    const visibleTable = root.querySelector('[role="table"], table:not(.envy-a11y table)');
+  const result = await page.$eval('.graphein-root', (root) => {
+    const marks = root.querySelector('.graphein-layer-marks');
+    const inter = root.querySelector('.graphein-layer-interaction');
+    const fallback = root.querySelector('.graphein-a11y table');
+    const visibleTable = root.querySelector('[role="table"], table:not(.graphein-a11y table)');
     return {
       role: root.getAttribute('role'),
       label: root.getAttribute('aria-label') || '',

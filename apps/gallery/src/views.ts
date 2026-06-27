@@ -7,7 +7,7 @@
  * only ever fill the content area, so navigating never rebuilds the whole page.
  */
 
-import { render, type ChartSpec, type DashboardSpec } from '@envy/core';
+import { render, type ChartSpec, type DashboardSpec } from 'graphein';
 import { scenarios, scenarioById, type Scenario } from './scenarios';
 import { dashboardDemo } from './interactive';
 
@@ -133,7 +133,7 @@ export function renderHome(content: HTMLElement, ctx: GalleryCtx): void {
     el(
       'p',
       'hero-sub',
-      'Envy turns a declarative <code>ChartSpec</code> into a Tableau-class visual — ' +
+      'Graphein turns a declarative <code>ChartSpec</code> into a Tableau-class visual — ' +
         'rendered on a fast, zero-dependency Canvas2D + DOM core. Shape your data, pick a ' +
         'type, validate, render. That\u2019s it.',
     ),
@@ -558,12 +558,12 @@ export function renderLearn(content: HTMLElement, ctx: GalleryCtx): void {
   content.appendChild(page);
 
   const head = el('div', 'reveal');
-  head.appendChild(el('h1', 'section-title', 'Learn Envy'));
+  head.appendChild(el('h1', 'section-title', 'Learn Graphein'));
   head.appendChild(
     el(
       'p',
       'learn-intro',
-      'Envy is built so an agent (or a human) can produce a great chart by emitting a single ' +
+      'Graphein is built so an agent (or a human) can produce a great chart by emitting a single ' +
         'JSON-serializable spec. Here\u2019s the whole mental model on one page.',
     ),
   );
@@ -629,7 +629,7 @@ render('#app', spec);`,
   concept({
     kicker: 'Data',
     title: 'Tidy tables, not pivots',
-    body: 'One row per observation, one column per variable. Don\u2019t pre-pivot — add a series channel to split groups, and Envy handles the rest.',
+    body: 'One row per observation, one column per variable. Don\u2019t pre-pivot — add a series channel to split groups, and Graphein handles the rest.',
     index: 1,
     chart: scenarioById('line-multi')?.spec(),
   });
@@ -687,7 +687,7 @@ render('#app', spec);`,
 function buildFooter(ctx: GalleryCtx): HTMLElement {
   const footer = el('footer', 'foot');
   footer.appendChild(
-    el('div', undefined, 'Built with <code>@envy/core</code> — zero runtime dependencies.'),
+    el('div', undefined, 'Built with <code>graphein</code> — zero runtime dependencies.'),
   );
   const link = el('button', 'section-link', 'Explore the gallery →');
   link.onclick = () => ctx.navigate('gallery');

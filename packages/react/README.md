@@ -1,15 +1,17 @@
-# @envy/react
+# @graphein/react
 
-> The React wrapper for [Envy](https://github.com/spatney/envy) — a beautiful,
+> The React wrapper for [Graphein](https://github.com/spatney/graphein) — a beautiful,
 > high-performance, **agent-first** data visualization library.
 
-> **Not on npm yet.** The scoped `@envy/*` packages aren't published — for now,
-> install the engine from GitHub (see the [root README](https://github.com/spatney/envy#install))
-> and consume the React wrapper from the repo. `react` (18+) is a peer dependency.
+Install alongside `react` (18+, a peer dependency):
+
+```bash
+npm install @graphein/react react
+```
 
 ```tsx
-import { Chart } from '@envy/react';
-import type { ChartSpec } from '@envy/core';
+import { Chart } from '@graphein/react';
+import type { ChartSpec } from 'graphein';
 
 const spec: ChartSpec = {
   type: 'bar',
@@ -37,8 +39,8 @@ own element, use the `useChart(spec)` hook (returns a ref to attach).
 
 ## Documentation
 
-- [README](https://github.com/spatney/envy#readme)
-- [Agent Guide](https://github.com/spatney/envy/blob/main/docs/agent-guide.md)
-- [Spec Reference](https://github.com/spatney/envy/blob/main/docs/spec-reference.md)
+- [README](https://github.com/spatney/graphein#readme)
+- [Agent Guide](https://github.com/spatney/graphein/blob/main/docs/agent-guide.md)
+- [Spec Reference](https://github.com/spatney/graphein/blob/main/docs/spec-reference.md)
 
 MIT © Sachin Patney

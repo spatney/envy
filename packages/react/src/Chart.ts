@@ -1,9 +1,9 @@
 import { createElement, type CSSProperties, type ReactElement } from 'react';
-import type { ChartSpec } from '@envy/core';
+import type { ChartSpec } from 'graphein';
 import { useChart, type UseChartOptions } from './useChart';
 
 export interface ChartProps extends UseChartOptions {
-  /** The Envy chart spec to render. */
+  /** The Graphein chart spec to render. */
   spec: ChartSpec;
   className?: string;
   style?: CSSProperties;
@@ -12,7 +12,7 @@ export interface ChartProps extends UseChartOptions {
 const FILL: CSSProperties = { width: '100%', height: '100%' };
 
 /**
- * Declarative React wrapper around the Envy core runtime.
+ * Declarative React wrapper around the Graphein core runtime.
  *
  * Renders a container `<div>` that fills its parent (override via `style`) and
  * draws `spec` into it. Pass a new `spec` to update; unmounting tears the chart

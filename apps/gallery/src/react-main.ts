@@ -1,15 +1,15 @@
 /**
- * Real-browser smoke test page for @envy/react.
+ * Real-browser smoke test page for @graphein/react.
  *
  * Mounts several `<Chart>` components (via createElement so the page needs no JSX
- * transform) to prove the React wrapper drives the real @envy/core runtime —
+ * transform) to prove the React wrapper drives the real graphein runtime —
  * canvas marks, DOM overlay, and the virtualized table — in an actual browser.
  * Signals `data-shot-ready` once mounted for the Playwright harness.
  */
 import { createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Chart } from '@envy/react';
-import type { ChartSpec } from '@envy/core';
+import { Chart } from '@graphein/react';
+import type { ChartSpec } from 'graphein';
 
 const lineSpec: ChartSpec = {
   type: 'line',

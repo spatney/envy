@@ -4,7 +4,7 @@ import { interpolateOklab, type Interpolator } from './interpolate';
 
 /** A vibrant, accessible categorical palette (matches the default theme). */
 const CATEGORICAL: Record<string, string[]> = {
-  envy: [
+  graphein: [
     '#3b82f6',
     '#14b8a6',
     '#f59e0b',
@@ -18,14 +18,14 @@ const CATEGORICAL: Record<string, string[]> = {
   ],
 };
 
-/** Get a categorical palette by name (defaults to the 'envy' palette). */
-export function categorical(name = 'envy'): string[] {
-  return [...(CATEGORICAL[name] ?? CATEGORICAL.envy)];
+/** Get a categorical palette by name (defaults to the 'graphein' palette). */
+export function categorical(name = 'graphein'): string[] {
+  return [...(CATEGORICAL[name] ?? CATEGORICAL.graphein)];
 }
 
 const must = (hex: string): RGBA => {
   const c = parseColor(hex);
-  if (!c) throw new Error(`Envy: invalid palette color ${hex}`);
+  if (!c) throw new Error(`Graphein: invalid palette color ${hex}`);
   return c;
 };
 

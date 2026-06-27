@@ -1,5 +1,5 @@
 /**
- * Shared primitive types used across Envy core.
+ * Shared primitive types used across Graphein core.
  *
  * These are intentionally tiny and dependency-free so every module
  * (scales, shapes, layout, charts, tables) can share a common vocabulary.
@@ -36,7 +36,7 @@ export interface Insets {
 /** A single data record (row). Agent-supplied data is an array of these. */
 export type Datum = Record<string, unknown>;
 
-/** Primitive field value types Envy understands. */
+/** Primitive field value types Graphein understands. */
 export type FieldValue = number | string | boolean | Date | null | undefined;
 
 /**

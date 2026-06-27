@@ -1,5 +1,5 @@
 /**
- * Envy design tokens.
+ * Graphein design tokens.
  *
  * Flat, modern aesthetic: solid fills, minimal shadows, restrained radii, and a
  * teal accent. Two built-in themes (light/dark). Token values are literals so

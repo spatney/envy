@@ -1,5 +1,5 @@
 /**
- * @envy/react — a thin React wrapper around the `@envy/core` runtime.
+ * @graphein/react — a thin React wrapper around the `graphein` runtime.
  *
  * `<Chart spec={…} />` for a single chart or `<Dashboard spec={…} />` for a
  * cross-interacting page; the `useChart` / `useDashboard` hooks give headless
@@ -11,7 +11,7 @@ export { useChart, type UseChartOptions } from './useChart';
 export { Dashboard, type DashboardProps } from './Dashboard';
 export { useDashboard, type UseDashboardOptions } from './useDashboard';
 export { useSelection, type SelectionSource } from './useSelection';
-export { createSelectionStore } from '@envy/core';
+export { createSelectionStore } from 'graphein';
 export type {
   ChartSpec,
   ChartInstance,
@@ -20,6 +20,6 @@ export type {
   SelectionStore,
   SelectionValue,
   SelectionChangeListener,
-} from '@envy/core';
+} from 'graphein';
 
 export const VERSION = '0.0.0';

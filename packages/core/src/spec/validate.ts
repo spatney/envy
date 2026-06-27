@@ -754,7 +754,7 @@ export function assertValidSpec(spec: unknown): ChartSpec {
   const { valid, errors } = validateSpec(spec);
   if (!valid) {
     const detail = errors.map((e) => `  - ${e.path || '(root)'}: ${e.message}`).join('\n');
-    throw new Error(`Invalid Envy chart spec:\n${detail}`);
+    throw new Error(`Invalid Graphein chart spec:\n${detail}`);
   }
   return spec as ChartSpec;
 }

@@ -1,5 +1,5 @@
 /**
- * @envy/core rough engine — a tiny, dependency-free hand-drawn renderer used by
+ * graphein rough engine — a tiny, dependency-free hand-drawn renderer used by
  * the "sketch" chart style. Public surface: the `RoughPen`, its factory, the
  * style/options types, and the PRNG helpers used to derive deterministic seeds.
  */

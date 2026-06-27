@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { SelectionStore, SelectionValue } from '@envy/core';
+import type { SelectionStore, SelectionValue } from 'graphein';
 
 /** Anything that exposes a selection bus: a store, or a chart/dashboard instance. */
 export type SelectionSource =

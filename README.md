@@ -1,8 +1,8 @@
-# Envy
+# Graphein
 
 > A beautiful, high-performance, **agent-first** data visualization library.
 
-Envy is a from-scratch (zero runtime dependency) visualization toolkit designed so that
+Graphein is a from-scratch (zero runtime dependency) visualization toolkit designed so that
 **coding agents** can assemble stunning dashboards and reports from declarative,
 JSON-serializable chart specs. Think Tableau-class visuals with a tiny, fast, hybrid
 Canvas2D + DOM rendering core.
@@ -19,7 +19,7 @@ Canvas2D + DOM rendering core.
 
 ## Gallery
 
-A quick tour of what Envy renders — **every image below is a single declarative `ChartSpec`.**
+A quick tour of what Graphein renders — **every image below is a single declarative `ChartSpec`.**
 Explore them live, resize them, and tweak the JSON in the Playground with `npm run gallery`.
 
 <table>
@@ -62,36 +62,29 @@ The same `box` chart in light, dark, and hand-drawn (`"sketch": true`) modes —
 
 ## Install
 
-> **Heads up:** Envy isn't on npm yet — install it **straight from GitHub**.
-> Reference a **version tag** (recommended) or any branch/commit.
-
 ```bash
-# the zero-dependency engine, importable as `envy`
-npm install github:spatney/envy#v0.3.0
-```
-
-```jsonc
-// package.json
-{
-  "dependencies": {
-    "envy": "github:spatney/envy#v0.3.0"
-  }
-}
+# the zero-dependency core engine
+npm install graphein
 ```
 
 ```ts
-import { render, validateSpec } from 'envy';
+import { render, validateSpec } from 'graphein';
 ```
 
-> The GitHub install exposes the core engine under the bare name **`envy`**. The
-> quick-start and docs below use the scoped name **`@envy/core`** — the name Envy
-> will publish under once it lands on npm — so when installing from GitHub, import
-> from `envy` instead. Tags are published as `vMAJOR.MINOR.PATCH` (e.g. `v0.3.0`).
+Using React? Install the wrapper alongside `react`:
+
+```bash
+npm install @graphein/react react
+```
+
+```tsx
+import { Chart } from '@graphein/react';
+```
 
 ## Quick start
 
 ```ts
-import { render } from '@envy/core';
+import { render } from 'graphein';
 
 const chart = render('#app', {
   type: 'line',
@@ -119,7 +112,7 @@ chart.destroy();         // tear down
 ### React
 
 ```tsx
-import { Chart } from '@envy/react';
+import { Chart } from '@graphein/react';
 
 function Dashboard({ spec }) {
   return (
@@ -176,16 +169,16 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
   then charts draw into the plot rect. Hi-DPI aware, single batched redraw.
 - **Interaction** — hover tooltips, crosshair, focus highlight, and slice/cell emphasis
   paint on a separate interaction canvas, so hovering never triggers a full mark redraw.
-- **Ready signal** — when a render settles, Envy sets `data-envy-ready="true"` on the
-  surface root and increments `window.__ENVY_READY`, so automation can wait
+- **Ready signal** — when a render settles, Graphein sets `data-graphein-ready="true"` on the
+  surface root and increments `window.__GRAPHEIN_READY`, so automation can wait
   deterministically.
 
 ## Packages
 
 | Package | Description | Status |
 | --- | --- | --- |
-| `@envy/core` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
-| `@envy/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
+| `graphein` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
+| `@graphein/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
 | `apps/gallery` | Vite gallery + screenshot harness for visual iteration. | ✅ (dev) |
 
 ## Development

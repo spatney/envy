@@ -1,17 +1,17 @@
 # AGENTS.md
 
-Instructions for AI/coding agents working with **Envy** — an agent-first data
-visualization library. Envy is designed so you can produce great charts by emitting
+Instructions for AI/coding agents working with **Graphein** — an agent-first data
+visualization library. Graphein is designed so you can produce great charts by emitting
 a single JSON object. This file is the quick orientation; the deep reference lives in
 [`docs/agent-guide.md`](./docs/agent-guide.md) and [`docs/spec-reference.md`](./docs/spec-reference.md).
 
-## Using Envy to build a chart
+## Using Graphein to build a chart
 
 **The one rule:** emit a single JSON-serializable `ChartSpec` with a `type`, a flat
 `data` array, and (for cartesian charts) an `encoding` mapping columns to channels.
 
 ```ts
-import { render, validateSpec } from '@envy/core';
+import { render, validateSpec } from 'graphein';
 
 const spec = {
   type: 'line',
@@ -36,7 +36,7 @@ const chart = render('#app', spec);
 2. **Pick the type** (see the table below), set the `encoding`, add a `title`.
 3. **`validateSpec(spec)`** and fix every `error` (warnings are advisory). Validation
    is pure and dependency-free — always run it on generated specs.
-4. `render(container, spec)` (or `<Chart spec={…} />` from `@envy/react`).
+4. `render(container, spec)` (or `<Chart spec={…} />` from `@graphein/react`).
 
 ### Chart types at a glance
 
@@ -78,7 +78,7 @@ page — a slicer filters every view whose data carries its field; clicking a ch
 cross-highlights charts that share the field. Render with `renderDashboard(container, spec)`.
 
 ```ts
-import { renderDashboard, validateSpec } from '@envy/core';
+import { renderDashboard, validateSpec } from 'graphein';
 const dash = {
   type: 'dashboard',
   data: rows,
@@ -128,9 +128,9 @@ highlight) you can copy.
 
 ## Contributing to this repo
 
-- Monorepo via npm workspaces: `@envy/core` (engine, zero deps), `@envy/react`
+- Monorepo via npm workspaces: `graphein` (engine, zero deps), `@graphein/react`
   (wrapper), `apps/gallery` (Vite harness), `tests/visual` (Playwright shots).
 - `npm install` · `npm run build` · `npm test` · `npm run typecheck` · `npm run lint`.
 - The core engine is **dependency-free** — do not add runtime dependencies to
-  `@envy/core`. Keep exports explicit and tree-shakeable.
+  `graphein`. Keep exports explicit and tree-shakeable.
 - Validate visual changes against the gallery/screenshot harness, not by assumption.

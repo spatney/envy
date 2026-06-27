@@ -5,7 +5,7 @@
  * specs stay self-contained and copy-pasteable.
  */
 
-import type { ChartSpec, DashboardSpec } from '@envy/core';
+import type { ChartSpec, DashboardSpec } from 'graphein';
 import { rng, type Datum } from './data';
 
 const REGIONS = ['West', 'East', 'North', 'South'];

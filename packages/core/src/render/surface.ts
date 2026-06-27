@@ -26,7 +26,7 @@ export class Surface {
 
   constructor(container: HTMLElement) {
     this.container = container;
-    this.root = createDiv('envy-root', {
+    this.root = createDiv('graphein-root', {
       position: 'relative',
       width: '100%',
       height: '100%',
@@ -34,14 +34,14 @@ export class Surface {
     });
 
     const marksCanvas = document.createElement('canvas');
-    marksCanvas.className = 'envy-layer-marks';
+    marksCanvas.className = 'graphein-layer-marks';
     setStyle(marksCanvas, { ...fillParentStyle });
 
     const interactionCanvas = document.createElement('canvas');
-    interactionCanvas.className = 'envy-layer-interaction';
+    interactionCanvas.className = 'graphein-layer-interaction';
     setStyle(interactionCanvas, { ...fillParentStyle, pointerEvents: 'none' });
 
-    this.overlay = createDiv('envy-layer-overlay', {
+    this.overlay = createDiv('graphein-layer-overlay', {
       ...fillParentStyle,
       width: '100%',
       height: '100%',
@@ -50,7 +50,7 @@ export class Surface {
 
     // Off-screen (visually hidden) host for the screen-reader data-table
     // fallback. Present to assistive tech, invisible on screen.
-    this.a11y = createDiv('envy-a11y', {
+    this.a11y = createDiv('graphein-a11y', {
       position: 'absolute',
       width: '1px',
       height: '1px',

@@ -5,7 +5,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 const SCENARIOS = ['bar-grouped', 'line-multi', 'pie-basic', 'kpi-basic'];
 
 const browser = await chromium.launch();
@@ -16,14 +16,14 @@ async function capture(ctx, id, { disableAnim, reducedMotion }) {
   const page = await ctx.newPage({ deviceScaleFactor: 2 });
   if (reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((d) => {
-    window.__ENVY_DISABLE_ANIM = d;
+    window.__GRAPHEIN_DISABLE_ANIM = d;
   }, disableAnim);
   await page.setViewportSize({ width: 720, height: 460 });
   await page.goto(`${BASE}/?shot=${id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
-  await page.waitForSelector('.envy-root[data-envy-ready="true"]', { timeout: 8000 });
+  await page.waitForSelector('.graphein-root[data-graphein-ready="true"]', { timeout: 8000 });
   const out = await page.evaluate(() => {
-    const root = document.querySelector('.envy-root');
-    const marks = document.querySelector('.envy-layer-marks');
+    const root = document.querySelector('.graphein-root');
+    const marks = document.querySelector('.graphein-layer-marks');
     return {
       marks: marks ? marks.toDataURL() : '',
       opacity: root ? root.style.opacity : '(none)',

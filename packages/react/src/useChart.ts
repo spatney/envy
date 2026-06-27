@@ -5,7 +5,7 @@ import {
   type ChartSpec,
   type SelectionChangeListener,
   type SelectionStore,
-} from '@envy/core';
+} from 'graphein';
 
 export interface UseChartOptions {
   /** Called with the live instance after each mount and update. */
@@ -22,7 +22,7 @@ export interface UseChartOptions {
 }
 
 /**
- * Mount an Envy chart into a DOM node and keep it in sync with `spec`.
+ * Mount an Graphein chart into a DOM node and keep it in sync with `spec`.
  *
  * Returns a ref to attach to the container element. The chart is created on
  * mount, re-rendered via `instance.update()` whenever `spec` changes identity,

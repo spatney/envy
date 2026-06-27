@@ -56,7 +56,7 @@ export function ordinalColorScale(opts: {
 }): ColorScale<string> {
   const palette = (opts.palette ?? categorical()).map((c) => {
     const rgba = parseColor(c);
-    if (!rgba) throw new Error(`Envy: invalid palette color ${c}`);
+    if (!rgba) throw new Error(`Graphein: invalid palette color ${c}`);
     return rgba;
   });
   const index = new Map<string, number>();

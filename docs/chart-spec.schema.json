@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://envy.dev/chart-spec.schema.json",
-  "title": "Envy ChartSpec",
-  "description": "A single JSON-serializable Envy chart, slicer, or dashboard specification. Discriminated on `type`.",
+  "$id": "https://graphein.dev/chart-spec.schema.json",
+  "title": "Graphein ChartSpec",
+  "description": "A single JSON-serializable Graphein chart, slicer, or dashboard specification. Discriminated on `type`.",
   "type": "object",
   "required": ["type"],
   "oneOf": [

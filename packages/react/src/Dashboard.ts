@@ -1,9 +1,9 @@
 import { createElement, type CSSProperties, type ReactElement } from 'react';
-import type { DashboardSpec } from '@envy/core';
+import type { DashboardSpec } from 'graphein';
 import { useDashboard, type UseDashboardOptions } from './useDashboard';
 
 export interface DashboardProps extends UseDashboardOptions {
-  /** The Envy dashboard spec to render. */
+  /** The Graphein dashboard spec to render. */
   spec: DashboardSpec;
   className?: string;
   style?: CSSProperties;
@@ -12,7 +12,7 @@ export interface DashboardProps extends UseDashboardOptions {
 const FILL: CSSProperties = { width: '100%' };
 
 /**
- * Declarative React wrapper around the Envy dashboard runtime.
+ * Declarative React wrapper around the Graphein dashboard runtime.
  *
  * Renders a container `<div>` (full width by default; height comes from the
  * dashboard's grid rows) and draws `spec` into it. Pass a new `spec` to update;

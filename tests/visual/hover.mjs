@@ -5,9 +5,9 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 const OUT =
-  process.env.ENVY_SHOTS ??
+  process.env.GRAPHEIN_SHOTS ??
   'C:/Users/sapatney/.copilot/session-state/50c7b4d8-37fe-4e29-abd7-0188f62da234/files/shots';
 
 mkdirSync(OUT, { recursive: true });
@@ -22,7 +22,7 @@ const h = Number(process.argv[7] ?? '360');
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 await page.addInitScript(() => {
-  window.__ENVY_DISABLE_ANIM = true;
+  window.__GRAPHEIN_DISABLE_ANIM = true;
 });
 await page.setViewportSize({ width: w + 40, height: h + 40 });
 const url = `${BASE}/?shot=${id}&w=${w}&h=${h}&theme=${theme}`;

@@ -5,7 +5,7 @@
  * be dropped straight into the editor.
  */
 
-import type { ChartSpec, DashboardSpec, GeoFeatureCollection } from '@envy/core';
+import type { ChartSpec, DashboardSpec, GeoFeatureCollection } from 'graphein';
 import {
   boxDistributions,
   categorical,

@@ -3,8 +3,8 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
-const OUT = process.env.ENVY_SHOTS ??
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
+const OUT = process.env.GRAPHEIN_SHOTS ??
   'C:/Users/sapatney/.copilot/session-state/2003929f-cda2-4695-b063-05930979a0b6/files/shots';
 mkdirSync(OUT, { recursive: true });
 
@@ -30,7 +30,7 @@ const scenarios = [
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
-await page.addInitScript(() => { window.__ENVY_DISABLE_ANIM = true; });
+await page.addInitScript(() => { window.__GRAPHEIN_DISABLE_ANIM = true; });
 let count = 0;
 for (const theme of themes) {
   for (const id of scenarios) {

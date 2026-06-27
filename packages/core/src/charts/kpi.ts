@@ -147,7 +147,7 @@ function buildSparkline(
   }
   const areaD = `${lineD}L${width.toFixed(2)} ${height}L0 ${height}Z`;
 
-  const gradId = `envy-spark-${Math.random().toString(36).slice(2, 9)}`;
+  const gradId = `graphein-spark-${Math.random().toString(36).slice(2, 9)}`;
   const defs = document.createElementNS(SVG_NS, 'defs');
   const grad = document.createElementNS(SVG_NS, 'linearGradient');
   grad.setAttribute('id', gradId);

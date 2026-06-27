@@ -6,7 +6,7 @@ import {
   type ChartInstance,
   type DashboardInstance,
   type DashboardSpec,
-} from '@envy/core';
+} from 'graphein';
 import { scenarios, scenarioById, type Scenario } from './scenarios';
 import { mountPlayground, loadIntoPlayground, type PlaygroundHandle } from './playground';
 import { dashboardDemo } from './interactive';
@@ -20,10 +20,10 @@ import {
 } from './views';
 
 const DASHBOARD_ID = '__dashboard__';
-const REPO_URL = 'https://github.com/spatney/envy';
+const REPO_URL = 'https://github.com/spatney/graphein';
 
 /** Inline brand mark — an "E" built from data bars with a mint data node. */
-const ENVY_MARK_SVG =
+const GRAPHEIN_MARK_SVG =
   '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
   '<rect width="64" height="64" rx="15" fill="#0d9488"/>' +
   '<rect x="18" y="15.5" width="26" height="9" rx="4.5" fill="#fff"/>' +
@@ -56,8 +56,8 @@ async function renderShot(): Promise<void> {
   // Entrance animations would make screenshots non-deterministic; disable them
   // for the shot route by default (a test can opt in by pre-setting the flag).
   {
-    const g = window as unknown as { __ENVY_DISABLE_ANIM?: boolean };
-    if (g.__ENVY_DISABLE_ANIM === undefined) g.__ENVY_DISABLE_ANIM = true;
+    const g = window as unknown as { __GRAPHEIN_DISABLE_ANIM?: boolean };
+    if (g.__GRAPHEIN_DISABLE_ANIM === undefined) g.__GRAPHEIN_DISABLE_ANIM = true;
   }
   app.remove();
   const id = params.get('shot')!;
@@ -78,11 +78,11 @@ async function renderShot(): Promise<void> {
   if (id === DASHBOARD_ID) {
     host.style.height = 'auto';
     const dash = renderDashboard(host, { ...dashboardDemo(), theme: theme as 'light' | 'dark' });
-    (window as unknown as { __envyDashboard?: DashboardInstance }).__envyDashboard = dash;
+    (window as unknown as { __grapheinDashboard?: DashboardInstance }).__grapheinDashboard = dash;
   } else if (scenario) {
     const instance = render(host, withSize(scenario.spec(), w, h, theme, sketch));
     // Expose the instance so update()-transition tests can drive it.
-    (window as unknown as { __envyChart?: ChartInstance }).__envyChart = instance;
+    (window as unknown as { __grapheinChart?: ChartInstance }).__grapheinChart = instance;
   } else {
     host.textContent = `Unknown scenario: ${id}`;
   }
@@ -319,7 +319,7 @@ function buildShell(): void {
   const inner = el('div', 'nav-inner');
 
   const brand = el('button', 'brand');
-  brand.innerHTML = `<span class="brand-mark">${ENVY_MARK_SVG}</span><span class="brand-name">Envy</span>`;
+  brand.innerHTML = `<span class="brand-mark">${GRAPHEIN_MARK_SVG}</span><span class="brand-name">Graphein</span>`;
   brand.title = 'Home';
   brand.onclick = () => navigate('home');
   inner.appendChild(brand);

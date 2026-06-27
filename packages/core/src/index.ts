@@ -1,5 +1,5 @@
 /**
- * @envy/core — public entry point.
+ * graphein — public entry point.
  *
  * The barrel grows as modules land. Keep exports explicit and tree-shakeable.
  */

@@ -92,9 +92,9 @@ export interface ChartInstance {
 }
 
 declare global {
-  var __ENVY_READY: number | undefined;
+  var __GRAPHEIN_READY: number | undefined;
   // Global kill-switch for entrance animations (screenshot/automation harnesses).
-  var __ENVY_DISABLE_ANIM: boolean | undefined;
+  var __GRAPHEIN_DISABLE_ANIM: boolean | undefined;
 }
 
 /**
@@ -117,7 +117,7 @@ const CANVAS_MARK_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
 function resolveContainer(target: HTMLElement | string): HTMLElement {
   if (typeof target === 'string') {
     const el = document.querySelector(target);
-    if (!el) throw new Error(`Envy: no element matches selector "${target}"`);
+    if (!el) throw new Error(`Graphein: no element matches selector "${target}"`);
     return el as HTMLElement;
   }
   return target;
@@ -138,8 +138,8 @@ function resolveSketchTokens(spec: ChartSpec): ThemeTokens {
 }
 
 function signalReady(surface: Surface): void {
-  surface.root.setAttribute('data-envy-ready', 'true');
-  globalThis.__ENVY_READY = (globalThis.__ENVY_READY ?? 0) + 1;
+  surface.root.setAttribute('data-graphein-ready', 'true');
+  globalThis.__GRAPHEIN_READY = (globalThis.__GRAPHEIN_READY ?? 0) + 1;
 }
 
 function paintBackground(surface: Surface, tokens: ThemeTokens, override?: string): void {
@@ -202,7 +202,7 @@ export function render(
     lastDrawnW = size.width;
     lastDrawnH = size.height;
     surface.resize(size.width, size.height, getDevicePixelRatio());
-    surface.root.removeAttribute('data-envy-ready');
+    surface.root.removeAttribute('data-graphein-ready');
     surface.root.style.opacity = '';
     surface.root.style.transform = '';
     surface.clear();
@@ -210,7 +210,7 @@ export function render(
 
     const anim = resolveEntrance(currentSpec.animation, {
       reducedMotion: prefersReducedMotion(),
-      disabled: !animateEntrance || globalThis.__ENVY_DISABLE_ANIM === true,
+      disabled: !animateEntrance || globalThis.__GRAPHEIN_DISABLE_ANIM === true,
     });
 
     // Resolve interactivity for this frame: the rows after cross-filtering, and
@@ -414,7 +414,7 @@ export function render(
       const prevH = surface.height;
       const anim = resolveUpdate(next.animation, {
         reducedMotion: prefersReducedMotion(),
-        disabled: globalThis.__ENVY_DISABLE_ANIM === true,
+        disabled: globalThis.__GRAPHEIN_DISABLE_ANIM === true,
       });
       const wantFade =
         anim.enabled && CANVAS_MARK_TYPES.has(prevType) && CANVAS_MARK_TYPES.has(next.type);

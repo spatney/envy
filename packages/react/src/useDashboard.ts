@@ -5,7 +5,7 @@ import {
   type DashboardSpec,
   type SelectionChangeListener,
   type SelectionStore,
-} from '@envy/core';
+} from 'graphein';
 
 export interface UseDashboardOptions {
   /** Called with the live instance after each mount and update. */
@@ -21,7 +21,7 @@ export interface UseDashboardOptions {
 }
 
 /**
- * Mount an Envy dashboard into a DOM node and keep it in sync with `spec`.
+ * Mount an Graphein dashboard into a DOM node and keep it in sync with `spec`.
  *
  * Mirrors {@link useChart}: created on mount, updated in place when `spec`
  * changes identity, torn down on unmount, StrictMode-safe.

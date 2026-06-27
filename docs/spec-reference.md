@@ -1,11 +1,11 @@
-# Envy Spec Reference
+# Graphein Spec Reference
 
-Every Envy chart is described by a single **`ChartSpec`** — a plain, JSON‑serializable
+Every Graphein chart is described by a single **`ChartSpec`** — a plain, JSON‑serializable
 object. There are no functions, classes, or callbacks in a spec, so specs round‑trip
 through `JSON.stringify` and are safe for a coding agent to emit, store, and replay.
 
 ```ts
-import { render } from '@envy/core';
+import { render } from 'graphein';
 
 const instance = render('#chart', {
   type: 'line',
@@ -94,7 +94,7 @@ Shared by **all** chart types.
 ### `SketchConfig`
 
 Turns on the alternate **hand‑drawn renderer** — a from‑scratch, rough.js‑style
-engine baked into `@envy/core` (no extra dependency). Marks get wobbly multi‑pass
+engine baked into `graphein` (no extra dependency). Marks get wobbly multi‑pass
 outlines and hachure fills; text switches to a bundled handwriting font (Patrick
 Hand, SIL OFL). Works for **every** chart type, including the DOM charts
 (`kpi`/`table`/`matrix`, which get the font plus subtle hand‑drawn chrome).
@@ -169,7 +169,7 @@ columns onto visual **channels** through `encoding`.
 | `scale` | `ScaleConfig` | Per‑channel scale overrides (see below). |
 
 > **Temporal fields:** JSON has no `Date` type, so pass dates as ISO‑ish strings
-> (`"2024-01-15"`, `"2024-01"`) or epoch milliseconds. Envy parses them for time
+> (`"2024-01-15"`, `"2024-01"`) or epoch milliseconds. Graphein parses them for time
 > axes, and `%` date formats coerce date strings for display in tables.
 
 ---
@@ -363,7 +363,7 @@ quartiles, median, whiskers, and outliers.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `encoding` | requires `x`, `y`; optional `series` | `x` is the category; `y` holds the **raw observations** (many rows per category) — Envy computes the quartiles. `series` draws grouped boxes side‑by‑side. |
+| `encoding` | requires `x`, `y`; optional `series` | `x` is the category; `y` holds the **raw observations** (many rows per category) — Graphein computes the quartiles. `series` draws grouped boxes side‑by‑side. |
 | `whisker` | `'tukey' \| 'minMax'` | `tukey` (default): whiskers reach the furthest points within 1.5×IQR of the quartiles; points beyond are outliers. `minMax`: whiskers span the full range (no outliers). |
 | `outliers` | `boolean` | Draw outlier points beyond the whiskers (tukey only; default `true`). |
 
@@ -541,7 +541,7 @@ named param or a literal predicate:
 To link **independently rendered** charts, pass a shared store:
 
 ```ts
-import { render, createSelectionStore } from '@envy/core';
+import { render, createSelectionStore } from 'graphein';
 const store = createSelectionStore();
 render('#a', specA, { store });   // a publishes `params`
 render('#b', specB, { store });   // b consumes via `highlight`/`filter`
@@ -602,7 +602,7 @@ per‑type defaults).
 
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `title` / `subtitle` | `string` | — | Card header drawn by the dashboard. When present, Envy suppresses the inner chart `title` to avoid duplicate headings. |
+| `title` / `subtitle` | `string` | — | Card header drawn by the dashboard. When present, Graphein suppresses the inner chart `title` to avoid duplicate headings. |
 | `frame` | `boolean` | `true` | Draw the framed card chrome. Set `false` for frameless tiles. |
 | `background` | `string` | theme surface | Card background override. |
 | `accent` | `string` | — | Solid left accent bar color. |
@@ -734,7 +734,7 @@ A small, dependency‑free subset of d3‑format (numbers) plus strftime‑style
 ## Runtime API
 
 ```ts
-import { render } from '@envy/core';
+import { render } from 'graphein';
 
 const chart = render(target, spec); // target: HTMLElement | CSS selector string
 chart.update(nextSpec);             // re-render with new data/config
@@ -745,8 +745,8 @@ chart.spec;                         // the currently rendered spec (readonly)
 
 `render()` returns a **`ChartInstance`**. With responsive `dimensions` (the
 default), the chart tracks its container via `ResizeObserver`. When a render
-settles, Envy sets `data-envy-ready="true"` on the surface root and increments
-`window.__ENVY_READY` — handy for screenshot/automation tooling to wait on.
+settles, Graphein sets `data-graphein-ready="true"` on the surface root and increments
+`window.__GRAPHEIN_READY` — handy for screenshot/automation tooling to wait on.
 
 ### Selections & dashboards
 
@@ -754,7 +754,7 @@ Both `ChartInstance` and `DashboardInstance` expose an imperative **selection AP
 and `renderDashboard` mounts a whole [dashboard](#dashboards) spec:
 
 ```ts
-import { renderDashboard, render, createSelectionStore } from '@envy/core';
+import { renderDashboard, render, createSelectionStore } from 'graphein';
 
 const d = renderDashboard(target, dashboardSpec);
 d.getSelection(name?);                 // current SelectionValue (or a map when name omitted)
@@ -770,7 +770,7 @@ const a = render('#a', specA, { store, onSelectionChange: (n, v) => {} });
 ```
 
 `render(target, spec, options?)` accepts `{ store?, onSelectionChange? }` (both
-optional, backward compatible). In `@envy/react`, `<Dashboard spec onSelectionChange? />`,
+optional, backward compatible). In `@graphein/react`, `<Dashboard spec onSelectionChange? />`,
 `<Chart spec store? onSelectionChange? />`, and `useSelection(target, name?) → [value, setValue]`
 mirror this surface.
 
@@ -814,7 +814,7 @@ Tuning via the `animation` field:
   reduced motion, entrances and update cross‑fades are suppressed and charts
   render directly in their final state.
 - Automation/screenshot harnesses can force‑disable all motion by setting
-  `window.__ENVY_DISABLE_ANIM = true` before rendering, which keeps captures
+  `window.__GRAPHEIN_DISABLE_ANIM = true` before rendering, which keeps captures
   deterministic without changing any spec.
 - **Web fonts:** axis‑gutter and label widths depend on the chart's font. If a
   chart renders before its web font has loaded, it lays out with fallback metrics
@@ -829,10 +829,10 @@ Tuning via the `animation` field:
 Every rendered chart is wrapped as an accessible **figure**:
 
 - The surface root gets `role="figure"` and an `aria-label`. Set `description`
-  for precise alt text; otherwise Envy synthesizes one from the type, title, and
+  for precise alt text; otherwise Graphein synthesizes one from the type, title, and
   row count (e.g. _"Bar chart: Quarterly revenue. 4 data points."_).
 - The canvas layers are `aria-hidden` (decorative). For canvas‑drawn charts
-  (line/area/bar/scatter/pie/heatmap) Envy also injects a **visually‑hidden
+  (line/area/bar/scatter/pie/heatmap) Graphein also injects a **visually‑hidden
   `<table>`** mirroring the data (capped at 100 rows) so screen‑reader users can
   read the underlying numbers. `table`/`matrix` already render a semantic
   `<table>` (with `aria-sort` on sortable headers) and `kpi` renders real text,

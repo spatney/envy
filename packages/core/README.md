@@ -1,6 +1,6 @@
-# @envy/core
+# graphein
 
-> The framework-agnostic, **zero-dependency** engine behind [Envy](https://github.com/spatney/envy) —
+> The framework-agnostic, **zero-dependency** engine behind [Graphein](https://github.com/spatney/graphein) —
 > a beautiful, high-performance, **agent-first** data visualization library.
 
 One chart is one JSON object. Hand the engine a declarative, JSON-serializable
@@ -8,15 +8,14 @@ One chart is one JSON object. Hand the engine a declarative, JSON-serializable
 scales, ticks, color, shapes, the pivot engine, and the renderer are all hand-written
 (no D3/charting dependencies).
 
-> **Not on npm yet** — install straight from GitHub. The engine is then importable
-> under the bare name **`envy`** (swap `envy` for `@envy/core` in the snippets below):
+Install the zero-dependency engine:
 
 ```bash
-npm install github:spatney/envy#v0.3.0
+npm install graphein
 ```
 
 ```ts
-import { render, type ChartSpec } from '@envy/core';
+import { render, type ChartSpec } from 'graphein';
 
 const spec: ChartSpec = {
   type: 'line',
@@ -46,16 +45,16 @@ chart.destroy();        // tear down
 ## Validation
 
 ```ts
-import { validateSpec } from '@envy/core';
+import { validateSpec } from 'graphein';
 
 const { valid, errors, warnings } = validateSpec(spec);
 ```
 
 ## Documentation
 
-- [Agent Guide](https://github.com/spatney/envy/blob/main/docs/agent-guide.md)
-- [Spec Reference](https://github.com/spatney/envy/blob/main/docs/spec-reference.md)
-- [JSON Schema](https://github.com/spatney/envy/blob/main/docs/chart-spec.schema.json)
-- [Examples](https://github.com/spatney/envy/tree/main/docs/examples)
+- [Agent Guide](https://github.com/spatney/graphein/blob/main/docs/agent-guide.md)
+- [Spec Reference](https://github.com/spatney/graphein/blob/main/docs/spec-reference.md)
+- [JSON Schema](https://github.com/spatney/graphein/blob/main/docs/chart-spec.schema.json)
+- [Examples](https://github.com/spatney/graphein/tree/main/docs/examples)
 
 MIT © Sachin Patney

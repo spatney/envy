@@ -1,25 +1,25 @@
 {
-  "name": "@envy/react",
+  "name": "@graphein/react",
   "version": "0.3.0",
   "type": "module",
-  "description": "Envy React wrapper — declarative <Chart spec={...} /> for the Envy visualization engine.",
+  "description": "Graphein React wrapper — declarative <Chart spec={...} /> for the Graphein visualization engine.",
   "license": "MIT",
   "author": "Sachin Patney <sachin.patney@gmail.com>",
-  "homepage": "https://github.com/spatney/envy/tree/main/packages/react#readme",
+  "homepage": "https://github.com/spatney/graphein/tree/main/packages/react#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spatney/envy.git",
+    "url": "git+https://github.com/spatney/graphein.git",
     "directory": "packages/react"
   },
   "bugs": {
-    "url": "https://github.com/spatney/envy/issues"
+    "url": "https://github.com/spatney/graphein/issues"
   },
   "keywords": [
     "react",
     "visualization",
     "charts",
     "dataviz",
-    "envy",
+    "graphein",
     "agent",
     "declarative"
   ],
@@ -56,7 +56,7 @@
     "react": ">=18"
   },
   "dependencies": {
-    "@envy/core": "^0.3.0"
+    "graphein": "^0.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

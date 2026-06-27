@@ -1,7 +1,7 @@
-# Envy Agent Guide
+# Graphein Agent Guide
 
-A practical playbook for **coding agents** that generate Envy charts and dashboards.
-Envy is built for you: one chart = one JSON‑serializable [`ChartSpec`](./spec-reference.md),
+A practical playbook for **coding agents** that generate Graphein charts and dashboards.
+Graphein is built for you: one chart = one JSON‑serializable [`ChartSpec`](./spec-reference.md),
 no callbacks, sensible defaults, and good visuals at any size.
 
 ## The one rule
@@ -10,7 +10,7 @@ no callbacks, sensible defaults, and good visuals at any size.
 > (for cartesian charts) an `encoding` that names the columns.
 
 ```ts
-import { render } from '@envy/core';
+import { render } from 'graphein';
 render('#chart', {
   type: 'bar',
   data: [
@@ -26,7 +26,7 @@ render('#chart', {
 
 ## Shape your data as a tidy table
 
-Envy expects **long/tidy** data: one row per observation, one column per variable.
+Graphein expects **long/tidy** data: one row per observation, one column per variable.
 The *same* table drives every chart — you just point different channels at columns.
 
 ✅ Tidy (preferred):
@@ -238,7 +238,7 @@ A `dashboard` spec composes charts and slicers into one cross‑interacting page
 single JSON object, validated by `validateSpec`, rendered with `renderDashboard`.
 
 ```ts
-import { renderDashboard, validateSpec } from '@envy/core';
+import { renderDashboard, validateSpec } from 'graphein';
 
 const dash = {
   type: 'dashboard',

@@ -1,5 +1,5 @@
 {
-  "name": "@envy/gallery",
+  "name": "@graphein/gallery",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "preview": "vite preview --port 4317"
   },
   "dependencies": {
-    "@envy/core": "*"
+    "graphein": "*"
   },
   "devDependencies": {
     "d3-geo": "^3.1.1",

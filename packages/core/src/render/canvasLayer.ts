@@ -18,7 +18,7 @@ export class CanvasLayer {
     this.canvas = canvas ?? document.createElement('canvas');
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
-      throw new Error('Envy: 2D canvas context is unavailable in this environment.');
+      throw new Error('Graphein: 2D canvas context is unavailable in this environment.');
     }
     this.ctx = ctx;
   }

@@ -1,18 +1,18 @@
 {
-  "name": "envy",
+  "name": "graphein-monorepo",
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Envy — a beautiful, high-performance, agent-first data visualization library.",
+  "description": "Graphein — a beautiful, high-performance, agent-first data visualization library.",
   "license": "MIT",
   "author": "Sachin Patney <sachin.patney@gmail.com>",
-  "homepage": "https://github.com/spatney/envy#readme",
+  "homepage": "https://github.com/spatney/graphein#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/spatney/envy.git"
+    "url": "git+https://github.com/spatney/graphein.git"
   },
   "bugs": {
-    "url": "https://github.com/spatney/envy/issues"
+    "url": "https://github.com/spatney/graphein/issues"
   },
   "keywords": [
     "visualization",
@@ -45,13 +45,13 @@
     "tests/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @envy/core --workspace @envy/react",
+    "build": "npm run build --workspace graphein --workspace @graphein/react",
     "build:all": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
-    "gallery": "npm run dev --workspace @envy/gallery",
+    "gallery": "npm run dev --workspace @graphein/gallery",
     "prepare": "npm run build"
   },
   "devDependencies": {

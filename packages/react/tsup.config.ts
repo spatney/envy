@@ -6,6 +6,6 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  external: ['react', 'react-dom', '@envy/core'],
+  external: ['react', 'react-dom', 'graphein'],
   target: 'es2021',
 });

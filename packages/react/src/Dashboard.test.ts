@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 // Mock the core runtime so we exercise the wrapper's lifecycle without a real
 // canvas / ResizeObserver (verified in the browser harness).
-vi.mock('@envy/core', () => ({
+vi.mock('graphein', () => ({
   renderDashboard: vi.fn((el: HTMLElement, spec: unknown) => ({
     spec,
     store: { subscribe: vi.fn(() => () => {}) },
@@ -21,8 +21,8 @@ vi.mock('@envy/core', () => ({
   })),
 }));
 
-import { renderDashboard as coreRenderDashboard } from '@envy/core';
-import type { DashboardSpec } from '@envy/core';
+import { renderDashboard as coreRenderDashboard } from 'graphein';
+import type { DashboardSpec } from 'graphein';
 import { Dashboard } from './Dashboard';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -46,7 +46,7 @@ function lastInstance() {
   };
 }
 
-describe('@envy/react <Dashboard>', () => {
+describe('@graphein/react <Dashboard>', () => {
   beforeEach(() => mockRender.mockClear());
 
   it('renders into a full-width container on mount', () => {

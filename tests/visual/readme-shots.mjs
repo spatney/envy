@@ -7,7 +7,7 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = join(ROOT, 'docs', 'images');
 mkdirSync(OUT, { recursive: true });
@@ -37,7 +37,7 @@ const SHOTS = [
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 await page.addInitScript(() => {
-  window.__ENVY_DISABLE_ANIM = true;
+  window.__GRAPHEIN_DISABLE_ANIM = true;
 });
 
 let n = 0;

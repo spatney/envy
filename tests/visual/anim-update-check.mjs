@@ -6,14 +6,14 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.ENVY_GALLERY ?? 'http://127.0.0.1:4317';
+const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 // Canvas-mark scenarios (cross-fade applies). DOM charts update instantly.
 const SCENARIOS = ['bar-grouped', 'line-multi', 'area-stacked', 'scatter-groups', 'pie-basic'];
 
 // Deterministic perturbation of every numeric data field — changes the marks
 // without depending on which field is encoded. Both pages apply the same one.
 function applyVariant() {
-  const inst = window.__envyChart;
+  const inst = window.__grapheinChart;
   const spec = JSON.parse(JSON.stringify(inst.spec));
   if (Array.isArray(spec.data)) {
     spec.data = spec.data.map((row) => {
@@ -34,11 +34,11 @@ async function capture(ctx, id, { disableAnim, reducedMotion }) {
   const page = await ctx.newPage({ deviceScaleFactor: 2 });
   if (reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((d) => {
-    window.__ENVY_DISABLE_ANIM = d;
+    window.__GRAPHEIN_DISABLE_ANIM = d;
   }, disableAnim);
   await page.setViewportSize({ width: 720, height: 460 });
   await page.goto(`${BASE}/?shot=${id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
-  await page.waitForSelector('.envy-root[data-envy-ready="true"]', { timeout: 8000 });
+  await page.waitForSelector('.graphein-root[data-graphein-ready="true"]', { timeout: 8000 });
 
   // The web font loads lazily on first text measurement (triggered by the initial
   // render above), so wait for it here — otherwise a page that happens to update
@@ -50,7 +50,7 @@ async function capture(ctx, id, { disableAnim, reducedMotion }) {
   await page.waitForTimeout(disableAnim || reducedMotion ? 80 : 750);
 
   const marks = await page.evaluate(() => {
-    const el = document.querySelector('.envy-layer-marks');
+    const el = document.querySelector('.graphein-layer-marks');
     return el ? el.toDataURL() : '';
   });
   await page.close();
