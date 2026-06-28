@@ -98,6 +98,7 @@ function featureKey(feature: GeoFeature, featureId: string | undefined): string 
     if (featureId === 'id' && feature.id != null) return toKey(feature.id);
     const v = feature.properties?.[featureId];
     if (v != null) return toKey(v);
+    return '';
   }
   if (feature.id != null) return toKey(feature.id);
   const props = feature.properties ?? {};

@@ -96,22 +96,43 @@ function direction(angle: number): { x: number; y: number } {
   return { x: Math.sin(angle), y: -Math.cos(angle) };
 }
 
-/** Percentage text with adaptive precision (1 decimal under 10%, else whole). */
-function formatPercent(share: number): string {
-  const pct = share * 100;
-  const text = pct < 10 ? pct.toFixed(1) : pct.toFixed(0);
-  return `${text.replace(/\.0$/, '')}%`;
+/** Integer percentages reconciled with the largest-remainder method. */
+export function reconcilePercents(values: number[]): number[] {
+  const cleaned = values.map((value) => (Number.isFinite(value) && value > 0 ? value : 0));
+  const total = cleaned.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return cleaned.map(() => 0);
+
+  const exact = cleaned.map((value, index) => {
+    const pct = (value / total) * 100;
+    const floor = Math.floor(pct);
+    return { index, floor, remainder: pct - floor };
+  });
+  let remaining = 100 - exact.reduce((sum, item) => sum + item.floor, 0);
+  const out = exact.map((item) => item.floor);
+
+  for (const item of [...exact].sort((a, b) => b.remainder - a.remainder || a.index - b.index)) {
+    if (remaining <= 0) break;
+    out[item.index]++;
+    remaining--;
+  }
+  return out;
+}
+
+function formatPercent(percent: number): string {
+  return `${percent}%`;
 }
 
 function labelText(
   slice: PieLabelInput,
   placement: 'inside' | 'outside',
   options: PlanPieLabelsOptions,
+  percents: Map<number, number>,
 ): string {
   const content = options.content ?? (placement === 'inside' ? 'percent' : 'category-percent');
+  const percentText = formatPercent(percents.get(slice.index) ?? 0);
   switch (content) {
     case 'percent':
-      return formatPercent(slice.share);
+      return percentText;
     case 'value':
       return options.formatValue(slice.value);
     case 'category':
@@ -120,7 +141,7 @@ function labelText(
       return `${slice.label} · ${options.formatValue(slice.value)}`;
     case 'category-percent':
     default:
-      return `${slice.label} · ${formatPercent(slice.share)}`;
+      return `${slice.label} · ${percentText}`;
   }
 }
 
@@ -159,6 +180,10 @@ export function planPieLabels(options: PlanPieLabelsOptions): PieLabelPlan {
   // 1. Resolve inside vs. outside per slice using the original geometry.
   const insideSlices: Array<{ slice: PieLabelInput; mid: number; text: string }> = [];
   const outsideSlices: Array<{ slice: PieLabelInput; mid: number; text: string; side: 'left' | 'right' }> = [];
+  const percents = new Map<number, number>();
+  reconcilePercents(slices.map((slice) => slice.value)).forEach((percent, i) => {
+    percents.set(slices[i].index, percent);
+  });
 
   const insideLabelR = origInnerR > 0 ? (origInnerR + origOuterR) / 2 : origOuterR * 0.62;
   const radialBand = origInnerR > 0 ? origOuterR - origInnerR : origOuterR;
@@ -171,7 +196,7 @@ export function planPieLabels(options: PlanPieLabelsOptions): PieLabelPlan {
     if (placement === 'inside') goesInside = true;
     else if (placement === 'outside') goesInside = false;
     else {
-      const insideText = labelText(slice, 'inside', options);
+      const insideText = labelText(slice, 'inside', options, percents);
       const tangential = (slice.endAngle - slice.startAngle) * insideLabelR;
       const fitsTangential = measure(insideText) + INSIDE_PAD <= tangential;
       const fitsRadial = lineHeight * 0.8 <= radialBand;
@@ -179,13 +204,13 @@ export function planPieLabels(options: PlanPieLabelsOptions): PieLabelPlan {
     }
 
     if (goesInside) {
-      insideSlices.push({ slice, mid, text: labelText(slice, 'inside', options) });
+      insideSlices.push({ slice, mid, text: labelText(slice, 'inside', options, percents) });
     } else {
       const dir = direction(mid);
       outsideSlices.push({
         slice,
         mid,
-        text: labelText(slice, 'outside', options),
+        text: labelText(slice, 'outside', options, percents),
         side: dir.x >= 0 ? 'right' : 'left',
       });
     }

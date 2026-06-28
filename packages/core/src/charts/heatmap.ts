@@ -7,9 +7,9 @@ import { roundedRect } from '../shape';
 import { RoughPen } from '../rough';
 import { resolveSketch } from '../spec/sketch';
 import type { ChartSpec, HeatmapSpec } from '../spec/types';
-import type { Rect, Size } from '../types';
+import type { Datum, Rect, Size } from '../types';
 import type { ThemeTokens } from '../theme';
-import { accessor, extent, toKey, toNumber, uniqueStrings } from '../util/data';
+import { accessor, toKey, toNumber, uniqueStrings } from '../util/data';
 import type { InteractionModel } from '../interaction/types';
 import type { RenderContext } from './index';
 import { rowAlpha } from './emphasis';
@@ -35,6 +35,19 @@ function measureMax(labels: readonly string[], font: string): number {
   let max = 0;
   for (const label of labels) max = Math.max(max, measureText(label, font).width);
   return max;
+}
+
+export function heatmapColorDomain(rows: readonly Datum[], field: string): [number, number] | null {
+  const read = accessor(field);
+  let min = Infinity;
+  let max = -Infinity;
+  for (const row of rows) {
+    const value = toNumber(read(row));
+    if (!finite(value)) continue;
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
+  return min === Infinity ? null : [min, max];
 }
 
 function drawRoundedCell(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
@@ -104,7 +117,7 @@ export function drawHeatmap(
   const { x, y, color } = heatmap.encoding;
   const xCats = uniqueStrings(rows, x.field);
   const yCats = uniqueStrings(rows, y.field);
-  const colorDomain = extent(rows, color.field);
+  const colorDomain = heatmapColorDomain(rows, color.field);
 
   if (xCats.length === 0 || yCats.length === 0 || !colorDomain || content.width <= 0 || content.height <= 0) return;
 

@@ -9,7 +9,7 @@ import { RoughPen } from '../rough';
 import { accessor, toKey, toNumber } from '../util/data';
 import type { InteractionModel, TooltipRow } from '../interaction/types';
 
-interface BoxStats {
+export interface BoxStats {
   min: number;
   q1: number;
   median: number;
@@ -19,7 +19,7 @@ interface BoxStats {
   count: number;
 }
 
-interface BoxGeom {
+export interface BoxGeom {
   key: string;
   title: string;
   color: string;
@@ -37,7 +37,7 @@ interface BoxGeom {
   stats: BoxStats;
 }
 
-interface BoxLayout {
+export interface BoxLayout {
   geoms: BoxGeom[];
   showOutliers: boolean;
 }
@@ -54,7 +54,7 @@ function quantileSorted(sorted: readonly number[], p: number): number {
   return sorted[lo] + (sorted[lo + 1] - sorted[lo]) * frac;
 }
 
-function computeStats(values: number[], whisker: 'tukey' | 'minMax'): BoxStats | null {
+export function computeStats(values: number[], whisker: 'tukey' | 'minMax'): BoxStats | null {
   const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
   if (sorted.length === 0) return null;
   const q1 = quantileSorted(sorted, 0.25);
@@ -88,7 +88,7 @@ function computeStats(values: number[], whisker: 'tukey' | 'minMax'): BoxStats |
 }
 
 /** Resolve per-category (and per-series) box geometry without drawing. */
-function computeBoxes(model: CartesianModel): BoxLayout | null {
+export function computeBoxes(model: CartesianModel): BoxLayout | null {
   const spec = model.spec as BoxSpec;
   if (model.x.kind !== 'band' || model.x.bandwidth <= 0 || model.series.length === 0) return null;
 
@@ -227,6 +227,20 @@ function boxProbe(model: CartesianModel, geom: BoxGeom): Datum {
   return probe;
 }
 
+function hitsBoxGeom(
+  model: CartesianModel,
+  geom: BoxGeom,
+  showOutliers: boolean,
+  px: number,
+  py: number,
+): boolean {
+  const inWhiskerExtent =
+    px >= geom.left - 4 && px <= geom.right + 4 && py >= geom.top - 6 && py <= geom.bottom + 6;
+  if (inWhiskerExtent) return true;
+  if (!showOutliers || geom.stats.outliers.length === 0) return false;
+  return geom.stats.outliers.some((o) => Math.abs(px - geom.cx) <= 6 && Math.abs(py - model.y.pixel(o)) <= 6);
+}
+
 export function drawBox(surface: Surface, model: CartesianModel): void {
   const layout = computeBoxes(model);
   if (!layout) return;
@@ -262,9 +276,7 @@ export function buildBoxInteraction(model: CartesianModel): InteractionModel | v
   return {
     region: model.plot,
     hitTest: (px, py) => {
-      const hit = geoms.find(
-        (g) => px >= g.left - 4 && px <= g.right + 4 && py >= g.top - 6 && py <= g.bottom + 6,
-      );
+      const hit = geoms.find((g) => hitsBoxGeom(model, g, showOutliers, px, py));
       if (!hit) return null;
       const s = hit.stats;
       const rows: TooltipRow[] = [
@@ -297,10 +309,15 @@ export function buildBoxInteraction(model: CartesianModel): InteractionModel | v
       };
     },
     pick: (px, py) => {
-      const hit = geoms.find(
-        (g) => px >= g.left - 4 && px <= g.right + 4 && py >= g.top - 6 && py <= g.bottom + 6,
-      );
+      const hit = geoms.find((g) => hitsBoxGeom(model, g, showOutliers, px, py));
       if (!hit) return null;
+      if (model.series.length > 1 && model.seriesField && hit.seriesValue !== undefined) {
+        return {
+          kind: 'point',
+          fields: [model.x.field, model.seriesField],
+          tuples: [[hit.xValue, hit.seriesValue]],
+        };
+      }
       return { kind: 'point', fields: [model.x.field], tuples: [[hit.xValue]] };
     },
   };

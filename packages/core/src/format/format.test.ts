@@ -31,6 +31,22 @@ describe('format/number', () => {
     expect(formatNumber(3.1400000000001)).toBe('3.14');
     expect(formatNumber(NaN)).toBe('');
   });
+
+  it('clamps out-of-range precision instead of crashing (B12)', () => {
+    // toPrecision needs 1..100: ".0g" would throw a RangeError unguarded.
+    expect(() => formatNumber(1.23, '.0g')).not.toThrow();
+    expect(formatNumber(1.23, '.0g')).toBe('1');
+    expect(formatNumber(12345, '.0g')).toBe('10000');
+    // toFixed/toExponential need 0..100: ".101f"/".200e" would throw unguarded.
+    expect(() => formatNumber(1.23, '.101f')).not.toThrow();
+    expect(formatNumber(1.23, '.101f').startsWith('1.2')).toBe(true);
+    expect(() => formatNumber(1.23, '.200e')).not.toThrow();
+    expect(formatNumber(1.23, '.200e').startsWith('1.2')).toBe(true);
+    // Percent, SI, and the smart-default float path are all guarded too.
+    expect(() => formatNumber(0.5, '.101%')).not.toThrow();
+    expect(formatNumber(1500, '.101s')).toBe('1.5k');
+    expect(() => formatNumber(3.14159, '.150')).not.toThrow();
+  });
 });
 
 describe('format/date', () => {

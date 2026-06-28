@@ -54,6 +54,16 @@ function groupThousands(intDigits: string): string {
   return intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// `Number.prototype.toFixed`/`toExponential` accept 0..100 digits and
+// `toPrecision` accepts 1..100; anything outside throws a RangeError. A spec may
+// legitimately *look* valid (e.g. ".0g" or ".101f") yet land out of range, so we
+// clamp the requested digits into the engine's supported window instead of
+// crashing the whole render.
+function clampDigits(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
 function applyGroup(numStr: string, group: boolean): string {
   if (!group) return numStr;
   const neg = numStr.startsWith('-');
@@ -75,11 +85,11 @@ function formatSI(value: number, precision?: number): string {
     if (abs >= factor) {
       const scaled = value / factor;
       const digits = precision ?? (Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2);
-      return trimZeros(scaled.toFixed(digits)) + symbol;
+      return trimZeros(scaled.toFixed(clampDigits(digits, 0, 100))) + symbol;
     }
   }
   const digits = precision ?? (abs >= 100 || abs === 0 ? 0 : abs >= 1 ? 1 : 2);
-  return trimZeros(value.toFixed(digits));
+  return trimZeros(value.toFixed(clampDigits(digits, 0, 100)));
 }
 
 /** Format a number according to a parsed or string spec. */
@@ -92,10 +102,10 @@ export function formatNumber(value: number, spec?: string | NumberFormatSpec): s
   let body: string;
   switch (type) {
     case 'f':
-      body = applyGroup(value.toFixed(precision ?? 2), group);
+      body = applyGroup(value.toFixed(clampDigits(precision ?? 2, 0, 100)), group);
       break;
     case '%':
-      body = applyGroup((value * 100).toFixed(precision ?? 0), group) + '%';
+      body = applyGroup((value * 100).toFixed(clampDigits(precision ?? 0, 0, 100)), group) + '%';
       break;
     case 's':
       body = formatSI(value, precision);
@@ -104,10 +114,10 @@ export function formatNumber(value: number, spec?: string | NumberFormatSpec): s
       body = applyGroup(Math.round(value).toString(), group);
       break;
     case 'e':
-      body = value.toExponential(precision ?? 2);
+      body = value.toExponential(clampDigits(precision ?? 2, 0, 100));
       break;
     case 'g':
-      body = trimZeros(Number(value.toPrecision(precision ?? 6)).toString());
+      body = trimZeros(Number(value.toPrecision(clampDigits(precision ?? 6, 1, 100))).toString());
       body = applyGroup(body, group);
       break;
     default: {
@@ -115,7 +125,7 @@ export function formatNumber(value: number, spec?: string | NumberFormatSpec): s
       if (Number.isInteger(value)) {
         body = applyGroup(value.toString(), group);
       } else {
-        const digits = precision ?? 6;
+        const digits = clampDigits(precision ?? 6, 0, 100);
         body = applyGroup(trimZeros(value.toFixed(digits)), group);
       }
     }

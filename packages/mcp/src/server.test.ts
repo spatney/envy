@@ -117,6 +117,14 @@ describe('handlers', () => {
       expect(p.errors.length).toBeGreaterThan(0);
     });
 
+    it('labels a spec with no type as "(missing)"', () => {
+      const out = renderChartHandler({ spec: { data: [{ a: 1 }] }, repair: false });
+      expect(out.isError).toBe(true);
+      const p = textPayload(out);
+      expect(p.stage).toBe('validate');
+      expect(p.type).toBe('(missing)');
+    });
+
     it('auto-repairs a fixable spec before rendering', () => {
       const out = renderChartHandler({ spec: { ...lineSpec, type: 'bart' }, dpr: 1 });
       expect(out.isError).toBe(false);

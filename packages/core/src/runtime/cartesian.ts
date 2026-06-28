@@ -38,6 +38,7 @@ import { niceDomain } from '../ticks';
 import {
   bandScale,
   linearScale,
+  logScale,
   pointScale,
   timeScale,
   type BandScale,
@@ -188,6 +189,35 @@ function stackedYExtent(
   return [min, max];
 }
 
+/**
+ * Coerce a domain to be strictly positive for a log scale, deriving sane bounds
+ * from the data's positive values when the requested domain is missing or
+ * invalid (log has no image at or below zero). Keeps charts robust instead of
+ * silently emitting NaN geometry; `validateSpec` warns on a non-positive domain.
+ */
+function positiveLogDomain(
+  requested: [number, number],
+  data: readonly Datum[],
+  field: string,
+  base: number,
+): [number, number] {
+  let lo = requested[0];
+  let hi = requested[1];
+  if (!(lo > 0) || !(hi > 0)) {
+    const read = accessor(field);
+    const positives = data
+      .map((d) => toNumber(read(d)))
+      .filter((v) => Number.isFinite(v) && v > 0);
+    const pmin = positives.length ? Math.min(...positives) : 1;
+    const pmax = positives.length ? Math.max(...positives) : base;
+    if (!(lo > 0)) lo = pmin;
+    if (!(hi > 0)) hi = pmax;
+  }
+  if (hi < lo) [lo, hi] = [hi, lo];
+  if (lo === hi) hi = lo * base;
+  return [lo, hi];
+}
+
 function resolveSeriesField(spec: CartesianChartSpec): string | undefined {
   const enc = spec.encoding;
   if (enc.series?.field) return enc.series.field;
@@ -298,7 +328,12 @@ export function buildCartesianModel(
   let categories: string[] | undefined;
   let xDomainNum: [number, number] | null = null;
   if (xKind === 'band' || xKind === 'point') {
-    categories = opts.shared?.categories ?? uniqueStrings(data, xField);
+    const cfgDomain = enc.x.scale?.domain;
+    categories =
+      opts.shared?.categories ??
+      (Array.isArray(cfgDomain) && typeof cfgDomain[0] === 'string'
+        ? (cfgDomain as string[])
+        : uniqueStrings(data, xField));
   } else if (xKind === 'time') {
     if (opts.shared?.xDomain) {
       xDomainNum = opts.shared.xDomain;
@@ -313,13 +348,26 @@ export function buildCartesianModel(
   } else {
     xDomainNum = extent(data, xField) ?? [0, 1];
     const xScaleCfg = enc.x.scale;
-    if (xScaleCfg?.domain && typeof xScaleCfg.domain[0] === 'number') {
+    if (xScaleCfg?.type === 'log') {
+      xDomainNum = positiveLogDomain(
+        xScaleCfg.domain && typeof xScaleCfg.domain[0] === 'number'
+          ? [xScaleCfg.domain[0], xScaleCfg.domain[1] as number]
+          : xDomainNum,
+        data,
+        xField,
+        xScaleCfg.base ?? 10,
+      );
+    } else if (xScaleCfg?.domain && typeof xScaleCfg.domain[0] === 'number') {
       xDomainNum = [xScaleCfg.domain[0], xScaleCfg.domain[1] as number];
     } else if (xScaleCfg?.nice !== false) {
       xDomainNum = niceDomain(xDomainNum[0], xDomainNum[1], 10);
     }
   }
 
+  const yScaleCfg = enc.y.scale;
+  const yIsLog = yScaleCfg?.type === 'log';
+  const yBase = yScaleCfg?.base ?? 10;
+  const yClamp = yScaleCfg?.clamp === true;
   const sharedY = opts.shared?.yDomain;
   let yDomain: [number, number];
   if (sharedY) {
@@ -330,10 +378,12 @@ export function buildCartesianModel(
     const ext = extent(data, yField) ?? [0, 1];
     yDomain = [ext[0], ext[1]];
   }
-  if (wantsZeroBaseline(spec) && !sharedY) {
+  // An explicit `scale.zero` overrides the per-chart-type default; a log scale
+  // never includes zero (zero has no logarithm).
+  const forceZero = yIsLog ? false : (yScaleCfg?.zero ?? wantsZeroBaseline(spec));
+  if (forceZero && !sharedY) {
     yDomain = [Math.min(0, yDomain[0]), Math.max(0, yDomain[1])];
   }
-  const yScaleCfg = enc.y.scale;
   const xAxisCfg = axisCfg(spec, 'x');
   const yAxisCfg = axisCfg(spec, 'y');
   const yTickCount = yAxisCfg.ticks ?? 6;
@@ -342,17 +392,33 @@ export function buildCartesianModel(
   // last tick sit exactly on the plot edges (otherwise labels spill past the axis).
   // A shared (facet) domain is treated like an explicit domain — never re-expanded,
   // so every panel keeps identical scales.
+  const yExplicitTicks =
+    yAxisCfg.tickValues && yAxisCfg.tickValues.length ? yAxisCfg.tickValues.slice() : null;
   const yExplicit = (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') || !!sharedY;
   let yTickValues: number[];
-  if (yExplicit) {
+  if (yIsLog) {
+    if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
+      yDomain = positiveLogDomain([yScaleCfg.domain[0], yScaleCfg.domain[1] as number], data, yField, yBase);
+    } else if (!sharedY) {
+      yDomain = positiveLogDomain(yDomain, data, yField, yBase);
+    }
+    const lo = Math.min(yDomain[0], yDomain[1]);
+    const hi = Math.max(yDomain[0], yDomain[1]);
+    yTickValues = (yExplicitTicks ?? logScale({ domain: yDomain, range: [0, 1], base: yBase }).ticks()).filter(
+      (v) => v > 0 && v >= lo - 1e-9 && v <= hi + 1e-9,
+    );
+  } else if (yExplicit) {
     if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
       yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
     }
     const lo = Math.min(yDomain[0], yDomain[1]);
     const hi = Math.max(yDomain[0], yDomain[1]);
-    yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount).filter(
+    yTickValues = (yExplicitTicks ?? numericTickValues(yDomain[0], yDomain[1], yTickCount)).filter(
       (v) => v >= lo - 1e-9 && v <= hi + 1e-9,
     );
+  } else if (yExplicitTicks) {
+    yTickValues = yExplicitTicks;
+    yDomain = [Math.min(yDomain[0], ...yExplicitTicks), Math.max(yDomain[1], ...yExplicitTicks)];
   } else if (yScaleCfg?.nice !== false) {
     yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount);
     if (yTickValues.length >= 2) {
@@ -383,7 +449,22 @@ export function buildCartesianModel(
     xStepMs = xt.length > 1 ? xt[1] - xt[0] : 0;
     xLabels = xt.map((v) => (enc.x.format ? formatValue(v, enc.x.format) : smartDate(v, xStepMs)));
   } else {
-    const xt = numericTickValues(xDomainNum![0], xDomainNum![1], xAxisCfg.ticks ?? 8);
+    const xLo = Math.min(xDomainNum![0], xDomainNum![1]);
+    const xHi = Math.max(xDomainNum![0], xDomainNum![1]);
+    const xExplicitTicks =
+      xAxisCfg.tickValues && xAxisCfg.tickValues.length ? xAxisCfg.tickValues.slice() : null;
+    let xt: number[];
+    if (xExplicitTicks) {
+      xt = xExplicitTicks.filter((v) => v >= xLo - 1e-9 && v <= xHi + 1e-9);
+    } else if (enc.x.scale?.type === 'log') {
+      xt = logScale({ domain: xDomainNum!, range: [0, 1], base: enc.x.scale.base ?? 10 })
+        .ticks()
+        .filter((v) => v > 0 && v >= xLo - 1e-9 && v <= xHi + 1e-9);
+    } else {
+      xt = numericTickValues(xDomainNum![0], xDomainNum![1], xAxisCfg.ticks ?? 8).filter(
+        (v) => v >= xLo - 1e-9 && v <= xHi + 1e-9,
+      );
+    }
     xTickValues = xt;
     xLabels = xt.map((v) => formatNumericTick(v, enc.x.format ?? xAxisCfg.format));
   }
@@ -415,9 +496,14 @@ export function buildCartesianModel(
   const plot = frame.plot;
 
   // --- Build scales with final ranges ---
-  const yScale = linearScale({ domain: yDomain, range: [plot.y + plot.height, plot.y] });
+  const yRange: [number, number] = [plot.y + plot.height, plot.y];
+  const yScale = yIsLog
+    ? logScale({ domain: yDomain, range: yRange, base: yBase, clamp: yClamp })
+    : linearScale({ domain: yDomain, range: yRange, clamp: yClamp });
   const yPixel = (value: unknown): number => yScale.map(toNumber(value));
-  const baseline = clampPx(yScale.map(0), plot.y, plot.y + plot.height);
+  const baseline = yIsLog
+    ? plot.y + plot.height
+    : clampPx(yScale.map(0), plot.y, plot.y + plot.height);
 
   const xModel = buildXModel(xKind, {
     field: xField,
@@ -511,10 +597,13 @@ function buildXModel(kind: XKind, args: XBuildArgs): XModel {
     };
   }
   const domain = args.domainNum ?? [0, 1];
+  const clamp = args.scaleCfg?.clamp === true;
   const continuous =
     kind === 'time'
       ? timeScale({ domain, range: args.range })
-      : linearScale({ domain, range: args.range });
+      : args.scaleCfg?.type === 'log'
+        ? logScale({ domain, range: args.range, base: args.scaleCfg.base ?? 10, clamp })
+        : linearScale({ domain, range: args.range, clamp });
   return {
     kind,
     field: args.field,

@@ -34,11 +34,11 @@ function valueField(ref: ValueRef): string | null {
   return typeof ref === 'number' ? null : ref.field;
 }
 
-function formatDelta(delta: number, specFormat?: string): string {
+export function formatDelta(delta: number, specFormat?: string): string {
   const sign = delta >= 0 ? '+' : '-';
   const abs = Math.abs(delta);
-  if (abs <= 1) return sign + formatNumber(abs, '.1%');
   if (specFormat) return sign + formatValue(abs, specFormat);
+  if (abs <= 1) return sign + formatNumber(abs, '.1%');
   return sign + formatNumber(abs, ',.0f');
 }
 

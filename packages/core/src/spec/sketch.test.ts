@@ -45,4 +45,47 @@ describe('resolveSketch', () => {
     const b = resolveSketch({ ...base, sketch: true, title: 'Two' })!;
     expect(a.seed).not.toBe(b.seed);
   });
+
+  it('uses title text or subtitle plus data shape when deriving seeds', () => {
+    const titled = resolveSketch({ ...base, sketch: true, title: { text: 'Sales' } })!;
+    const titledAgain = resolveSketch({ ...base, sketch: true, title: { text: 'Sales', subtitle: 'Ignored' } })!;
+    const subtitled = resolveSketch({ ...base, sketch: true, title: { subtitle: 'Sales subtitle' } })!;
+    const differentShape = resolveSketch({
+      ...base,
+      data: [{ c: 1, d: 2 }],
+      encoding: { x: { field: 'c' }, y: { field: 'd' } },
+      sketch: true,
+      title: { text: 'Sales' },
+    })!;
+
+    expect(titled.seed).toBe(titledAgain.seed);
+    expect(titled.seed).not.toBe(subtitled.seed);
+    expect(titled.seed).not.toBe(differentShape.seed);
+  });
+
+  it('resolves every sketch object field and coerces seed to uint32', () => {
+    const r = resolveSketch({
+      ...base,
+      sketch: {
+        roughness: 2,
+        bowing: 3,
+        fillStyle: 'cross-hatch',
+        hachureGap: 6,
+        hachureAngle: 15,
+        strokeWidth: 4,
+        seed: -1,
+      },
+    })!;
+
+    expect(r).toMatchObject({
+      roughness: 2,
+      bowing: 3,
+      fillStyle: 'cross-hatch',
+      hachureGap: 6,
+      hachureAngle: 15,
+      strokeWidth: 4,
+      seed: 0xffffffff,
+      font: true,
+    });
+  });
 });

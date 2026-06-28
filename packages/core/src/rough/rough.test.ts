@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Point } from '../types';
-import { RoughPen, type RoughContext } from './draw';
+import { createRoughPen, RoughPen, type RoughContext } from './draw';
 import { mulberry32, hashString } from './rng';
 import { polygonHachureLines, sampleArc } from './geom';
 
@@ -97,6 +97,10 @@ describe('hashString', () => {
 });
 
 describe('RoughPen determinism', () => {
+  it('createRoughPen returns a RoughPen instance', () => {
+    expect(createRoughPen(new RecordingContext(), { seed: 1 })).toBeInstanceOf(RoughPen);
+  });
+
   it('renders identical ops for the same seed', () => {
     const draw = (): Op[] => {
       const ctx = new RecordingContext();
@@ -157,6 +161,39 @@ describe('RoughPen output shape', () => {
     const beziers = ctx.ops.filter((o) => o[0] === 'bezierCurveTo');
     // ~100px tall / 6px gap ⇒ well over a dozen hachure lines.
     expect(beziers.length).toBeGreaterThan(10);
+  });
+
+  it('cross-hatch emits more fill strokes than hachure', () => {
+    const hachure = new RecordingContext();
+    const cross = new RecordingContext();
+    new RoughPen(hachure, { seed: 3, fillStyle: 'hachure', hachureGap: 8 }).polygon(SQUARE, { fill: '#222' });
+    new RoughPen(cross, { seed: 3, fillStyle: 'cross-hatch', hachureGap: 8 }).polygon(SQUARE, { fill: '#222' });
+    expect(cross.ops.filter((o) => o[0] === 'bezierCurveTo').length).toBeGreaterThan(
+      hachure.ops.filter((o) => o[0] === 'bezierCurveTo').length,
+    );
+  });
+
+  it('trendStroke amplifies wobble compared to a normal polyline with matching output shape', () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 10, y: 2 },
+      { x: 20, y: 1 },
+    ];
+    const normal = new RecordingContext();
+    const trend = new RecordingContext();
+    new RoughPen(normal, { seed: 4, roughness: 1, bowing: 1 }).polyline(points, { stroke: '#000' });
+    new RoughPen(trend, { seed: 4, roughness: 1, bowing: 1 }).trendStroke(points, { stroke: '#000' });
+    expect(trend.ops.map((o) => o[0])).toEqual(normal.ops.map((o) => o[0]));
+    expect(trend.ops).not.toEqual(normal.ops);
+  });
+
+  it('roughness changes the wobble without changing the call sequence', () => {
+    const smooth = new RecordingContext();
+    const rough = new RecordingContext();
+    new RoughPen(smooth, { seed: 11, roughness: 0 }).rect(0, 0, 40, 20, { stroke: '#000' });
+    new RoughPen(rough, { seed: 11, roughness: 2 }).rect(0, 0, 40, 20, { stroke: '#000' });
+    expect(rough.ops.map((o) => o[0])).toEqual(smooth.ops.map((o) => o[0]));
+    expect(rough.ops).not.toEqual(smooth.ops);
   });
 
   it('skips degenerate marks', () => {

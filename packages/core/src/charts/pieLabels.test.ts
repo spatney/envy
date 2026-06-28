@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planPieLabels, type PieLabelInput, type PlanPieLabelsOptions } from './pieLabels';
+import { planPieLabels, reconcilePercents, type PieLabelInput, type PlanPieLabelsOptions } from './pieLabels';
 
 const TAU = Math.PI * 2;
 
@@ -29,6 +29,27 @@ function baseOptions(over: Partial<PlanPieLabelsOptions> = {}): PlanPieLabelsOpt
     ...over,
   };
 }
+
+describe('reconcilePercents', () => {
+  it('sums equal thirds to 100', () => {
+    expect(reconcilePercents([1, 1, 1])).toEqual([34, 33, 33]);
+    expect(reconcilePercents([1, 1, 1]).reduce((sum, pct) => sum + pct, 0)).toBe(100);
+  });
+
+  it('preserves exact integer percentages', () => {
+    expect(reconcilePercents([1, 2, 3])).toEqual([17, 33, 50]);
+    expect(reconcilePercents([1, 2, 3]).reduce((sum, pct) => sum + pct, 0)).toBe(100);
+  });
+
+  it('handles a single full slice', () => {
+    expect(reconcilePercents([42])).toEqual([100]);
+  });
+
+  it('returns zero percentages when no positive total exists', () => {
+    expect(reconcilePercents([])).toEqual([]);
+    expect(reconcilePercents([0, 0, 0])).toEqual([0, 0, 0]);
+  });
+});
 
 describe('planPieLabels', () => {
   it('keeps every label inside and leaves geometry untouched for placement:inside', () => {

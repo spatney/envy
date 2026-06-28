@@ -12,7 +12,7 @@ import { accessor, toKey, toNumber } from '../util/data';
 import type { InteractionModel, TooltipRow } from '../interaction/types';
 import { addOverlayText, drawTitleBlock } from './chrome';
 
-interface SNode {
+export interface SNode {
   name: string;
   index: number;
   layer: number;
@@ -26,7 +26,7 @@ interface SNode {
   targetLinks: SLink[];
 }
 
-interface SLink {
+export interface SLink {
   source: SNode;
   target: SNode;
   value: number;
@@ -35,7 +35,7 @@ interface SLink {
   ty: number;
 }
 
-interface Graph {
+export interface Graph {
   nodes: SNode[];
   links: SLink[];
   columns: SNode[][];
@@ -90,12 +90,13 @@ function buildGraph(spec: SankeySpec, palette: string[]): Graph {
     links.push(link);
   }
 
-  for (const n of order) {
-    const out = n.sourceLinks.reduce((s, l) => s + l.value, 0);
-    const inc = n.targetLinks.reduce((s, l) => s + l.value, 0);
-    n.value = Math.max(out, inc);
+  const feedback = removeFeedbackLinks(order);
+  if (feedback.size > 0) {
+    for (let i = links.length - 1; i >= 0; i -= 1) {
+      if (feedback.has(links[i])) links.splice(i, 1);
+    }
   }
-
+  computeNodeValues(order);
   assignLayers(order);
   const maxLayer = order.reduce((m, n) => Math.max(m, n.layer), 0);
   const columns: SNode[][] = Array.from({ length: maxLayer + 1 }, () => []);
@@ -106,6 +107,7 @@ function buildGraph(spec: SankeySpec, palette: string[]): Graph {
 
 /** Longest-path layering via Kahn topological order; sinks pushed to the last column. */
 function assignLayers(nodes: SNode[]): void {
+  for (const n of nodes) n.layer = 0;
   const indeg = new Map<SNode, number>();
   for (const n of nodes) indeg.set(n, n.targetLinks.length);
   const queue = nodes.filter((n) => (indeg.get(n) ?? 0) === 0);
@@ -121,6 +123,13 @@ function assignLayers(nodes: SNode[]): void {
       if (d === 0) queue.push(t);
     }
   }
+  for (const n of nodes) {
+    if (!seen.has(n)) {
+      seen.add(n);
+      const incoming = n.targetLinks.reduce((m, l) => Math.max(m, l.source.layer + 1), 0);
+      n.layer = Math.max(n.layer, incoming);
+    }
+  }
   const maxLayer = nodes.reduce((m, n) => Math.max(m, n.layer), 0);
   // Right-align pure sinks so terminal nodes line up on the right edge.
   for (const n of nodes) {
@@ -128,9 +137,53 @@ function assignLayers(nodes: SNode[]): void {
   }
 }
 
+function removeFeedbackLinks(nodes: SNode[]): Set<SLink> {
+  const visiting = new Set<SNode>();
+  const visited = new Set<SNode>();
+  const feedback = new Set<SLink>();
+
+  const visit = (n: SNode) => {
+    visiting.add(n);
+    for (const link of n.sourceLinks) {
+      const target = link.target;
+      if (visiting.has(target)) {
+        feedback.add(link);
+        continue;
+      }
+      if (!visited.has(target)) visit(target);
+    }
+    visiting.delete(n);
+    visited.add(n);
+  };
+
+  for (const n of nodes) {
+    if (!visited.has(n)) visit(n);
+  }
+  if (feedback.size === 0) return feedback;
+  for (const n of nodes) {
+    n.sourceLinks = n.sourceLinks.filter((l) => !feedback.has(l));
+    n.targetLinks = n.targetLinks.filter((l) => !feedback.has(l));
+  }
+  return feedback;
+}
+
+function computeNodeValues(nodes: SNode[]): void {
+  for (const n of nodes) {
+    const out = n.sourceLinks.reduce((s, l) => s + l.value, 0);
+    const inc = n.targetLinks.reduce((s, l) => s + l.value, 0);
+    n.value = Math.max(out, inc);
+  }
+}
+
 function layout(graph: Graph, area: Rect, nodeWidth: number, pad: number): void {
   const { columns, links, maxLayer } = graph;
   const kx = maxLayer > 0 ? (area.width - nodeWidth) / maxLayer : 0;
+  const maxColumnSize = columns.reduce((m, col) => Math.max(m, col.length), 0);
+  const desiredPad = Math.max(0, pad);
+  const effectivePad =
+    maxColumnSize > 1 && desiredPad * (maxColumnSize - 1) >= area.height && area.height > 0
+      ? (area.height * 0.25) / (maxColumnSize - 1)
+      : desiredPad;
   for (const col of columns) {
     for (const n of col) {
       n.x0 = area.x + n.layer * kx;
@@ -142,30 +195,41 @@ function layout(graph: Graph, area: Rect, nodeWidth: number, pad: number): void 
   for (const col of columns) {
     if (col.length === 0) continue;
     const sum = col.reduce((s, n) => s + n.value, 0);
-    const avail = area.height - (col.length - 1) * pad;
-    if (sum > 0 && avail > 0) ky = Math.min(ky, avail / sum);
+    const avail = Math.max(0, area.height - (col.length - 1) * effectivePad);
+    if (sum > 0) ky = Math.min(ky, avail / sum);
   }
-  if (!Number.isFinite(ky) || ky <= 0) ky = 1;
+  if (!Number.isFinite(ky) || ky < 0) ky = 0;
 
   for (const col of columns) {
     let y = area.y;
     for (const n of col) {
       n.y0 = y;
-      n.y1 = y + Math.max(1, n.value * ky);
-      y = n.y1 + pad;
+      n.y1 = y + Math.max(0, n.value * ky);
+      y = n.y1 + effectivePad;
     }
     centerColumn(col, area);
   }
-  for (const l of links) l.width = Math.max(1, l.value * ky);
+  for (const l of links) l.width = Math.max(0, l.value * ky);
 
   for (let i = 0; i < 6; i += 1) {
     const alpha = Math.pow(0.97, i);
     relax(columns, true, alpha);
-    resolveAll(columns, area, pad);
+    resolveAll(columns, area, effectivePad);
     relax(columns, false, alpha);
-    resolveAll(columns, area, pad);
+    resolveAll(columns, area, effectivePad);
   }
   computeLinkBreadths(graph);
+}
+
+export function buildSankeyLayout(
+  spec: SankeySpec,
+  palette: string[],
+  area: Rect,
+  options: { nodeWidth?: number; nodePadding?: number } = {},
+): Graph {
+  const graph = buildGraph(spec, palette);
+  layout(graph, area, options.nodeWidth ?? spec.nodeWidth ?? 16, options.nodePadding ?? spec.nodePadding ?? 14);
+  return graph;
 }
 
 function centerColumn(col: SNode[], area: Rect): void {

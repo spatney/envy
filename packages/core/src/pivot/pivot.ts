@@ -1,4 +1,5 @@
 import type { Datum } from '../types';
+import { toNumber } from '../util/data';
 
 export type AggOp = 'sum' | 'mean' | 'avg' | 'min' | 'max' | 'count' | 'countDistinct' | 'median' | 'first' | 'last';
 
@@ -429,7 +430,7 @@ function coerceFinite(value: unknown): number | null {
     return null;
   }
 
-  const numberValue = Number(value);
+  const numberValue = toNumber(value);
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 

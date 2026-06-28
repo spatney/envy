@@ -175,4 +175,16 @@ describe('calculate · transform', () => {
       { unit: 'B', rev: 21 },
     ]);
   });
+
+  it('throws expression errors from applyCalculate rather than mutating partial rows', () => {
+    const rows = [{ a: 1 }, { a: 2 }];
+    expect(() => applyCalculate({ calculate: 'unknownFn(a)', as: 'x' }, rows)).toThrow(ExpressionError);
+    expect(rows).toEqual([{ a: 1 }, { a: 2 }]);
+  });
+
+  it('keeps nullish and non-finite calculate results as data values', () => {
+    expect(applyCalculate({ calculate: 'missing', as: 'x' }, [{ a: 1 }])).toEqual([{ a: 1, x: undefined }]);
+    const out = applyCalculate({ calculate: 'a / b', as: 'ratio' }, [{ a: 1, b: 0 }]);
+    expect(out[0].ratio).toBe(Number.POSITIVE_INFINITY);
+  });
 });

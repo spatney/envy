@@ -6,5 +6,11 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     globals: false,
     passWithNoTests: true,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/types.ts', 'src/**/index.ts'],
+      reporter: ['text', 'json-summary'],
+    },
   },
 });

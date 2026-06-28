@@ -21,7 +21,7 @@ vi.mock('graphein', () => ({
 }));
 
 import { render as coreRender } from 'graphein';
-import type { ChartSpec } from 'graphein';
+import type { ChartSpec, SelectionStore } from 'graphein';
 import { Chart } from './Chart';
 import { useChart } from './useChart';
 
@@ -118,6 +118,33 @@ describe('@graphein/react <Chart>', () => {
 
     act(() => root.render(createElement(Chart, { spec: specOf('B'), onReady })));
     expect(onReady).toHaveBeenCalledTimes(2);
+
+    act(() => root.unmount());
+  });
+
+  it('passes a shared store and forwards selection changes', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const store = { id: 'shared' } as unknown as SelectionStore;
+    const onSelectionChange = vi.fn();
+
+    act(() =>
+      root.render(createElement(Chart, { spec: specOf('A'), store, onSelectionChange })),
+    );
+
+    // render() received the store option (third arg).
+    const opts = mockRender.mock.calls[0][2] as { store?: unknown } | undefined;
+    expect(opts?.store).toBe(store);
+
+    // The instance subscribed to 'selectionchange'; invoking the captured
+    // listener forwards to the user's callback.
+    const instance = mockRender.mock.results[0].value as { on: ReturnType<typeof vi.fn> };
+    const [evt, listener] = instance.on.mock.calls[0];
+    expect(evt).toBe('selectionchange');
+    const value = { kind: 'set', field: 'region', values: ['W'] };
+    (listener as (n: string, v: unknown) => void)('region', value);
+    expect(onSelectionChange).toHaveBeenCalledWith('region', value);
 
     act(() => root.unmount());
   });

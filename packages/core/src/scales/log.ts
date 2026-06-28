@@ -88,6 +88,13 @@ export function logScale(opts: LogScaleOptions): ContinuousScale {
     map(value: number): number {
       const [d0, d1] = transformedDomain;
       const [r0, r1] = range;
+      // A log scale is only defined for finite values on the same side of zero
+      // as its domain; a zero, non-finite, or wrong-sign value has no image here.
+      if (!Number.isFinite(value) || value * sign <= 0) return NaN;
+      // Degenerate domain (min === max): every in-sign value maps to the start.
+      if (d0 === d1) {
+        return clamp ? clampValue(r0, Math.min(r0, r1), Math.max(r0, r1)) : r0;
+      }
       const transformed = transform(value, sign, base);
       const mapped = r0 + ((transformed - d0) / (d1 - d0)) * (r1 - r0);
       return clamp ? clampValue(mapped, Math.min(r0, r1), Math.max(r0, r1)) : mapped;
@@ -95,6 +102,8 @@ export function logScale(opts: LogScaleOptions): ContinuousScale {
     invert(pixel: number): number {
       const [d0, d1] = transformedDomain;
       const [r0, r1] = range;
+      // Degenerate domain: the inverse of a constant scale is that constant.
+      if (d0 === d1) return domain[0];
       const input = clamp ? clampValue(pixel, Math.min(r0, r1), Math.max(r0, r1)) : pixel;
       return untransform(d0 + ((input - r0) / (r1 - r0)) * (d1 - d0), sign, base);
     },

@@ -215,6 +215,20 @@ describe('@graphein/node — renderToPNG', () => {
   });
 });
 
+describe('@graphein/node — font registration', () => {
+  it('ignores an unreadable font path and still renders', () => {
+    // registerFromPath throws on a missing file; the result is non-fatal (napi
+    // falls back to a system sans), so the render must still succeed.
+    const { png, report } = renderChart(SPECS.bar, {
+      width: 400,
+      height: 300,
+      fonts: [{ path: '/definitely/not/a/real/font.ttf', family: 'Nope' }],
+    });
+    expect(isPng(png)).toBe(true);
+    expect(report.markCount).toBeGreaterThan(0);
+  });
+});
+
 describe('@graphein/node — unsupported kinds', () => {
   it('throws a clear error for DOM-only visuals', () => {
     const kpi = { type: 'kpi', data: [{ v: 42 }], value: { field: 'v', aggregate: 'sum' } } as ChartSpec;

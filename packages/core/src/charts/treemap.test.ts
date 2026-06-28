@@ -4,6 +4,7 @@ import { validateSpec } from '../spec/validate';
 import type { ChartSpec, TreemapSpec } from '../spec/types';
 import { resolveTheme } from '../theme';
 import type { Surface } from '../render/surface';
+import type { RenderContext } from './index';
 import { drawTreemap, layoutTreemap } from './treemap';
 
 beforeAll(() => {
@@ -91,8 +92,9 @@ describe('layoutTreemap', () => {
 
 // --- End-to-end draw smoke ------------------------------------------------
 
-function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number } {
+function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number; alphas: () => number[] } {
   let count = 0;
+  const alphaSets: number[] = [];
   const grad = { addColorStop() {} };
   const store: Record<string, unknown> = {
     canvas: { width: 600, height: 400 },
@@ -110,11 +112,13 @@ function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number } {
         return undefined;
       };
     },
-    set() {
+    set(t, prop: string, value: unknown) {
+      if (prop === 'globalAlpha' && typeof value === 'number') alphaSets.push(value);
+      t[prop] = value;
       return true;
     },
   }) as unknown as CanvasRenderingContext2D;
-  return { ctx, calls: () => count };
+  return { ctx, calls: () => count, alphas: () => alphaSets };
 }
 
 describe('drawTreemap — smoke', () => {
@@ -138,5 +142,26 @@ describe('drawTreemap — smoke', () => {
     const hover = model!.hitTest(300, 200);
     expect(hover).not.toBeNull();
     expect(hover!.content.title).toBe('Platform');
+  });
+
+  it('dims non-matching tiles when emphasis is active', () => {
+    const { ctx, alphas } = fakeContext();
+    const surface = {
+      marks: { ctx },
+      overlay: document.createElement('div'),
+      width: 600,
+      height: 400,
+    } as unknown as Surface;
+    const context = {
+      emphasis: {
+        dim: 0.25,
+        match: (row: Record<string, unknown>) => row.category === 'Platform',
+      },
+    } as RenderContext;
+
+    drawTreemap(surface, treemapSpec({ labels: false }), resolveTheme('light'), { width: 600, height: 400 }, context);
+
+    expect(alphas()).toContain(0.25);
+    expect(alphas().filter((a) => a === 1).length).toBeGreaterThan(0);
   });
 });

@@ -9,7 +9,7 @@ import type { Surface } from '../render/surface';
 import type { ThemeTokens } from '../theme';
 import type { InteractionModel } from '../interaction/types';
 import type { RenderContext } from './index';
-import type { Rect, RGBA, Size } from '../types';
+import type { Datum, Rect, RGBA, Size } from '../types';
 
 export interface TreemapLayoutInput {
   value: number;
@@ -238,6 +238,13 @@ function buildGroups(leaves: readonly Leaf[]): GroupItem[] {
   return order.map((key) => groups.get(key)!);
 }
 
+function tileProbe(treemap: TreemapSpec, tile: Tile): Datum {
+  const probe: Datum = { [treemap.encoding.category.field]: tile.category };
+  const groupField = treemap.encoding.group?.field;
+  if (groupField) probe[groupField] = tile.group;
+  return probe;
+}
+
 function drawRect(ctx: CanvasRenderingContext2D, pen: RoughPen | null, rect: Rect, fill: string, stroke: string): void {
   if (rect.width <= 0 || rect.height <= 0) return;
   if (pen) {
@@ -289,9 +296,9 @@ export function drawTreemap(
   size: Size,
   context?: RenderContext,
 ): InteractionModel | void {
-  void context;
   const treemap = spec as TreemapSpec;
   const ctx = surface.marks.ctx;
+  const emphasis = context?.emphasis ?? null;
   const content = drawTitleBlock(surface, tokens, size, treemap.title);
   const leaves = buildLeaves(treemap);
   colorLeaves(leaves, treemap, tokens);
@@ -315,6 +322,12 @@ export function drawTreemap(
   const tiles: Tile[] = [];
   const stroke = tokens.color.background;
   const groupRects: { group: GroupItem; rect: Rect; headerH: number }[] = [];
+  const drawTile = (tile: Tile) => {
+    const alpha = emphasis ? (emphasis.match(tileProbe(treemap, tile)) ? 1 : emphasis.dim) : 1;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
+    drawRect(ctx, pen, tile.rect, tile.fillCss, stroke);
+    if (alpha !== 1) ctx.globalAlpha = 1;
+  };
 
   ctx.save();
   if (treemap.encoding.group) {
@@ -330,14 +343,14 @@ export function drawTreemap(
       for (const leafNode of layoutTreemap(groupNode.item.leaves, inner)) {
         const tile = { ...leafNode.item, rect: leafNode.rect };
         tiles.push(tile);
-        drawRect(ctx, pen, tile.rect, tile.fillCss, stroke);
+        drawTile(tile);
       }
     }
   } else {
     for (const leafNode of layoutTreemap(leaves, content)) {
       const tile = { ...leafNode.item, rect: leafNode.rect };
       tiles.push(tile);
-      drawRect(ctx, pen, tile.rect, tile.fillCss, stroke);
+      drawTile(tile);
     }
   }
   ctx.restore();

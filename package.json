@@ -48,6 +48,7 @@
     "build": "npm run build --workspace graphein --workspace @graphein/react --workspace @graphein/node --workspace graphein-mcp",
     "build:all": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspace graphein",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "gen:schema": "node packages/core/scripts/gen-schema.mjs",
@@ -58,6 +59,7 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
     "ts-json-schema-generator": "^2.9.0",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Datum } from '../../types';
+import { pivot } from '../../pivot';
 import {
   applyAggregate,
   applyBin,
@@ -63,6 +64,20 @@ describe('applyFilter', () => {
     const test = compilePredicate({ field: 'sales' });
     expect(sales.filter(test)).toHaveLength(0);
   });
+
+  it('handles contains, valid, reversed temporal ranges, and invalid comparisons', () => {
+    const data: Datum[] = [
+      { name: 'Alpha', v: 1, date: '2024-01-01' },
+      { name: 'beta', v: null, date: '2024-02-01' },
+      { name: 'Gamma', v: Number.NaN, date: 'bad' },
+    ];
+    expect(applyFilter({ filter: { field: 'name', contains: 'AL' } }, data).map((r) => r.name)).toEqual(['Alpha']);
+    expect(applyFilter({ filter: { field: 'v', valid: false } }, data).map((r) => r.name)).toEqual(['beta', 'Gamma']);
+    expect(applyFilter({ filter: { field: 'date', range: ['2024-02-28', '2024-01-15'] } }, data).map((r) => r.name)).toEqual([
+      'beta',
+    ]);
+    expect(applyFilter({ filter: { field: 'name', gt: 'zzz' } }, data)).toHaveLength(0);
+  });
 });
 
 describe('applyAggregate', () => {
@@ -97,6 +112,61 @@ describe('applyAggregate', () => {
     const out = applyAggregate({ groupby: ['region'], aggregate: [{ op: 'count', as: 'n' }] }, sales);
     expect(out.map((r) => r.region)).toEqual(['East', 'West']);
   });
+
+  it('skips non-numeric values in numeric aggregations', () => {
+    const data: Datum[] = [{ v: '' }, { v: 'x' }, { v: '2' }, { v: Number.POSITIVE_INFINITY }];
+    const out = applyAggregate(
+      {
+        aggregate: [
+          { op: 'sum', field: 'v', as: 'sum' },
+          { op: 'mean', field: 'v', as: 'mean' },
+          { op: 'min', field: 'v', as: 'min' },
+          { op: 'max', field: 'v', as: 'max' },
+          { op: 'median', field: 'v', as: 'median' },
+          { op: 'count', field: 'v', as: 'count' },
+        ],
+      },
+      data,
+    );
+    expect(out).toEqual([{ sum: 2, mean: 2, min: 2, max: 2, median: 2, count: 4 }]);
+  });
+
+  it('uses the same numeric aggregation coercion in pivot cells', () => {
+    const out = pivot(
+      [
+        { group: 'A', v: '' },
+        { group: 'A', v: '2' },
+        { group: 'A', v: Number.NaN },
+      ],
+      { rows: ['group'], values: [{ field: 'v', op: 'mean' }] },
+    );
+    const cell = out.rows[0].cellsByColumnKey.get('');
+    expect(cell?.values[0]).toBe(2);
+  });
+
+  it('handles empty inputs, first/last, countDistinct, and composite group keys', () => {
+    expect(applyAggregate({ aggregate: [{ op: 'count', as: 'n' }] }, [])).toEqual([{ n: 0 }]);
+    const data: Datum[] = [
+      { a: 'x', b: 1, v: '10' },
+      { a: 'x', b: 1, v: '10' },
+      { a: 'x', b: 2, v: '20' },
+    ];
+    const out = applyAggregate(
+      {
+        groupby: ['a', 'b'],
+        aggregate: [
+          { op: 'first', field: 'v', as: 'first' },
+          { op: 'last', field: 'v', as: 'last' },
+          { op: 'countDistinct', field: 'v', as: 'distinct' },
+        ],
+      },
+      data,
+    );
+    expect(out).toEqual([
+      { a: 'x', b: 1, first: 10, last: 10, distinct: 1 },
+      { a: 'x', b: 2, first: 20, last: 20, distinct: 1 },
+    ]);
+  });
 });
 
 describe('computeBins / applyBin', () => {
@@ -123,6 +193,37 @@ describe('computeBins / applyBin', () => {
     const out = applyBin({ bin: 'v', as: 'b', step: 10, extent: [0, 10] }, data);
     expect(out.map((r) => r.b)).toEqual([null, null, 0]);
   });
+
+  it('computes the bin domain from finite values only', () => {
+    const data: Datum[] = [{ v: 1 }, { v: 2 }, { v: Number.POSITIVE_INFINITY }, { v: Number.NaN }];
+    const out = applyBin({ bin: 'v', as: 'b', step: 1, nice: false }, data);
+    expect(out.map((r) => r.b)).toEqual([1, 1, null, null]);
+  });
+
+  it('returns null layout for no finite values and handles singleton domains', () => {
+    expect(computeBins([Number.NaN, Number.POSITIVE_INFINITY])).toBeNull();
+    expect(computeBins([5, 5], { step: 2 })).toEqual({ start: 5, step: 2, count: 1 });
+    const out = applyBin({ bin: 'v', as: ['lo', 'hi'] }, [{ v: 'x' }, { v: Number.NaN }]);
+    expect(out).toEqual([
+      { v: 'x', lo: null, hi: null },
+      { v: Number.NaN, lo: null, hi: null },
+    ]);
+  });
+
+  it('clamps edge values into the final bin and supports non-nice decimal starts', () => {
+    const out = applyBin({ bin: 'v', as: ['lo', 'hi'], step: 0.2, extent: [0.1, 0.5], nice: false }, [
+      { v: 0.1 },
+      { v: 0.3 },
+      { v: 0.5 },
+      { v: 0.6 },
+    ]);
+    expect(out.map((r) => [r.lo, r.hi])).toEqual([
+      [0.1, 0.3],
+      [0.3, 0.5],
+      [0.3, 0.5],
+      [null, null],
+    ]);
+  });
 });
 
 describe('applyFold', () => {
@@ -143,6 +244,11 @@ describe('applyFold', () => {
       ['b', 20],
     ]);
   });
+
+  it('returns an empty array for empty input or no folded columns', () => {
+    expect(applyFold({ fold: ['a'] }, [])).toEqual([]);
+    expect(applyFold({ fold: [] }, [{ a: 1 }])).toEqual([]);
+  });
 });
 
 describe('applyTimeUnit', () => {
@@ -160,6 +266,21 @@ describe('applyTimeUnit', () => {
   it('writes null when the field is not a date', () => {
     const out = applyTimeUnit({ timeUnit: 'month', field: 'date', as: 'm' }, [{ date: 'nope' }]);
     expect(out[0].m).toBeNull();
+  });
+
+  it('truncates every supported granularity and preserves source rows', () => {
+    const date = new Date(2024, 4, 15, 13, 14, 15, 999);
+    const units = ['year', 'quarter', 'month', 'week', 'day', 'hour', 'minute', 'second'] as const;
+    const out = units.map((unit) => applyTimeUnit({ timeUnit: unit, field: 'date', as: unit }, [{ date }])[0][unit] as Date);
+    expect(out.map((d) => d.getMilliseconds())).toEqual(Array(8).fill(0));
+    expect(out[0]).toEqual(new Date(2024, 0, 1));
+    expect(out[1]).toEqual(new Date(2024, 3, 1));
+    expect(out[2]).toEqual(new Date(2024, 4, 1));
+    expect(out[3]).toEqual(new Date(2024, 4, 12));
+    expect(out[4]).toEqual(new Date(2024, 4, 15));
+    expect(out[5]).toEqual(new Date(2024, 4, 15, 13));
+    expect(out[6]).toEqual(new Date(2024, 4, 15, 13, 14));
+    expect(out[7]).toEqual(new Date(2024, 4, 15, 13, 14, 15));
   });
 });
 

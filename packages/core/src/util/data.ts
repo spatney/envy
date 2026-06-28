@@ -54,7 +54,15 @@ export function toNumber(value: unknown): number {
 }
 
 /** Coerce a value to a Date, or null when it cannot be parsed. */
+const ISO_YEAR_RE = /^(\d{4})$/;
 const ISO_DATE_RE = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/;
+const ISO_DATETIME_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?$/;
+
+function isLocalCalendarDate(year: number, month: number, day: number): boolean {
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
 
 export function toDate(value: unknown): Date | null {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
@@ -67,8 +75,20 @@ export function toDate(value: unknown): Date | null {
     // them as UTC, which then renders as the previous day in any timezone west
     // of UTC. Parse them in LOCAL time so the calendar day matches the input.
     // Date-time (with a clock) and slash forms are already local via Date.parse.
+    const y = ISO_YEAR_RE.exec(value);
+    if (y) {
+      const d = new Date(Date.parse(value));
+      return d.getUTCFullYear() === +y[1] && d.getUTCMonth() === 0 && d.getUTCDate() === 1 ? d : null;
+    }
     const m = ISO_DATE_RE.exec(value);
-    if (m) return new Date(+m[1], +m[2] - 1, m[3] ? +m[3] : 1);
+    if (m) {
+      const year = +m[1];
+      const month = +m[2];
+      const day = m[3] ? +m[3] : 1;
+      return isLocalCalendarDate(year, month, day) ? new Date(year, month - 1, day) : null;
+    }
+    const dt = ISO_DATETIME_RE.exec(value);
+    if (dt && !isLocalCalendarDate(+dt[1], +dt[2], +dt[3])) return null;
     const ms = Date.parse(value);
     return Number.isNaN(ms) ? null : new Date(ms);
   }

@@ -12,7 +12,7 @@ import type { InteractionModel } from '../interaction/types';
 import type { RenderContext } from './index';
 import { addOverlayText, CHROME_PAD, drawTitleBlock } from './chrome';
 
-interface Stage {
+export interface Stage {
   key: string;
   label: string;
   value: number;
@@ -22,7 +22,7 @@ interface Stage {
 }
 
 /** Aggregate (sum) value by stage, preserving first-seen order. */
-function buildStages(spec: FunnelSpec, palette: string[]): Stage[] {
+export function buildStages(spec: FunnelSpec, palette: string[]): Stage[] {
   const readStage = accessor(spec.encoding.stage.field);
   const readValue = accessor(spec.encoding.value.field);
   const colorScale = ordinalColorScale({ palette });
@@ -42,17 +42,31 @@ function buildStages(spec: FunnelSpec, palette: string[]): Stage[] {
     }
   }
 
-  return order.map((key) => {
+  const stages: Stage[] = [];
+  for (const key of order) {
     const { category, value } = totals.get(key)!;
+    if (value <= 0) continue;
     const rgba = colorScale.map(key);
-    return {
+    stages.push({
       key,
       label: key === '' ? '(blank)' : key,
       value,
       category,
       color: rgbaToCss(rgba),
       rgba,
-    };
+    });
+  }
+  return stages;
+}
+
+function safeRatio(numerator: number, denominator: number): number {
+  return Number.isFinite(numerator) && Number.isFinite(denominator) && denominator !== 0 ? numerator / denominator : 0;
+}
+
+export function funnelPercents(stages: Pick<Stage, 'value'>[], mode: 'first' | 'previous' = 'first'): number[] {
+  return stages.map((stage, i) => {
+    if (mode === 'previous') return i === 0 ? 1 : safeRatio(stage.value, stages[i - 1].value);
+    return safeRatio(stage.value, stages[0]?.value ?? 0);
   });
 }
 
@@ -102,14 +116,12 @@ export function drawFunnel(
   const n = stages.length;
   const gap = Math.min(6, Math.max(2, content.height / n / 12));
   const bandH = content.height / n;
-  const widthOf = (v: number): number => (v / maxValue) * funnelW;
+  const widthOf = (v: number): number => (Math.max(0, v) / maxValue) * funnelW;
 
   const alphaOf = (s: Stage): number =>
     emphasis ? (emphasis.match({ [stageField]: s.category }) ? 1 : emphasis.dim) : 1;
-  const pctOf = (i: number): number => {
-    if (mode === 'previous') return i === 0 ? 1 : stages[i].value / stages[i - 1].value;
-    return stages[i].value / stages[0].value;
-  };
+  const percents = funnelPercents(stages, mode);
+  const pctOf = (i: number): number => percents[i] ?? 0;
 
   const sketch = resolveSketch(spec);
   const pen = sketch ? new RoughPen(ctx, sketch) : null;

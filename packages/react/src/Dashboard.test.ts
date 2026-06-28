@@ -22,7 +22,7 @@ vi.mock('graphein', () => ({
 }));
 
 import { renderDashboard as coreRenderDashboard } from 'graphein';
-import type { DashboardSpec } from 'graphein';
+import type { DashboardSpec, SelectionStore } from 'graphein';
 import { Dashboard } from './Dashboard';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -82,5 +82,31 @@ describe('@graphein/react <Dashboard>', () => {
 
     act(() => root.unmount());
     expect(instance.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes a shared store, fires onReady, and forwards selection changes', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const store = { id: 'shared' } as unknown as SelectionStore;
+    const onReady = vi.fn();
+    const onSelectionChange = vi.fn();
+
+    act(() =>
+      root.render(createElement(Dashboard, { spec: dashOf('A'), store, onReady, onSelectionChange })),
+    );
+
+    expect(onReady).toHaveBeenCalledTimes(1);
+    const opts = mockRender.mock.calls[0][2] as { store?: unknown } | undefined;
+    expect(opts?.store).toBe(store);
+
+    const instance = lastInstance();
+    const [evt, listener] = instance.on.mock.calls[0];
+    expect(evt).toBe('selectionchange');
+    const value = { kind: 'set', field: 'region', values: ['East'] };
+    (listener as (n: string, v: unknown) => void)('region', value);
+    expect(onSelectionChange).toHaveBeenCalledWith('region', value);
+
+    act(() => root.unmount());
   });
 });

@@ -24,6 +24,16 @@ describe('util/data', () => {
     expect(toDate('nonsense')).toBeNull();
   });
 
+  it('rejects overflowing ISO calendar dates', () => {
+    expect(toDate('2024')).not.toBeNull();
+    expect(toDate('2024-02')).not.toBeNull();
+    expect(toDate('2024-02-29')).not.toBeNull();
+    expect(toDate('2024-02-29T12:34')).not.toBeNull();
+    expect(toDate('2024-13')).toBeNull();
+    expect(toDate('2024-02-31')).toBeNull();
+    expect(toDate('2024-02-31T12:34')).toBeNull();
+  });
+
   it('computes extent over a field', () => {
     expect(extent(data, 'sales')).toEqual([5, 20]);
     expect(extent([], 'sales')).toBeNull();

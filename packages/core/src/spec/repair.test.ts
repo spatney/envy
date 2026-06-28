@@ -131,3 +131,64 @@ describe('repairSpec', () => {
     expect(remaining).toEqual([]);
   });
 });
+
+describe('validateSpec — log scale domain', () => {
+  it('warns on a log y-scale whose explicit domain includes zero, with a remove fix', () => {
+    const res = validateSpec({
+      type: 'line',
+      data: [
+        { x: 'a', y: 1 },
+        { x: 'b', y: 100 },
+      ],
+      encoding: { x: { field: 'x' }, y: { field: 'y', scale: { type: 'log', domain: [0, 100] } } },
+    });
+    const w = res.warnings.find((w) => w.rule === 'log-scale-nonpositive-domain');
+    expect(w?.path).toBe('encoding.y.scale.domain');
+    expect(w?.severity).toBe('warning');
+    expect(w?.fix).toEqual([{ op: 'remove', path: '/encoding/y/scale/domain' }]);
+    // The spec is still structurally valid — this is advisory, not an error.
+    expect(res.valid).toBe(true);
+  });
+
+  it('warns on a negative log x-scale bound', () => {
+    const res = validateSpec({
+      type: 'scatter',
+      data: [
+        { x: 1, y: 1 },
+        { x: 10, y: 2 },
+      ],
+      encoding: {
+        x: { field: 'x', type: 'quantitative', scale: { type: 'log', domain: [-5, 10] } },
+        y: { field: 'y' },
+      },
+    });
+    expect(res.warnings.some((w) => w.rule === 'log-scale-nonpositive-domain')).toBe(true);
+  });
+
+  it('does not warn for a strictly positive log domain', () => {
+    const res = validateSpec({
+      type: 'line',
+      data: [
+        { x: 'a', y: 1 },
+        { x: 'b', y: 100 },
+      ],
+      encoding: { x: { field: 'x' }, y: { field: 'y', scale: { type: 'log', domain: [1, 100] } } },
+    });
+    expect(res.warnings.some((w) => w.rule === 'log-scale-nonpositive-domain')).toBe(false);
+  });
+
+  it('repairSpec drops a non-positive log domain so the runtime can derive one', () => {
+    const { spec, applied } = repairSpec({
+      type: 'line',
+      data: [
+        { x: 'a', y: 1 },
+        { x: 'b', y: 100 },
+      ],
+      encoding: { x: { field: 'x' }, y: { field: 'y', scale: { type: 'log', domain: [0, 100] } } },
+    });
+    expect(applied).toContainEqual({ op: 'remove', path: '/encoding/y/scale/domain' });
+    const enc = (spec as { encoding: { y: { scale: { domain?: unknown; type: string } } } }).encoding;
+    expect(enc.y.scale.domain).toBeUndefined();
+    expect(enc.y.scale.type).toBe('log');
+  });
+});

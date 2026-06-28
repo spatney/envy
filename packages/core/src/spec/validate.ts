@@ -208,6 +208,31 @@ export function validateSpec(spec: unknown): ValidationResult {
     }
   }
 
+  // A "log" scale needs a strictly positive domain — zero and negatives have no
+  // logarithm. An explicit domain that includes a non-positive bound is an
+  // authoring mistake: warn, and offer to drop the bad domain so the runtime can
+  // derive a positive one from the data.
+  if (isObject(spec.encoding)) {
+    for (const ch of ['x', 'y'] as const) {
+      const channel = spec.encoding[ch];
+      if (!isObject(channel) || !isObject(channel.scale)) continue;
+      const scale = channel.scale;
+      if (scale.type !== 'log') continue;
+      const domain = scale.domain;
+      if (Array.isArray(domain) && domain.some((v) => typeof v === 'number' && v <= 0)) {
+        warn(
+          `encoding.${ch}.scale.domain`,
+          'A "log" scale needs a strictly positive domain; values <= 0 have no logarithm. The domain will be clamped to the positive data range.',
+          {
+            rule: 'log-scale-nonpositive-domain',
+            severity: 'warning',
+            fix: [{ op: 'remove', path: toPointer(`encoding.${ch}.scale.domain`) }],
+          },
+        );
+      }
+    }
+  }
+
   if (type === 'kpi') {
     const value = spec.value;
     if (value === undefined) {

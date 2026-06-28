@@ -1220,6 +1220,12 @@ warnings). Current rules:
 Lint rules evaluate the **post‑`transform`** data, so cardinality reflects what
 actually renders.
 
+`validateSpec` also emits a structural **`log-scale-nonpositive-domain`** warning
+(severity `'warning'`, carrying a `fix`) when an explicit log‑axis `scale.domain`
+includes a value ≤ 0 — a domain that has no logarithm. The `fix` removes the bad
+`domain` so the runtime can derive a strictly positive one from the data;
+[`repairSpec`](#self-repairing-specs) applies it automatically.
+
 ### Self-repairing specs
 
 ```ts

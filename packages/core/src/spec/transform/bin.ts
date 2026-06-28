@@ -37,7 +37,7 @@ export function computeBins(
     [min, max] = opts.extent;
   } else {
     for (const v of values) {
-      if (Number.isNaN(v)) continue;
+      if (!Number.isFinite(v)) continue;
       if (v < min) min = v;
       if (v > max) max = v;
     }
@@ -69,7 +69,7 @@ export function applyBin(transform: BinTransform, data: Datum[]): Datum[] {
   const finite: number[] = [];
   for (const row of data) {
     const n = toNumber(read(row));
-    if (!Number.isNaN(n)) finite.push(n);
+    if (Number.isFinite(n)) finite.push(n);
   }
   const layout = computeBins(finite, {
     maxbins: transform.maxbins,
@@ -85,7 +85,7 @@ export function applyBin(transform: BinTransform, data: Datum[]): Datum[] {
     const v = toNumber(read(row));
     const outside =
       transform.extent != null && (v < transform.extent[0] || v > transform.extent[1]);
-    if (layout == null || Number.isNaN(v) || outside) {
+    if (layout == null || !Number.isFinite(v) || outside) {
       out[startField] = null;
       if (endField) out[endField] = null;
       return out;
