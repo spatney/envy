@@ -1,0 +1,104 @@
+name: Release
+
+# Build, verify and publish all Graphein packages to npm whenever a
+# vX.Y.Z tag is pushed, then cut a GitHub Release.
+#
+# Auth uses npm OIDC Trusted Publishing (no NPM_TOKEN secret). Each package
+# must have a Trusted Publisher configured on npmjs.com pointing at this repo
+# and this workflow file (release.yml). See docs/RELEASING.md.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Never cancel an in-flight publish for the same tag.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # OIDC token for npm Trusted Publishing + provenance
+
+jobs:
+  release:
+    name: Publish to npm + GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm (Trusted Publishing needs npm >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Verify tag matches package versions
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "Tag version: $TAG"
+          fail=0
+          for f in \
+            package.json \
+            packages/core/package.json \
+            packages/node/package.json \
+            packages/react/package.json \
+            packages/mcp/package.json
+          do
+            v=$(node -p "require('./$f').version")
+            if [ "$v" != "$TAG" ]; then
+              echo "::error file=$f::version '$v' does not match tag '$TAG'"
+              fail=1
+            else
+              echo "ok: $f = $v"
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match all package versions. Bump versions in lockstep before tagging."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Publish to npm (idempotent, with provenance)
+        run: |
+          set -euo pipefail
+          publish() {
+            local name="$1" dir="$2" ver
+            ver=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$ver" version >/dev/null 2>&1; then
+              echo "skip $name@$ver (already on npm)"
+            else
+              echo "publishing $name@$ver"
+              npm publish --workspace "$name" --provenance --access public
+            fi
+          }
+          # Dependency order: core -> node -> react -> mcp.
+          publish graphein packages/core
+          publish @graphein/node packages/node
+          publish @graphein/react packages/react
+          publish graphein-mcp packages/mcp
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag --title "$GITHUB_REF_NAME"
