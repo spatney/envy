@@ -39,6 +39,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
   - [box](#box) · [funnel](#funnel) · [sankey](#sankey) · [choropleth](#choropleth)
   - [treemap](#treemap) · [gauge](#gauge) · [bullet](#bullet) · [calendarHeatmap](#calendarheatmap)
+  - [waterfall](#waterfall) · [slope](#slope) · [dumbbell](#dumbbell)
 - [Slicers](#slicers)
   - [dropdown](#dropdown) · [search](#search) · [list](#list) · [range](#range) · [dateRange](#daterange)
 - [Interactivity (selection · highlight · filter)](#interactivity-selection--highlight--filter)
@@ -681,6 +682,58 @@ be `Date` objects or ISO strings (both coerce for the `temporal` field).
 | `scheme` | `string` | Sequential ramp name for the value scale (default `teal`). |
 
 → [`examples/calendar-heatmap.json`](./examples/calendar-heatmap.json)
+
+### waterfall
+
+A cash‑flow / bridge chart: floating bars walk a running total across ordered `stage`s,
+where each `value` is a **signed delta** (positive rises, negative falls). Mark a stage in
+`totals` (or append one with `showTotal`) to draw an absolute bar from the baseline — it
+shows the running total but does **not** advance it. Dashed connectors join each step to
+the next. Renders to canvas (headless‑safe).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `stage`, `value` | `stage` → one bar per row (in data order); `value` is the **signed** change at that stage. |
+| `totals` | `string[]` | Stage labels to draw as absolute running‑total bars from zero. |
+| `showTotal` | `boolean` | Append a final bar summing every step (default `false`). |
+| `totalLabel` | `string` | Label for the appended total bar (default `'Total'`). |
+| `labels` | `boolean` | Show per‑bar value labels (default `true`). |
+| `cornerRadius` | `number` | Bar corner radius in px (default `2`). |
+| `increaseColor` / `decreaseColor` / `totalColor` | `string` | Override the up / down / total colors (default theme positive / negative / accent). |
+
+→ [`examples/waterfall.json`](./examples/waterfall.json)
+
+### slope
+
+A slope graph — a minimal before/after chart: each `series` is a line joining its `y`
+value across two (or a few) ordinal `x` positions, with **direct end labels** instead of a
+legend, so change‑in‑rank and rise/fall read at a glance. Pass tidy `{ x, y, series }`
+rows (one per series per x position). Renders to canvas (headless‑safe).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `x`, `y`, `series` | `x` → the ordinal positions (typically two); `y` is the numeric value; `series` is one line each. |
+| `colorByChange` | `boolean` | Color each line green/red by its net rise/fall instead of by series. |
+| `labels` | `boolean` | Direct labels (series name + value) at each line's ends (default `true`). |
+| `format` | `string` | Number format for the value labels and y‑axis. |
+
+→ [`examples/slope.json`](./examples/slope.json)
+
+### dumbbell
+
+A dumbbell / connected‑dot plot: for each `category`, a dot per `group` placed on a shared
+**horizontal** value axis and joined by a connector, so the gap between groups (before vs.
+after, male vs. female) reads directly. Categories run down the y‑axis. Pass tidy
+`{ category, value, group }` rows. Renders to canvas (headless‑safe).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `category`, `value`, `group` | `category` → one band down the y‑axis; `value` → dot position on the x‑axis; `group` → one dot each (2+ levels), connected. |
+| `sort` | `'ascending' \| 'descending' \| 'gap'` | Order the category rows (default: data order). `gap` sorts by dot spread. |
+| `labels` | `boolean` | Value labels beside the dots (default `false`). |
+| `format` | `string` | Number format for the value labels and x‑axis. |
+
+→ [`examples/dumbbell.json`](./examples/dumbbell.json)
 
 ---
 

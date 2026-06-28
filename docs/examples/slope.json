@@ -1,0 +1,21 @@
+{
+  "type": "slope",
+  "title": "Market share shift, 2019 \u2192 2024",
+  "data": [
+    { "year": "2019", "brand": "Aurora", "share": 34 },
+    { "year": "2024", "brand": "Aurora", "share": 22 },
+    { "year": "2019", "brand": "Borealis", "share": 18 },
+    { "year": "2024", "brand": "Borealis", "share": 29 },
+    { "year": "2019", "brand": "Cirrus", "share": 27 },
+    { "year": "2024", "brand": "Cirrus", "share": 31 },
+    { "year": "2019", "brand": "Delta", "share": 21 },
+    { "year": "2024", "brand": "Delta", "share": 18 }
+  ],
+  "encoding": {
+    "x": { "field": "year" },
+    "y": { "field": "share", "title": "Share %" },
+    "series": { "field": "brand" }
+  },
+  "colorByChange": true,
+  "format": ",.0f"
+}

@@ -64,6 +64,9 @@ const chart = render('#app', spec);
 | Single value vs. a scale | `gauge` | `value`, `max` (+ `target?`, `bands?`) |
 | KPI vs. target (compact) | `bullet` | `value` (+ `target?`, `ranges?`) |
 | Daily values over a year | `calendarHeatmap` | `date`, `color` |
+| Running total / bridge | `waterfall` | `stage`, `value` (signed deltas) |
+| Before / after across series | `slope` | `x`, `y`, `series` |
+| Gap between two groups | `dumbbell` | `category`, `value`, `group` |
 | Headline metric | `kpi` | `value` (+ `delta`, `sparkline`) |
 | Tabular detail | `table` | `columns` (+ optional totals, groups, conditional bars/icons/rules) |
 | Pivot / cross-tab | `matrix` | `rows`, `columns`, `values` (+ optional `showAs` percentages) |

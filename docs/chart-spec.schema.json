@@ -20,6 +20,9 @@
     { "$ref": "#/$defs/GaugeSpec" },
     { "$ref": "#/$defs/BulletSpec" },
     { "$ref": "#/$defs/CalendarHeatmapSpec" },
+    { "$ref": "#/$defs/WaterfallSpec" },
+    { "$ref": "#/$defs/SlopeSpec" },
+    { "$ref": "#/$defs/DumbbellSpec" },
     { "$ref": "#/$defs/TableSpec" },
     { "$ref": "#/$defs/MatrixSpec" },
     { "$ref": "#/$defs/BoxSpec" },
@@ -786,6 +789,63 @@
         "scheme": { "type": "string", "description": "Sequential color scheme for the value scale (default 'teal')." }
       }
     },
+    "WaterfallSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "waterfall" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["stage", "value"],
+          "description": "`stage` labels each bar (x-axis, data order); `value` is the SIGNED change at that stage (positive rises, negative falls)."
+        },
+        "totals": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stage labels to draw as absolute running-total bars from the baseline."
+        },
+        "showTotal": { "type": "boolean", "description": "Append a final bar summing every step (default false)." },
+        "totalLabel": { "type": "string", "description": "Label for the appended total bar (default 'Total')." },
+        "labels": { "type": "boolean", "description": "Per-bar value labels (default true)." },
+        "cornerRadius": { "type": "number", "minimum": 0, "description": "Bar corner radius in pixels (default 2)." },
+        "increaseColor": { "type": "string", "description": "Color for upward steps (default theme positive/green)." },
+        "decreaseColor": { "type": "string", "description": "Color for downward steps (default theme negative/red)." },
+        "totalColor": { "type": "string", "description": "Color for total/subtotal bars (default theme accent)." }
+      }
+    },
+    "SlopeSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "slope" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["x", "y", "series"],
+          "description": "`x` is the ordinal position (typically two: start/end), `y` the value, `series` the entity drawn as one line."
+        },
+        "labels": { "type": "boolean", "description": "Direct end labels (series name + value) at each line's ends (default true)." },
+        "colorByChange": { "type": "boolean", "description": "Color each line green/red by its net rise/fall instead of by series." },
+        "format": { "type": "string", "description": "Number format for value labels and the y-axis." }
+      }
+    },
+    "DumbbellSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "dumbbell" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["category", "value", "group"],
+          "description": "`category` is one row down the y-axis, `value` the dot position on the horizontal axis, `group` the dot identity (2+ → one dot each, connected)."
+        },
+        "labels": { "type": "boolean", "description": "Value labels beside the dots (default false)." },
+        "format": { "type": "string", "description": "Number format for value labels and the x-axis." },
+        "sort": { "type": "string", "enum": ["ascending", "descending", "gap"], "description": "Order the category rows (default: data order). 'gap' sorts by dot spread." }
+      }
+    },
     "TableSpec": {
       "allOf": [{ "$ref": "#/$defs/BaseProps" }],
       "type": "object",
@@ -1114,6 +1174,9 @@
         { "$ref": "#/$defs/GaugeSpec" },
         { "$ref": "#/$defs/BulletSpec" },
         { "$ref": "#/$defs/CalendarHeatmapSpec" },
+        { "$ref": "#/$defs/WaterfallSpec" },
+        { "$ref": "#/$defs/SlopeSpec" },
+        { "$ref": "#/$defs/DumbbellSpec" },
         { "$ref": "#/$defs/TableSpec" },
         { "$ref": "#/$defs/MatrixSpec" },
         { "$ref": "#/$defs/BoxSpec" },

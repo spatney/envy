@@ -23,6 +23,9 @@ const TYPE_LABELS: Record<string, string> = {
   gauge: 'Gauge',
   bullet: 'Bullet graph',
   calendarHeatmap: 'Calendar heatmap',
+  waterfall: 'Waterfall chart',
+  slope: 'Slope chart',
+  dumbbell: 'Dumbbell plot',
   table: 'Data table',
   matrix: 'Pivot matrix',
 };

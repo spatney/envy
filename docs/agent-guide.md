@@ -108,6 +108,9 @@ reference: [spec-reference → Transforms](./spec-reference.md#transforms).
 | Single value vs. a scale | `gauge` | `value`, `max` (+ `target?`, `bands?`) |
 | KPI vs. target (compact tile) | `bullet` | `value` (+ `target?`, `ranges?`) |
 | Daily values over weeks/months | `calendarHeatmap` | `date`, `color` |
+| Running total / bridge | `waterfall` | `stage`, `value` (signed deltas) |
+| Before / after by series | `slope` | `x`, `y`, `series` |
+| Gap between two groups | `dumbbell` | `category`, `value`, `group` |
 | Headline metric | `kpi` | `value`, `delta`, `sparkline` |
 | Raw/detail records | `table` | `columns` (+ optional totals, groups, bars/icons/rules) |
 | Aggregated cross‑tab | `matrix` | `rows`, `columns`, `values` (+ `showAs` percentages) |
@@ -244,6 +247,54 @@ Don't pre-bin or pre-count — feed one row per observation and let `bin` do the
     "date": { "field": "date", "type": "temporal" },
     "color": { "field": "commits", "type": "quantitative", "title": "Commits" }
   }
+}
+```
+
+**Waterfall (running total / bridge)** — floating bars walk a running total; each `value` is a **signed** delta:
+
+```jsonc
+{
+  "type": "waterfall",
+  "data": [/* { stage, delta } rows in order; deltas signed */],
+  "showTotal": true,                       // append a bar summing every step
+  "totalLabel": "Closing",
+  "encoding": {
+    "stage": { "field": "stage", "title": "Stage" },
+    "value": { "field": "delta", "title": "USD (000s)", "format": "$,.0f" }
+  }
+}
+```
+
+**Slope (before / after)** — one line per `series` across two `x` positions, direct end labels:
+
+```jsonc
+{
+  "type": "slope",
+  "data": [/* { year, brand, share } — one row per series per x */],
+  "encoding": {
+    "x": { "field": "year" },
+    "y": { "field": "share", "title": "Share %" },
+    "series": { "field": "brand" }
+  },
+  "colorByChange": true,                   // green when rising, red when falling
+  "format": ",.0f"
+}
+```
+
+**Dumbbell (gap between two groups)** — a horizontal dot pair per `category`, joined by a connector:
+
+```jsonc
+{
+  "type": "dumbbell",
+  "data": [/* { country, year, life } — one row per group per category */],
+  "encoding": {
+    "category": { "field": "country" },
+    "value": { "field": "life", "title": "Years" },
+    "group": { "field": "year" }
+  },
+  "sort": "gap",                           // order rows by dot spread
+  "labels": true,
+  "format": ",.0f"
 }
 ```
 

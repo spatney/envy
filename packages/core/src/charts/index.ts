@@ -34,6 +34,9 @@ import { drawTreemap } from './treemap';
 import { drawGauge } from './gauge';
 import { drawBullet } from './bullet';
 import { drawCalendarHeatmap } from './calendarHeatmap';
+import { drawWaterfall } from './waterfall';
+import { drawSlope } from './slope';
+import { drawDumbbell } from './dumbbell';
 
 export { drawAnnotations, drawAnnotationLabels } from './annotations';
 
@@ -114,6 +117,9 @@ export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {
   gauge: drawGauge,
   bullet: drawBullet,
   calendarHeatmap: drawCalendarHeatmap,
+  waterfall: drawWaterfall,
+  slope: drawSlope,
+  dumbbell: drawDumbbell,
   combo: drawCombo,
   histogram: drawHistogram,
   sankey: drawSankey,

@@ -78,6 +78,9 @@ const REQUIRED_CHANNELS: Record<ChartType, string[]> = {
   choropleth: ['key', 'color'],
   treemap: ['category', 'value'],
   calendarHeatmap: ['date', 'color'],
+  waterfall: ['stage', 'value'],
+  slope: ['x', 'y', 'series'],
+  dumbbell: ['category', 'value', 'group'],
   gauge: [],
   bullet: [],
   kpi: [],
@@ -263,6 +266,47 @@ export function validateSpec(spec: unknown): ValidationResult {
           }
         });
       }
+    }
+  }
+
+  if (type === 'waterfall') {
+    if (spec.totals !== undefined) {
+      if (!Array.isArray(spec.totals)) {
+        err('totals', '"totals" must be an array of stage labels to draw as absolute bars.');
+      } else if (spec.totals.some((t) => typeof t !== 'string')) {
+        err('totals', 'Each entry in "totals" must be a stage label string.');
+      }
+    }
+    if (spec.showTotal !== undefined && typeof spec.showTotal !== 'boolean') {
+      err('showTotal', '"showTotal" must be a boolean.');
+    }
+    if (spec.labels !== undefined && typeof spec.labels !== 'boolean') {
+      err('labels', '"labels" must be a boolean.');
+    }
+    if (
+      spec.cornerRadius !== undefined &&
+      (typeof spec.cornerRadius !== 'number' || !Number.isFinite(spec.cornerRadius) || spec.cornerRadius < 0)
+    ) {
+      err('cornerRadius', '"cornerRadius" must be a non-negative number.');
+    }
+  }
+
+  if (type === 'slope') {
+    if (spec.labels !== undefined && typeof spec.labels !== 'boolean') {
+      err('labels', '"labels" must be a boolean.');
+    }
+    if (spec.colorByChange !== undefined && typeof spec.colorByChange !== 'boolean') {
+      err('colorByChange', '"colorByChange" must be a boolean.');
+    }
+  }
+
+  if (type === 'dumbbell') {
+    if (spec.labels !== undefined && typeof spec.labels !== 'boolean') {
+      err('labels', '"labels" must be a boolean.');
+    }
+    const SORTS = ['ascending', 'descending', 'gap'];
+    if (spec.sort !== undefined && !SORTS.includes(spec.sort as string)) {
+      err('sort', 'Expected "ascending", "descending", or "gap".', enumRepair('sort', spec.sort, SORTS));
     }
   }
 

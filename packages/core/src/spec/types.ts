@@ -534,6 +534,88 @@ export interface CalendarHeatmapSpec extends BaseSpec {
   scheme?: string;
 }
 
+/**
+ * Waterfall — a column chart of signed steps where each bar floats from the
+ * running total to its new level, showing how sequential increases and decreases
+ * build to a final value. Each `value` is the **signed change** at that stage
+ * (positive rises, negative falls). Stages named in `totals` (and an optional
+ * appended grand total) draw as absolute bars from the baseline. Increases,
+ * decreases, and totals are colored distinctly and joined by connector lines.
+ */
+export interface WaterfallSpec extends BaseSpec {
+  type: 'waterfall';
+  encoding: Encoding & {
+    /** Stage label along the x-axis (one bar per row, in data order). */
+    stage: FieldDef;
+    /** Signed change at each stage (positive rises, negative falls). */
+    value: FieldDef;
+  };
+  /** Stage labels to draw as absolute running-total bars from the baseline. */
+  totals?: string[];
+  /** Append a final bar summing every step (default false). */
+  showTotal?: boolean;
+  /** Label for the appended total bar (default 'Total'). */
+  totalLabel?: string;
+  /** Show the per-bar value labels (default true). */
+  labels?: boolean;
+  /** Bar corner radius in pixels (default 2). */
+  cornerRadius?: number;
+  /** Color for upward steps (default theme positive/green). */
+  increaseColor?: string;
+  /** Color for downward steps (default theme negative/red). */
+  decreaseColor?: string;
+  /** Color for total/subtotal bars (default theme accent). */
+  totalColor?: string;
+}
+
+/**
+ * Slope graph — a minimal "before/after" chart: each `series` is a line joining
+ * its `y` value across two (or a few) ordinal `x` positions, with direct end
+ * labels instead of a legend. Reads change-in-rank and rise/fall at a glance.
+ * Pass tidy rows of `{ x, y, series }` (one row per series per x position).
+ */
+export interface SlopeSpec extends BaseSpec {
+  type: 'slope';
+  encoding: Encoding & {
+    /** The ordinal positions along the x-axis (typically two: e.g. start/end). */
+    x: FieldDef;
+    /** Numeric value plotted on the y-axis. */
+    y: FieldDef;
+    /** One line per series (the entity whose change is traced). */
+    series: FieldDef;
+  };
+  /** Direct labels (series name + value) at each line's ends (default true). */
+  labels?: boolean;
+  /** Color each line green/red by its net rise/fall instead of by series. */
+  colorByChange?: boolean;
+  /** Number format for value labels and the y-axis. */
+  format?: string;
+}
+
+/**
+ * Dumbbell / connected dot plot — for each `category`, a dot per `group` placed
+ * on a shared horizontal value axis and joined by a connector, so the gap between
+ * groups (e.g. before vs. after, male vs. female) reads directly. Categories run
+ * down the y-axis. Pass tidy rows of `{ category, value, group }`.
+ */
+export interface DumbbellSpec extends BaseSpec {
+  type: 'dumbbell';
+  encoding: Encoding & {
+    /** The category for each row (one band down the y-axis). */
+    category: FieldDef;
+    /** Numeric value → dot position on the horizontal axis. */
+    value: FieldDef;
+    /** The group each dot belongs to (2+ levels → one dot each, connected). */
+    group: FieldDef;
+  };
+  /** Value labels beside the dots (default false). */
+  labels?: boolean;
+  /** Number format for value labels and the x-axis. */
+  format?: string;
+  /** Order the category rows (default: data order). `gap` sorts by dot spread. */
+  sort?: 'ascending' | 'descending' | 'gap';
+}
+
 export type ConditionalFormat =
   | {
       type: 'colorScale';
@@ -832,6 +914,9 @@ export type ChartSpec =
   | GaugeSpec
   | BulletSpec
   | CalendarHeatmapSpec
+  | WaterfallSpec
+  | SlopeSpec
+  | DumbbellSpec
   | TableSpec
   | MatrixSpec
   | BoxSpec
@@ -860,6 +945,9 @@ export const CHART_TYPES: readonly ChartType[] = [
   'gauge',
   'bullet',
   'calendarHeatmap',
+  'waterfall',
+  'slope',
+  'dumbbell',
   'table',
   'matrix',
   'box',

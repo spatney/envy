@@ -216,6 +216,9 @@ See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
 | `gauge` | A single value against a scale, with bands + target | [gauge.json](./docs/examples/gauge.json) |
 | `bullet` | Compact KPI-vs-target bar over qualitative ranges | [bullet.json](./docs/examples/bullet.json) |
 | `calendarHeatmap` | Daily values as a GitHub-style year grid | [calendar-heatmap.json](./docs/examples/calendar-heatmap.json) |
+| `waterfall` | Running-total bridge built from signed step deltas | [waterfall.json](./docs/examples/waterfall.json) |
+| `slope` | Before/after slope graph with direct end labels | [slope.json](./docs/examples/slope.json) |
+| `dumbbell` | Gap between two groups per category as connected dots | [dumbbell.json](./docs/examples/dumbbell.json) |
 
 Every cartesian chart also takes `transform`s (in-spec data shaping) and `annotations`
 (reference lines, bands, threshold zones).

@@ -491,6 +491,92 @@ export const presets: Preset[] = [
       };
     },
   },
+  // --- Waterfall ---
+  {
+    id: 'waterfall-bridge',
+    label: 'Waterfall · cash-flow bridge',
+    group: 'Waterfall',
+    note: 'signed steps + running total bar',
+    build: () => ({
+      type: 'waterfall',
+      title: 'FY24 cash flow bridge',
+      data: [
+        { stage: 'Opening', delta: 1200 },
+        { stage: 'Product', delta: 540 },
+        { stage: 'Services', delta: 320 },
+        { stage: 'Churn', delta: -180 },
+        { stage: 'Refunds', delta: -90 },
+        { stage: 'Opex', delta: -260 },
+      ],
+      showTotal: true,
+      totalLabel: 'Closing',
+      encoding: {
+        stage: { field: 'stage', title: 'Stage' },
+        value: { field: 'delta', title: 'USD (000s)', format: '$,.0f' },
+      },
+    }),
+  },
+  // --- Slope ---
+  {
+    id: 'slope-share',
+    label: 'Slope · before / after',
+    group: 'Slope',
+    note: 'lines colored by rise/fall, direct end labels',
+    build: () => ({
+      type: 'slope',
+      title: 'Market share shift, 2019 \u2192 2024',
+      data: [
+        { year: '2019', brand: 'Aurora', share: 34 },
+        { year: '2024', brand: 'Aurora', share: 22 },
+        { year: '2019', brand: 'Borealis', share: 18 },
+        { year: '2024', brand: 'Borealis', share: 29 },
+        { year: '2019', brand: 'Cirrus', share: 27 },
+        { year: '2024', brand: 'Cirrus', share: 31 },
+        { year: '2019', brand: 'Delta', share: 21 },
+        { year: '2024', brand: 'Delta', share: 18 },
+      ],
+      encoding: {
+        x: { field: 'year' },
+        y: { field: 'share', title: 'Share %' },
+        series: { field: 'brand' },
+      },
+      colorByChange: true,
+      format: ',.0f',
+    }),
+  },
+  // --- Dumbbell ---
+  {
+    id: 'dumbbell-gap',
+    label: 'Dumbbell · gap by category',
+    group: 'Dumbbell',
+    note: 'two dots per row, sorted by spread',
+    build: () => ({
+      type: 'dumbbell',
+      title: 'Life expectancy gain, 2000 vs 2020',
+      data: [
+        { country: 'Rwanda', year: '2000', life: 48 },
+        { country: 'Rwanda', year: '2020', life: 69 },
+        { country: 'India', year: '2000', life: 63 },
+        { country: 'India', year: '2020', life: 70 },
+        { country: 'Brazil', year: '2000', life: 70 },
+        { country: 'Brazil', year: '2020', life: 76 },
+        { country: 'China', year: '2000', life: 72 },
+        { country: 'China', year: '2020', life: 78 },
+        { country: 'USA', year: '2000', life: 76 },
+        { country: 'USA', year: '2020', life: 79 },
+        { country: 'Japan', year: '2000', life: 81 },
+        { country: 'Japan', year: '2020', life: 84 },
+      ],
+      encoding: {
+        category: { field: 'country' },
+        value: { field: 'life', title: 'Years' },
+        group: { field: 'year' },
+      },
+      sort: 'gap',
+      labels: true,
+      format: ',.0f',
+    }),
+  },
   // --- Pie ---
   {
     id: 'pie',

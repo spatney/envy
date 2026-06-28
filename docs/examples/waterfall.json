@@ -1,0 +1,18 @@
+{
+  "type": "waterfall",
+  "title": "FY24 cash flow bridge",
+  "data": [
+    { "stage": "Opening", "delta": 1200 },
+    { "stage": "Product", "delta": 540 },
+    { "stage": "Services", "delta": 320 },
+    { "stage": "Churn", "delta": -180 },
+    { "stage": "Refunds", "delta": -90 },
+    { "stage": "Opex", "delta": -260 },
+    { "stage": "Closing", "delta": 0 }
+  ],
+  "totals": ["Closing"],
+  "encoding": {
+    "stage": { "field": "stage", "title": "Stage" },
+    "value": { "field": "delta", "title": "USD (000s)", "format": "$,.0f" }
+  }
+}
