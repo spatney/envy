@@ -9,13 +9,13 @@ const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 // type: 'canvas' charts must expose a hidden data-table fallback;
 // 'dom' charts (table/matrix/kpi) must NOT (their data is already real DOM).
 const cases = [
-  { id: 'bar-simple', kind: 'canvas' },
-  { id: 'line-multi', kind: 'canvas' },
-  { id: 'pie-basic', kind: 'canvas' },
-  { id: 'heatmap-week', kind: 'canvas' },
-  { id: 'kpi-basic', kind: 'dom' },
-  { id: 'table-sales', kind: 'dom' },
-  { id: 'matrix-region', kind: 'dom' },
+  { id: 'bar-quarter-region', kind: 'canvas' },
+  { id: 'line-regional-revenue', kind: 'canvas' },
+  { id: 'pie-browser-share', kind: 'canvas' },
+  { id: 'heatmap-traffic-week-hour', kind: 'canvas' },
+  { id: 'kpi-arr', kind: 'dom' },
+  { id: 'table-order-health', kind: 'dom' },
+  { id: 'matrix-revenue-pivot', kind: 'dom' },
 ];
 
 const browser = await chromium.launch();
@@ -26,7 +26,7 @@ let failures = 0;
 for (const c of cases) {
   await page.goto(`${BASE}/?shot=${c.id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
   try {
-    await page.waitForSelector('[data-graphein-ready="true"]', { timeout: 6000 });
+    await page.waitForSelector('[data-shot-ready="true"]', { timeout: 6000 });
   } catch {
     console.log(`✗ ${c.id}: never signaled ready`);
     failures++;
@@ -62,7 +62,7 @@ for (const c of cases) {
     if (!result.fallbackHasCaption) problems.push('fallback missing caption');
   } else {
     if (result.hasFallback) problems.push('unexpected hidden fallback');
-    if (!result.hasVisibleTable && c.id !== 'kpi-basic') problems.push('missing visible table');
+    if (!result.hasVisibleTable && c.id !== 'kpi-arr') problems.push('missing visible table');
   }
 
   if (problems.length) {

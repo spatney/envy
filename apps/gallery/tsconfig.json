@@ -8,10 +8,13 @@
     "noUnusedParameters": true,
     "skipLibCheck": true,
     "lib": ["ES2021", "DOM", "DOM.Iterable"],
-    "types": [],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
     "noEmit": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "resolveJsonModule": true
   },
   "include": ["src", "vite.config.ts"]

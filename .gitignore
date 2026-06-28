@@ -8,6 +8,7 @@ test-results/
 playwright-report/
 playwright/.cache/
 artifacts/
+tests/visual/__shots__/
 *.tsbuildinfo
 .env
 .env.local

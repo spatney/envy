@@ -15,23 +15,23 @@ mkdirSync(OUT, { recursive: true });
 // name, scenario id, size, theme, sketch
 const SHOTS = [
   // Core grid — light
-  ['line-multi', 'line-multi', 720, 440],
-  ['bar-grouped', 'bar-grouped', 720, 440],
-  ['area-stacked', 'area-stacked', 720, 440],
-  ['scatter-groups', 'scatter-groups', 720, 440],
-  ['donut', 'donut-basic', 720, 440],
-  ['heatmap', 'heatmap-week', 720, 440],
-  ['box', 'box-basic', 720, 440],
-  ['kpi', 'kpi-basic', 720, 440],
+  ['line-multi', 'line-regional-revenue', 720, 440],
+  ['bar-grouped', 'bar-quarter-region', 720, 440],
+  ['area-stacked', 'area-stacked-demand', 720, 440],
+  ['scatter-groups', 'scatter-bubbles', 720, 440],
+  ['donut', 'pie-budget-donut', 720, 440],
+  ['heatmap', 'heatmap-traffic-week-hour', 720, 440],
+  ['box', 'box-latency-cohorts', 720, 440],
+  ['kpi', 'kpi-arr', 720, 440],
   // Wide features
   ['sankey', 'sankey-energy', 1180, 520],
-  ['choropleth', 'choropleth-states', 1180, 560],
-  ['table', 'table-sales', 1180, 520],
-  ['line-dense', 'line-dense', 1180, 460],
+  ['choropleth', 'choropleth-states-adoption', 1180, 560],
+  ['table', 'table-order-health', 1180, 520],
+  ['line-dense', 'line-dense-lttb', 1180, 460],
   // One spec, three looks
-  ['modes-light', 'box-basic', 640, 420, 'light', false],
-  ['modes-dark', 'box-basic', 640, 420, 'dark', false],
-  ['modes-sketch', 'box-basic', 640, 420, 'light', true],
+  ['modes-light', 'box-latency-cohorts', 640, 420, 'light', false],
+  ['modes-dark', 'box-latency-cohorts', 640, 420, 'dark', false],
+  ['modes-sketch', 'box-latency-cohorts', 640, 420, 'light', true],
 ];
 
 const browser = await chromium.launch();

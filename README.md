@@ -289,7 +289,7 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
 | `@graphein/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
 | `@graphein/node` | Headless rendering: `ChartSpec` → PNG + `RenderReport`, no browser. | ✅ |
 | `graphein-mcp` | MCP server: the validate → repair → render → critique loop as one tool, plus the schema + guides as resources. | ✅ |
-| `apps/gallery` | Vite gallery + screenshot harness for visual iteration. | ✅ (dev) |
+| `apps/gallery` | React showcase gallery + Playwright `?shot=` screenshot harness. | ✅ (dev) |
 
 ## Development
 
@@ -303,13 +303,18 @@ npm run typecheck   # type-check all workspaces
 npm run gallery     # launch the Vite gallery harness for visual iteration
 ```
 
-The **gallery** opens on an **Overview** — a mosaic of every chart type, each one a single
-`ChartSpec`, with global light/dark and hand-drawn **sketch** toggles. Pick any chart to see
-it large alongside its spec and a responsive size strip; a Playwright screenshot runner
-captures the matrix so visual quality is verified by review, not assumed. It also ships a
-**Playground** (`npm run gallery`, then pick *Playground* in the sidebar) where you can edit a
-`ChartSpec` live, seed it from presets spanning every chart type and data size, drag to resize
-the canvas, and shuffle the data to watch the update transitions.
+The **gallery** is a React showcase. It opens on a branded **Overview**, then presents every
+chart family as a live **story** — canvas alongside its `ChartSpec`, the machine-readable
+`chart.report()`, and a deterministic `summarize()` — with global light/dark and hand-drawn
+**sketch** toggles that apply everywhere. Beyond the charts it has guided tours of
+**Foundations**, **Formatting**, and **Interactivity** (a fully auto-wired cross-filtering
+dashboard plus the five slicers), a **live** server-side-rendering page (`@graphein/node`
+PNGs + report, rendered by a real backend), a **live** **MCP** console (`graphein-mcp`'s
+validate → repair → render → critique loop), and per-package guides. A Playwright `?shot=`
+runner captures the matrix so visual quality is verified by review, not assumed. The
+**Playground** (`npm run gallery`, then pick *Playground* in the sidebar) lets you edit a
+`ChartSpec` live — validate, auto-repair, render, and read the report — seeded from presets
+spanning every chart type and data size.
 
 ## Design references
 

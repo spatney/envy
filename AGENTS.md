@@ -149,10 +149,11 @@ spans, presets (`auto`, `kpi-first`, `sidebar`), and page chrome (`maxWidth`,
 
 ### Explore interactively
 
-`npm run gallery`, then open **Playground** in the sidebar to edit a spec live, load
-presets for every chart type and data size, resize the canvas, and shuffle data. The
-**Dashboard** route shows a fully auto-wired interactive dashboard (slicers + cross-
-highlight) you can copy.
+`npm run gallery` launches the React showcase. Open the **Playground** to edit a spec live
+(validate → repair → render → report), browse every **chart** family as a copy-ready story,
+and explore **Formatting**, **Interactivity** (a fully auto-wired cross-filtering dashboard
+plus the five slicers), a **live** server-side-rendering page, a **live** **MCP** console,
+and per-package guides — all from the sidebar.
 
 ## Contributing to this repo
 

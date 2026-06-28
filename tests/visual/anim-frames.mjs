@@ -2,14 +2,15 @@
 // Usage: node anim-frames.mjs [scenarioId]
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
-const OUT =
-  process.env.GRAPHEIN_SHOTS ??
-  'C:/Users/sapatney/.copilot/session-state/50c7b4d8-37fe-4e29-abd7-0188f62da234/files/shots';
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const OUT = process.env.GRAPHEIN_SHOTS ?? join(ROOT, 'tests', 'visual', '__shots__');
 mkdirSync(OUT, { recursive: true });
 
-const id = process.argv[2] ?? 'bar-grouped';
+const id = process.argv[2] ?? 'bar-quarter-region';
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 await page.addInitScript(() => {
@@ -23,7 +24,7 @@ for (const ms of [80, 160, 280, 440, 650]) {
   await page.waitForTimeout(ms - last);
   last = ms;
   const host = await page.$('.shot-root > div');
-  if (host) await host.screenshot({ path: `${OUT}/anim_${id}_${String(ms).padStart(3, '0')}ms.png` });
+  if (host) await host.screenshot({ path: join(OUT, `anim_${id}_${String(ms).padStart(3, '0')}ms.png`) });
   console.log(`✓ anim_${id}_${ms}ms.png`);
 }
 

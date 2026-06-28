@@ -8,12 +8,13 @@ import { chromium } from 'playwright';
 
 const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
 // Canvas-mark scenarios (cross-fade applies). DOM charts update instantly.
-const SCENARIOS = ['bar-grouped', 'line-multi', 'area-stacked', 'scatter-groups', 'pie-basic'];
+const SCENARIOS = ['bar-quarter-region', 'line-regional-revenue', 'area-stacked-demand', 'scatter-bubbles', 'pie-browser-share'];
 
 // Deterministic perturbation of every numeric data field — changes the marks
 // without depending on which field is encoded. Both pages apply the same one.
 function applyVariant() {
   const inst = window.__grapheinChart;
+  if (!inst) throw new Error('window.__grapheinChart is not set');
   const spec = JSON.parse(JSON.stringify(inst.spec));
   if (Array.isArray(spec.data)) {
     spec.data = spec.data.map((row) => {
@@ -38,7 +39,7 @@ async function capture(ctx, id, { disableAnim, reducedMotion }) {
   }, disableAnim);
   await page.setViewportSize({ width: 720, height: 460 });
   await page.goto(`${BASE}/?shot=${id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
-  await page.waitForSelector('.graphein-root[data-graphein-ready="true"]', { timeout: 8000 });
+  await page.waitForSelector('[data-shot-ready="true"]', { timeout: 8000 });
 
   // The web font loads lazily on first text measurement (triggered by the initial
   // render above), so wait for it here — otherwise a page that happens to update

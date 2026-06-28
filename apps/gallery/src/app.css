@@ -1,0 +1,246 @@
+@import 'tailwindcss';
+
+/* Class-based dark mode keyed off `.theme-dark` on <html>. */
+@custom-variant dark (&:where(.theme-dark, .theme-dark *));
+
+/* =========================================================================
+   Design tokens — flat, modern, playful. Solid fills, hairline borders,
+   a teal accent from the Graphein logo. Space Grotesk display + Inter UI.
+   Ported & elevated from the original gallery design system.
+   ========================================================================= */
+:root {
+  --bg: #fbfcfe;
+  --surface: #ffffff;
+  --surface-2: #f3f5f9;
+  --surface-3: #eaeef4;
+  --border: #e4e9f0;
+  --border-strong: #cfd8e3;
+  --text: #0f1729;
+  --muted: #5a6679;
+  --faint: #8a96a8;
+  --accent: #0d9488;
+  --accent-strong: #0b7d72;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(13, 148, 136, 0.1);
+  --accent-line: rgba(13, 148, 136, 0.32);
+  --scrim: rgba(15, 23, 42, 0.46);
+  --ok: #0d9488;
+  --warn: #b45309;
+  --err: #dc2626;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.07);
+  --shadow-pop: 0 12px 34px rgba(15, 23, 42, 0.14);
+
+  color-scheme: light;
+}
+
+.theme-dark {
+  --bg: #090d15;
+  --surface: #111826;
+  --surface-2: #0d1320;
+  --surface-3: #161f30;
+  --border: #1d2740;
+  --border-strong: #2b3a58;
+  --text: #e8edf6;
+  --muted: #95a2b8;
+  --faint: #6a7689;
+  --accent: #2dd4bf;
+  --accent-strong: #5eead4;
+  --accent-contrast: #042522;
+  --accent-soft: rgba(45, 212, 191, 0.13);
+  --accent-line: rgba(45, 212, 191, 0.36);
+  --scrim: rgba(0, 0, 0, 0.58);
+  --ok: #2dd4bf;
+  --warn: #fbbf24;
+  --err: #f87171;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 26px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+/* Map tokens to Tailwind theme so `bg-surface`, `text-muted`, `border-border`,
+   `text-accent`, `font-display`, etc. all work and react to the active theme.
+   `inline` keeps the var() references live (theme-switch with no rebuild). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-err: var(--err);
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, Menlo, Consolas, monospace;
+
+  --radius-card: 14px;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  main,
+  main :where(.gx-card, .grid, .flex),
+  main :where(.gx-card, .grid, .flex) > * {
+    min-width: 0;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab']):focus {
+    outline: none;
+  }
+  :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab']):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  pre,
+  .gx-code,
+  .gx-code pre,
+  .gx-code pre.shiki,
+  pre.shiki,
+  .cm-editor,
+  .cm-scroller {
+    max-width: 100%;
+    min-width: 0;
+  }
+  pre,
+  .gx-code,
+  pre.shiki,
+  .cm-scroller {
+    overflow-x: auto;
+  }
+  pre code,
+  .gx-code code {
+    white-space: pre;
+  }
+  /* Thin, themed scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---- Reusable component classes (used across the storybook) ---------------- */
+@layer components {
+  .gx-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+  }
+  .gx-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--surface-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .gx-focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* The storybook "canvas" — a subtle dotted backdrop behind a live chart. */
+  .gx-stage {
+    background-color: var(--surface);
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 18px 18px;
+    background-position: -9px -9px;
+  }
+  /* Shiki output: kill its inline background, supply our own padding + mono font. */
+  .gx-code pre.shiki {
+    margin: 0;
+    padding: 1rem;
+    background: transparent !important;
+    min-width: max-content;
+    font-family: var(--font-mono);
+    font-size: inherit;
+    line-height: inherit;
+  }
+  .gx-code > div {
+    min-width: 100%;
+    width: max-content;
+  }
+  .gx-code pre.shiki code {
+    font-family: inherit;
+  }
+}
+
+/* ---- Entrance animation (respects reduced-motion via the query above) ------ */
+@keyframes gx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.gx-rise {
+  animation: gx-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}

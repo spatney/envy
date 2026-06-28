@@ -4,15 +4,16 @@
 
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
-const OUT =
-  process.env.GRAPHEIN_SHOTS ??
-  'C:/Users/sapatney/.copilot/session-state/50c7b4d8-37fe-4e29-abd7-0188f62da234/files/shots';
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const OUT = process.env.GRAPHEIN_SHOTS ?? join(ROOT, 'tests', 'visual', '__shots__');
 
 mkdirSync(OUT, { recursive: true });
 
-const id = process.argv[2] ?? 'line-multi';
+const id = process.argv[2] ?? 'line-regional-revenue';
 const fx = Number(process.argv[3] ?? '0.5');
 const fy = Number(process.argv[4] ?? '0.5');
 const theme = process.argv[5] ?? 'light';
@@ -34,7 +35,9 @@ try {
 }
 
 const host = await page.$('.shot-root > div');
+if (!host) throw new Error('No shot host found');
 const box = await host.boundingBox();
+if (!box) throw new Error('Shot host has no bounding box');
 const tx = box.x + box.width * fx;
 const ty = box.y + box.height * fy;
 await page.mouse.move(tx - 4, ty - 4);
@@ -42,7 +45,7 @@ await page.mouse.move(tx, ty); // two moves so pointermove always fires
 await page.waitForTimeout(250);
 
 const tag = `${id}__hover_${Math.round(fx * 100)}-${Math.round(fy * 100)}_${theme}`;
-const file = `${OUT}/${tag}.png`;
+const file = join(OUT, `${tag}.png`);
 await host.screenshot({ path: file });
 console.log(`✓ ${file}`);
 

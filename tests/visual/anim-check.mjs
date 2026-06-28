@@ -6,7 +6,7 @@
 import { chromium } from 'playwright';
 
 const BASE = process.env.GRAPHEIN_GALLERY ?? 'http://127.0.0.1:4317';
-const SCENARIOS = ['bar-grouped', 'line-multi', 'pie-basic', 'kpi-basic'];
+const SCENARIOS = ['bar-quarter-region', 'line-regional-revenue', 'pie-browser-share', 'kpi-arr'];
 
 const browser = await chromium.launch();
 let failures = 0;
@@ -20,7 +20,7 @@ async function capture(ctx, id, { disableAnim, reducedMotion }) {
   }, disableAnim);
   await page.setViewportSize({ width: 720, height: 460 });
   await page.goto(`${BASE}/?shot=${id}&w=640&h=400&theme=light`, { waitUntil: 'load' });
-  await page.waitForSelector('.graphein-root[data-graphein-ready="true"]', { timeout: 8000 });
+  await page.waitForSelector('[data-shot-ready="true"]', { timeout: 8000 });
   const out = await page.evaluate(() => {
     const root = document.querySelector('.graphein-root');
     const marks = document.querySelector('.graphein-layer-marks');
