@@ -211,6 +211,17 @@
       },
       "additionalProperties": false
     },
+    "FacetConfig": {
+      "type": "object",
+      "description": "Faceting (small multiples): split a chart into a trellis grid of panels, one per distinct value of a field, all sharing identical scales (see a chart's facet field). Supported on line, area, bar, and scatter.",
+      "properties": {
+        "field": { "type": "string", "description": "The field whose distinct values become one panel each." },
+        "columns": { "type": "integer", "minimum": 1, "description": "Number of grid columns (defaults to roughly the square root of the panel count)." },
+        "sort": { "type": "string", "enum": ["ascending", "descending", "none"], "description": "Order the panels by their facet value (default ascending)." }
+      },
+      "required": ["field"],
+      "additionalProperties": false
+    },
     "Datum": {
       "type": "object",
       "additionalProperties": true
@@ -553,7 +564,8 @@
         "area": { "type": "boolean" },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
         "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] },
-        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] },
+        "facet": { "$ref": "#/$defs/FacetConfig" }
       }
     },
     "AreaSpec": {
@@ -570,7 +582,8 @@
         "stack": { "type": "boolean" },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
         "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] },
-        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] },
+        "facet": { "$ref": "#/$defs/FacetConfig" }
       }
     },
     "BarSpec": {
@@ -588,7 +601,8 @@
         "group": { "type": "boolean" },
         "cornerRadius": { "type": "number" },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
-        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] },
+        "facet": { "$ref": "#/$defs/FacetConfig" }
       }
     },
     "ScatterSpec": {
@@ -602,7 +616,8 @@
           "required": ["x", "y"]
         },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
-        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] },
+        "facet": { "$ref": "#/$defs/FacetConfig" }
       }
     },
     "ComboMark": { "enum": ["line", "bar", "area", "scatter"] },

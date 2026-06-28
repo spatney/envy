@@ -317,6 +317,58 @@ export const presets: Preset[] = [
       trendline: { label: true },
     }),
   },
+  // --- Faceting / small multiples ---
+  {
+    id: 'facet-line',
+    label: 'Faceting · line by region',
+    group: 'Faceting',
+    note: 'facet:{field} → a trellis grid sharing one set of scales',
+    build: () => {
+      const regions = ['West', 'East', 'South', 'North'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+      let seed = 7;
+      const rnd = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const data = regions.flatMap((region) => {
+        let base = 20 + rnd() * 30;
+        return months.map((month) => {
+          base += (rnd() - 0.4) * 12;
+          return { region, month, sales: Math.max(2, Math.round(base)) };
+        });
+      });
+      return {
+        type: 'line',
+        title: 'Monthly sales by region',
+        data,
+        encoding: { x: { field: 'month' }, y: { field: 'sales' } },
+        points: true,
+        facet: { field: 'region', columns: 2 },
+      };
+    },
+  },
+  {
+    id: 'facet-bar',
+    label: 'Faceting · grouped bars',
+    group: 'Faceting',
+    note: 'a shared legend + colors across every panel',
+    build: () => {
+      const regions = ['West', 'East', 'South', 'North'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr'];
+      let seed = 3;
+      const rnd = (): number => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const data = regions.flatMap((region) =>
+        ['web', 'store'].flatMap((channel) =>
+          months.map((month) => ({ region, month, channel, sales: Math.round(5 + rnd() * 25) })),
+        ),
+      );
+      return {
+        type: 'bar',
+        title: 'Sales by channel, per region',
+        data,
+        encoding: { x: { field: 'month' }, y: { field: 'sales' }, series: { field: 'channel' } },
+        facet: { field: 'region' },
+      };
+    },
+  },
   // --- Scatter ---
   {
     id: 'scatter-md',

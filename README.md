@@ -191,6 +191,9 @@ if (!report.ok) {
 - **Derived trendlines.** `trendline:true` overlays a linear line of best fit on a
   `scatter`/`line`/`area` (one per series group; `{ label:true }` adds an R² readout) —
   the library fits the regression, the agent never computes coordinates.
+- **Faceting / small multiples.** `facet:{field}` splits a `line`/`area`/`bar`/`scatter`
+  into a trellis grid of panels sharing one set of scales — a single field reference yields
+  a whole comparison grid.
 - **Render report.** `chart.report()` returns machine-readable diagnostics — clipped
   labels, legend overflow, contrast failures, mark counts — to verify a chart came out right.
 - **Headless rendering.** [`@graphein/node`](./packages/node) runs that whole loop
@@ -228,7 +231,8 @@ See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
 
 Every cartesian chart also takes `transform`s (in-spec data shaping), `annotations`
 (reference lines, bands, threshold zones, points), `insights:true` (auto-mark the
-max/min), and `trendline:true` (a linear line of best fit on `scatter`/`line`/`area`).
+max/min), `trendline:true` (a linear line of best fit on `scatter`/`line`/`area`), and
+`facet:{field}` (split into a trellis grid of small multiples).
 
 Add `"sketch": true` to **any** spec for a hand-drawn look — see
 [bar-sketch.json](./docs/examples/bar-sketch.json) and the

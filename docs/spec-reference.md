@@ -36,6 +36,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Annotations (reference lines, bands, zones, points)](#annotations-reference-lines-bands-zones-points)
 - [Self-explaining charts (summaries & auto-insights)](#self-explaining-charts-summaries--auto-insights)
 - [Trendlines (regression overlays)](#trendlines-regression-overlays)
+- [Faceting (small multiples)](#faceting-small-multiples)
 - [Chart types](#chart-types)
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [combo](#combo) · [histogram](#histogram) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
@@ -411,6 +412,34 @@ no rows are added to your data, keeping the spec declarative and validatable.
 
 ---
 
+## Faceting (small multiples)
+
+`facet: FacetConfig` — split a chart into a **trellis grid of panels**, one per distinct
+value of a field, all sharing **identical x/y/color scales** so the panels are directly
+comparable. A single field reference yields a whole comparison grid, which is why faceting
+is so agent-friendly. Supported on `line`, `area`, `bar`, and `scatter`.
+
+```ts
+{ type: 'line', data: rows,
+  encoding: { x: { field: 'month' }, y: { field: 'sales' } },
+  facet: { field: 'region', columns: 2 } }          // one panel per region, 2 across
+```
+
+| `FacetConfig` | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `field` | `string` | — (required) | The field whose distinct values become one panel each. |
+| `columns` | `number` | ≈ √n | Number of grid columns (capped for readability). |
+| `sort` | `'ascending' \| 'descending' \| 'none'` | `'ascending'` | Order the panels by their facet value. |
+
+Every panel reuses **one shared set of scales** derived from the full dataset: the y-domain
+spans the global extent (not each panel's local max), the x categories/domain are the union
+across panels, and a series keeps its color in every panel — even when a panel's subset is
+missing some categories or series. Multi-series facets render a single **shared legend** in
+the header. Faceting is static (no per-panel interaction) in this release, and renders
+identically headless via [`@graphein/node`](#render-report).
+
+---
+
 ## Chart types
 
 ### line
@@ -425,6 +454,7 @@ Large series are automatically [decimated (LTTB)](#performance) for fast redraws
 | `points` | `boolean` | Draw point markers. |
 | `area` | `boolean` | Fill under the line. |
 | `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays). |
+| `facet` | `FacetConfig` | Split into a [trellis grid of small multiples](#faceting-small-multiples). |
 
 → [`examples/line.json`](./examples/line.json)
 
@@ -438,6 +468,7 @@ Filled series; stack multiple series into a band chart.
 | `curve` | `CurveType` | Same options as `line`. |
 | `stack` | `boolean` | Stack series (totals). Non‑stacked areas overlap with translucency. |
 | `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays). |
+| `facet` | `FacetConfig` | Split into a [trellis grid of small multiples](#faceting-small-multiples). |
 
 → [`examples/area-stacked.json`](./examples/area-stacked.json)
 
@@ -452,6 +483,7 @@ Columns/bars with grouped or stacked series and rounded corners.
 | `stack` | `boolean` | Stack series. |
 | `group` | `boolean` | Side‑by‑side groups. Default when `series` is present and not stacked. |
 | `cornerRadius` | `number` | Bar corner radius in px. |
+| `facet` | `FacetConfig` | Split into a [trellis grid of small multiples](#faceting-small-multiples). |
 
 → [`examples/bar-grouped.json`](./examples/bar-grouped.json)
 
@@ -463,6 +495,7 @@ Points/bubbles with optional size and color grouping. Hover focuses the nearest 
 | --- | --- | --- |
 | `encoding` | requires `x`, `y`; optional `size`, `series` | `size` drives bubble radius; `series` colors groups. |
 | `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays) (per group when `series`/`color` is set). |
+| `facet` | `FacetConfig` | Split into a [trellis grid of small multiples](#faceting-small-multiples). |
 
 → [`examples/scatter.json`](./examples/scatter.json)
 

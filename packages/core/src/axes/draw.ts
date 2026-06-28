@@ -196,11 +196,14 @@ interface PlacedLabel {
  */
 function placeXLabels(
   ticks: CartesianModel['xTicks'],
+  originX: number,
   frameWidth: number,
   font: string,
 ): PlacedLabel[] {
   const edgePad = 2;
   const minGap = 6;
+  const loEdge = originX + edgePad;
+  const hiEdge = originX + frameWidth - edgePad;
   const boxes = ticks.map((t) => {
     const w = measureText(t.label, font).width;
     const half = w / 2;
@@ -208,15 +211,15 @@ function placeXLabels(
     let transform = 'translateX(-50%)';
     let bl = t.pos - half;
     let br = t.pos + half;
-    if (bl < edgePad) {
-      left = edgePad;
+    if (bl < loEdge) {
+      left = loEdge;
       transform = 'none';
-      bl = edgePad;
-      br = edgePad + w;
-    } else if (br > frameWidth - edgePad) {
-      left = frameWidth - edgePad;
+      bl = loEdge;
+      br = loEdge + w;
+    } else if (br > hiEdge) {
+      left = hiEdge;
       transform = 'translateX(-100%)';
-      br = frameWidth - edgePad;
+      br = hiEdge;
       bl = br - w;
     }
     return { text: t.label, pos: t.pos, left, transform, bl, br };
@@ -244,7 +247,7 @@ function resolveXLabels(model: CartesianModel): PlacedLabel[] {
   const f = model.tokens.font;
   const smallFont = fontString(f.size.small, f.family, f.weight.normal);
   const thinned = thinXTicks(model, f.size.small * 0.58);
-  return placeXLabels(thinned, model.frame.width, smallFont);
+  return placeXLabels(thinned, model.frame.originX, model.frame.width, smallFont);
 }
 
 /** Draw all overlay text: tick labels, axis titles, chart title, legend. */
@@ -302,7 +305,7 @@ function drawAxisTitles(surface: Surface, model: CartesianModel): void {
   if (xTitle) {
     addText(surface, baseFont, {
       left: plot.x + plot.width / 2,
-      top: frame.height - Math.round(f.size.base * 1.35),
+      top: frame.originY + frame.height - Math.round(f.size.base * 1.35),
       text: xTitle,
       color: tokens.color.text,
       size: f.size.base,
@@ -313,7 +316,7 @@ function drawAxisTitles(surface: Surface, model: CartesianModel): void {
   const yTitle = model.spec.axes?.y?.title ?? model.spec.encoding.y.title;
   if (yTitle) {
     addText(surface, baseFont, {
-      left: Math.round(f.size.base * 0.4),
+      left: frame.originX + Math.round(f.size.base * 0.4),
       top: plot.y + plot.height / 2,
       text: yTitle,
       color: tokens.color.text,
@@ -324,7 +327,7 @@ function drawAxisTitles(surface: Surface, model: CartesianModel): void {
   }
 }
 
-function drawTitle(
+export function drawTitle(
   surface: Surface,
   frame: Frame,
   spec: CartesianModel['spec'],
@@ -358,7 +361,7 @@ function drawTitle(
   }
 }
 
-function drawLegend(
+export function drawLegend(
   surface: Surface,
   items: PositionedLegendItem[],
   model: CartesianModel,

@@ -51,6 +51,9 @@ export interface FrameInput {
   height: number;
   padding: Insets;
   font: ThemeFont;
+  /** Optional origin offset — lay the frame out within a sub-region (e.g. a facet cell). */
+  originX?: number;
+  originY?: number;
   title?: TitleInput;
   legend?: { items: LegendItem[]; position: LegendPosition };
   /** Cartesian charts pass both axes; non-cartesian omit them. */
@@ -63,6 +66,9 @@ export interface FrameInput {
 export interface Frame {
   width: number;
   height: number;
+  /** Absolute origin offset of this frame within the surface (0 unless faceted). */
+  originX: number;
+  originY: number;
   plot: Rect;
   titleRect?: Rect;
   subtitleRect?: Rect;
@@ -151,14 +157,18 @@ function layoutLegend(
 /** Reserve space for every region and return the plot rect + positioned chrome. */
 export function computeFrame(input: FrameInput): Frame {
   const { width, height, padding, font } = input;
-  let top = padding.top;
-  let right = width - padding.right;
-  let bottom = height - padding.bottom;
-  let left = padding.left;
+  const ox = input.originX ?? 0;
+  const oy = input.originY ?? 0;
+  let top = oy + padding.top;
+  let right = ox + width - padding.right;
+  let bottom = oy + height - padding.bottom;
+  let left = ox + padding.left;
 
   const frame: Frame = {
     width,
     height,
+    originX: ox,
+    originY: oy,
     plot: { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) },
   };
 
@@ -245,7 +255,7 @@ export function computeFrame(input: FrameInput): Frame {
       const labels = input.xAxis.labels;
       const firstHalf = Math.ceil(measureText(labels[0], wfont).width / 2);
       const lastHalf = Math.ceil(measureText(labels[labels.length - 1], wfont).width / 2);
-      left = Math.max(left, padding.left + firstHalf);
+      left = Math.max(left, ox + padding.left + firstHalf);
       right -= lastHalf;
     }
   }

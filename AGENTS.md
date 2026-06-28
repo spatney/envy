@@ -138,6 +138,10 @@ spans, presets (`auto`, `kpi-first`, `sidebar`), and page chrome (`maxWidth`,
   `line`, or `area` for a linear line of best fit (one per `series`/`color` group; add
   `{ label:true }` for an R² readout). Needs a continuous/temporal x — a no-op warning on
   a categorical `bar`.
+- **Faceting = small multiples from one field.** Set `facet:{field}` on a `line`, `area`,
+  `bar`, or `scatter` to split it into a trellis grid of panels sharing identical scales
+  (one shared y-domain, x categories, colors, legend). Don't pre-split the data or emit one
+  chart per group — `facet:{field, columns?, sort?}` does it and stays comparable.
 - Full field-by-field docs: [`docs/spec-reference.md`](./docs/spec-reference.md);
   machine-readable [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json);
   runnable specs in [`docs/examples/`](./docs/examples).

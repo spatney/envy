@@ -301,6 +301,22 @@ export interface TrendlineConfig {
   strokeDash?: number[];
 }
 
+/**
+ * **Faceting** (small multiples): split a chart into a trellis grid of panels,
+ * one per distinct value of a field, all sharing identical x/y/color scales so
+ * the panels are directly comparable. Enable via a chart's `facet` field — a
+ * single field reference yields a whole comparison grid, which is why it is so
+ * agent-friendly. Supported on `line`, `area`, `bar`, and `scatter`.
+ */
+export interface FacetConfig {
+  /** The field whose distinct values become one panel each. */
+  field: string;
+  /** Number of grid columns. Defaults to roughly √n, capped for readability. */
+  columns?: number;
+  /** Order the panels by their facet value (default `ascending`). */
+  sort?: 'ascending' | 'descending' | 'none';
+}
+
 export interface LineSpec extends BaseSpec {
   type: 'line';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
@@ -315,6 +331,8 @@ export interface LineSpec extends BaseSpec {
   insights?: boolean | InsightOptions;
   /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
   trendline?: boolean | TrendlineConfig;
+  /** Split into a trellis grid of small multiples. See {@link FacetConfig}. */
+  facet?: FacetConfig;
 }
 
 export interface AreaSpec extends BaseSpec {
@@ -329,6 +347,8 @@ export interface AreaSpec extends BaseSpec {
   insights?: boolean | InsightOptions;
   /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
   trendline?: boolean | TrendlineConfig;
+  /** Split into a trellis grid of small multiples. See {@link FacetConfig}. */
+  facet?: FacetConfig;
 }
 
 export interface BarSpec extends BaseSpec {
@@ -344,6 +364,8 @@ export interface BarSpec extends BaseSpec {
   annotations?: Annotation[];
   /** Auto-mark notable data points (`true` = top + bottom category). See {@link InsightOptions}. */
   insights?: boolean | InsightOptions;
+  /** Split into a trellis grid of small multiples. See {@link FacetConfig}. */
+  facet?: FacetConfig;
 }
 
 export interface ScatterSpec extends BaseSpec {
@@ -353,6 +375,8 @@ export interface ScatterSpec extends BaseSpec {
   annotations?: Annotation[];
   /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
   trendline?: boolean | TrendlineConfig;
+  /** Split into a trellis grid of small multiples. See {@link FacetConfig}. */
+  facet?: FacetConfig;
 }
 
 /** The mark a single combo layer draws. */

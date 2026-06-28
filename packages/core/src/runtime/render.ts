@@ -17,6 +17,7 @@ import { getDevicePixelRatio } from '../render/env';
 import { fontsLoading, onFontsReady } from '../render/fonts';
 import { buildCartesianModel, type CartesianChartSpec, type CartesianModel } from './cartesian';
 import { buildRenderReport, type RenderReport } from './report';
+import { isFaceted, buildFacetModels, drawFacet, facetReport } from './facet';
 import { drawAxesUnderlay, drawOverlay } from '../axes';
 import {
   CARTESIAN_TYPES,
@@ -258,8 +259,15 @@ export function render(
 
     let interactionModel: InteractionModel | null = null;
     let reportModel: CartesianModel | undefined;
+    let facetRpt: RenderReport | undefined;
     const type = currentSpec.type;
-    if (CARTESIAN_TYPES.has(type)) {
+    // Faceting: a trellis grid of comparable panels on one canvas. Static in v1
+    // (no per-panel interaction), so it short-circuits the normal dispatch.
+    const facetLayout = isFaceted(effectiveSpec) ? buildFacetModels(effectiveSpec, tokens, size) : null;
+    if (facetLayout) {
+      drawFacet(surface, effectiveSpec, facetLayout, tokens);
+      facetRpt = facetReport(effectiveSpec, facetLayout, tokens, size);
+    } else if (CARTESIAN_TYPES.has(type)) {
       const renderer = cartesianRenderers[type];
       const model = buildCartesianModel(effectiveSpec as CartesianChartSpec, tokens, size);
       model.emphasis = emphasis;
@@ -329,7 +337,7 @@ export function render(
 
     // Derive the machine-readable render report from the resolved model. Pure
     // (reads the model + theme, never the canvas), so it works headlessly too.
-    lastReport = buildRenderReport({
+    lastReport = facetRpt ?? buildRenderReport({
       type,
       spec: currentSpec,
       data: filtered,

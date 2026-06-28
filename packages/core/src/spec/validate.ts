@@ -560,6 +560,7 @@ export function validateSpec(spec: unknown): ValidationResult {
   if (spec.annotations !== undefined) validateAnnotations(spec.annotations, type, err, warn);
   if (spec.insights !== undefined) validateInsights(spec.insights, type, err, warn);
   if (spec.trendline !== undefined) validateTrendline(spec.trendline, type, err, warn);
+  if (spec.facet !== undefined) validateFacet(spec.facet, type, err, warn);
 
   const sketch = spec.sketch;
   if (sketch !== undefined && typeof sketch !== 'boolean') {
@@ -865,6 +866,12 @@ const TRENDABLE_TYPES = ['scatter', 'line', 'area'];
 /** Fit methods accepted by `trendline.method`. */
 const TRENDLINE_METHODS = ['linear'];
 
+/** Chart types that can be faceted into a trellis grid of small multiples. */
+const FACETABLE_TYPES = ['line', 'area', 'bar', 'scatter'];
+
+/** Orderings accepted by `facet.sort`. */
+const FACET_SORTS = ['ascending', 'descending', 'none'];
+
 /**
  * Validate `insights` — the auto-annotation opt-in. Accepts `true`/`false`, or an
  * `{ max?, min?, outliers? }` object of booleans. Only line/area/bar draw insights,
@@ -927,6 +934,33 @@ function validateTrendline(trendline: unknown, chartType: ChartType, err: Report
     ) {
       err('trendline.strokeDash', '"strokeDash" must be an array of numbers.');
     }
+  }
+}
+
+/**
+ * Validate `facet` — small-multiples faceting. Requires a `field`; `columns` must
+ * be a positive integer; `sort` is one of ascending/descending/none. Faceting only
+ * applies to line/area/bar/scatter, so any other host gets an advisory warning.
+ */
+function validateFacet(facet: unknown, chartType: ChartType, err: Reporter, warn: Reporter): void {
+  if (!isObject(facet)) {
+    err('facet', '"facet" must be a { field, columns?, sort? } object.');
+    return;
+  }
+  if (typeof facet.field !== 'string' || facet.field === '') {
+    err('facet.field', '"facet.field" must be a non-empty field name.');
+  }
+  if (
+    facet.columns !== undefined &&
+    (typeof facet.columns !== 'number' || !Number.isInteger(facet.columns) || facet.columns < 1)
+  ) {
+    err('facet.columns', '"facet.columns" must be a positive integer.');
+  }
+  if (facet.sort !== undefined && !FACET_SORTS.includes(facet.sort as string)) {
+    err('facet.sort', 'Expected "ascending", "descending", or "none".', enumRepair('facet.sort', facet.sort, FACET_SORTS));
+  }
+  if (!FACETABLE_TYPES.includes(chartType)) {
+    warn('facet', `Faceting is only drawn on line/area/bar/scatter charts; ignored for "${chartType}".`);
   }
 }
 

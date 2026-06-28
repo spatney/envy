@@ -198,6 +198,24 @@ Needs a continuous/temporal x (it's a no-op warning on a categorical `bar`). See
 [spec-reference → Trendlines](./spec-reference.md#trendlines-regression-overlays).
 
 
+**Facet into small multiples** — set `facet: { field }` on a `line`, `area`, `bar`, or
+`scatter` to split it into a trellis grid of panels, one per distinct value, all sharing
+identical scales so they compare directly. A single field reference yields the whole grid:
+
+```jsonc
+{
+  "type": "line",
+  "data": [/* { region, month, sales } rows */],
+  "encoding": { "x": { "field": "month" }, "y": { "field": "sales" } },
+  "facet": { "field": "region", "columns": 2 }   // one panel per region, 2 across
+}
+```
+
+Don't pre-split the data or build one chart per group — let Graphein share the y-domain,
+x categories, colors, and (for multi-series) one legend across panels. See
+[spec-reference → Faceting](./spec-reference.md#faceting-small-multiples).
+
+
 **Combo / dual-axis (bar + line)** — two measures with different units over a shared x.
 Each layer plots its own `y`; add `axis:"right"` for a secondary scale:
 

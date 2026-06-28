@@ -235,6 +235,23 @@ const DEFAULT_PADDING = { top: 12, right: 16, bottom: 12, left: 12 };
 export interface BuildOptions {
   width: number;
   height: number;
+  /** Origin offset, so the model lays out within a sub-region (a facet cell). */
+  originX?: number;
+  originY?: number;
+  /** Shared scale domains/colors, so faceted panels stay directly comparable. */
+  shared?: SharedScales;
+}
+
+/** Scale state shared across a facet grid so every panel is comparable. */
+export interface SharedScales {
+  /** Band/point category domain (the full ordered category list). */
+  categories?: string[];
+  /** Continuous (linear) or temporal (epoch ms) x-domain. */
+  xDomain?: [number, number];
+  /** Linear y-domain (already accounting for any zero baseline). */
+  yDomain?: [number, number];
+  /** Series-key → color, so the same series keeps its color in every panel. */
+  colorOf?: (key: string) => string;
 }
 
 export function buildCartesianModel(
@@ -256,7 +273,9 @@ export function buildCartesianModel(
   const palette = tokens.color.palette;
   const colorScale = ordinalColorScale({ domain: seriesKeys, palette });
   const colorCache = new Map<string, string>();
+  const sharedColor = opts.shared?.colorOf;
   const colorOf = (key: string): string => {
+    if (sharedColor) return sharedColor(key);
     let c = colorCache.get(key);
     if (!c) {
       c = rgbaToCss(colorScale.map(key));
@@ -268,7 +287,7 @@ export function buildCartesianModel(
   const series: ResolvedSeries[] = rawSeries.map((s) => ({
     key: s.key,
     label: s.key === '' ? (enc.y.title ?? yField) : s.key,
-    color: singleSeries ? rgbaToCss(colorScale.map(s.key)) : colorOf(s.key),
+    color: sharedColor ? sharedColor(s.key) : singleSeries ? rgbaToCss(colorScale.map(s.key)) : colorOf(s.key),
     value: s.value,
     rows: s.rows,
   }));
@@ -279,12 +298,18 @@ export function buildCartesianModel(
   let categories: string[] | undefined;
   let xDomainNum: [number, number] | null = null;
   if (xKind === 'band' || xKind === 'point') {
-    categories = uniqueStrings(data, xField);
+    categories = opts.shared?.categories ?? uniqueStrings(data, xField);
   } else if (xKind === 'time') {
-    const ms = data
-      .map((d) => toDate(accessor(xField)(d))?.getTime())
-      .filter((v): v is number => v != null);
-    xDomainNum = ms.length ? [Math.min(...ms), Math.max(...ms)] : [0, 1];
+    if (opts.shared?.xDomain) {
+      xDomainNum = opts.shared.xDomain;
+    } else {
+      const ms = data
+        .map((d) => toDate(accessor(xField)(d))?.getTime())
+        .filter((v): v is number => v != null);
+      xDomainNum = ms.length ? [Math.min(...ms), Math.max(...ms)] : [0, 1];
+    }
+  } else if (opts.shared?.xDomain) {
+    xDomainNum = opts.shared.xDomain;
   } else {
     xDomainNum = extent(data, xField) ?? [0, 1];
     const xScaleCfg = enc.x.scale;
@@ -295,14 +320,17 @@ export function buildCartesianModel(
     }
   }
 
+  const sharedY = opts.shared?.yDomain;
   let yDomain: [number, number];
-  if (stacked) {
+  if (sharedY) {
+    yDomain = sharedY;
+  } else if (stacked) {
     yDomain = stackedYExtent(data, xField, yField);
   } else {
     const ext = extent(data, yField) ?? [0, 1];
     yDomain = [ext[0], ext[1]];
   }
-  if (wantsZeroBaseline(spec)) {
+  if (wantsZeroBaseline(spec) && !sharedY) {
     yDomain = [Math.min(0, yDomain[0]), Math.max(0, yDomain[1])];
   }
   const yScaleCfg = enc.y.scale;
@@ -312,9 +340,14 @@ export function buildCartesianModel(
 
   // Tick values and the y-domain must be derived together so that the first and
   // last tick sit exactly on the plot edges (otherwise labels spill past the axis).
+  // A shared (facet) domain is treated like an explicit domain — never re-expanded,
+  // so every panel keeps identical scales.
+  const yExplicit = (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') || !!sharedY;
   let yTickValues: number[];
-  if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
-    yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
+  if (yExplicit) {
+    if (yScaleCfg?.domain && typeof yScaleCfg.domain[0] === 'number') {
+      yDomain = [yScaleCfg.domain[0], yScaleCfg.domain[1] as number];
+    }
     const lo = Math.min(yDomain[0], yDomain[1]);
     const hi = Math.max(yDomain[0], yDomain[1]);
     yTickValues = numericTickValues(yDomain[0], yDomain[1], yTickCount).filter(
@@ -370,6 +403,8 @@ export function buildCartesianModel(
   const frame = computeFrame({
     width: opts.width,
     height: opts.height,
+    originX: opts.originX,
+    originY: opts.originY,
     padding,
     font: tokens.font,
     title: titleInput,

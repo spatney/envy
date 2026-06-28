@@ -1,6 +1,7 @@
 export * from './cartesian';
 export * from './combo';
 export * from './histogram';
+export * from './facet';
 export * from './report';
 export * from './headless';
 export * from './render';

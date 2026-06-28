@@ -21,6 +21,7 @@ import { resolveTheme, withSketchFont } from '../theme';
 import type { Surface } from '../render/surface';
 import { buildCartesianModel, type CartesianChartSpec } from './cartesian';
 import { buildRenderReport, type RenderReport } from './report';
+import { isFaceted, buildFacetModels, drawFacet, facetReport } from './facet';
 import { drawAxesUnderlay, drawOverlay } from '../axes';
 import {
   CARTESIAN_TYPES,
@@ -111,6 +112,15 @@ export function renderToContext(target: HeadlessTarget, spec: ChartSpec): Render
   const src: Datum[] = spec.data ?? [];
   const data: Datum[] = spec.transform?.length ? applyTransforms(spec.transform, src) : src;
   const effectiveSpec = data === src ? spec : ({ ...spec, data } as ChartSpec);
+
+  // Faceting: a trellis grid of comparable panels on one canvas.
+  if (isFaceted(effectiveSpec)) {
+    const layout = buildFacetModels(effectiveSpec, tokens, size);
+    if (layout) {
+      drawFacet(surface, effectiveSpec, layout, tokens);
+      return facetReport(effectiveSpec, layout, tokens, size);
+    }
+  }
 
   let reportModel;
   if (CARTESIAN_TYPES.has(type)) {
