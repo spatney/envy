@@ -1,0 +1,25 @@
+{
+  "type": "bar",
+  "title": "Revenue by region (aggregated in-spec)",
+  "data": [
+    { "ts": "2024-01-08", "region": "West", "amount": 120 },
+    { "ts": "2024-01-22", "region": "West", "amount": 95 },
+    { "ts": "2024-02-03", "region": "East", "amount": 80 },
+    { "ts": "2024-02-19", "region": "East", "amount": 60 },
+    { "ts": "2024-03-11", "region": "West", "amount": 140 },
+    { "ts": "2024-03-27", "region": "East", "amount": 75 },
+    { "ts": "2024-01-15", "region": "North", "amount": 0 },
+    { "ts": "2024-02-26", "region": "North", "amount": 45 }
+  ],
+  "transform": [
+    { "filter": { "field": "amount", "gt": 0 } },
+    {
+      "aggregate": [{ "op": "sum", "field": "amount", "as": "revenue" }],
+      "groupby": ["region"]
+    }
+  ],
+  "encoding": {
+    "x": { "field": "region" },
+    "y": { "field": "revenue", "title": "Revenue", "format": "$,d" }
+  }
+}

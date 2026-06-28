@@ -23,6 +23,13 @@ export class Surface {
   width = 0;
   height = 0;
   dpr = 1;
+  /**
+   * When true, overlay text (axis labels, titles, legends, annotation labels) is
+   * painted onto the `marks` canvas instead of the HTML overlay. Set by headless
+   * renderers (`@graphein/node`) where there is no DOM to host crisp text.
+   * Defaults to false (browser).
+   */
+  headless = false;
 
   constructor(container: HTMLElement) {
     this.container = container;

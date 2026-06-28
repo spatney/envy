@@ -1,0 +1,22 @@
+{
+  "type": "combo",
+  "title": "Revenue vs. conversion rate",
+  "data": [
+    { "month": "Jan", "revenue": 120, "conversion": 0.041 },
+    { "month": "Feb", "revenue": 145, "conversion": 0.046 },
+    { "month": "Mar", "revenue": 138, "conversion": 0.044 },
+    { "month": "Apr", "revenue": 172, "conversion": 0.052 },
+    { "month": "May", "revenue": 196, "conversion": 0.058 },
+    { "month": "Jun", "revenue": 210, "conversion": 0.061 }
+  ],
+  "encoding": { "x": { "field": "month", "title": "Month" } },
+  "layers": [
+    { "mark": "bar", "encoding": { "y": { "field": "revenue", "title": "Revenue ($k)" } } },
+    {
+      "mark": "line",
+      "axis": "right",
+      "points": true,
+      "encoding": { "y": { "field": "conversion", "title": "Conversion", "format": ".1%" } }
+    }
+  ]
+}

@@ -9,6 +9,12 @@
 
 import type { Surface } from '../render/surface';
 import { fontString, measureText } from '../render/text';
+import {
+  overlayTextToCanvasCmd,
+  paintCanvasText,
+  paintLegendSwatch,
+  legendSwatchWidth,
+} from '../render/overlayText';
 import { crisp } from '../util/math';
 import { TICK_SIZE, type Frame, type PositionedLegendItem } from '../layout';
 import type { CartesianModel } from '../runtime/cartesian';
@@ -28,7 +34,18 @@ interface TextOptions {
   whiteSpace?: 'nowrap' | 'normal';
 }
 
-function addText(overlay: HTMLElement, font: string, o: TextOptions): HTMLDivElement {
+function addText(surface: Surface, font: string, o: TextOptions): void {
+  if (surface.headless) {
+    paintCanvasText(
+      surface.marks.ctx,
+      overlayTextToCanvasCmd(
+        { left: o.left ?? 0, top: o.top ?? 0, width: o.width, text: o.text, color: o.color, size: o.size, align: o.align, transform: o.transform },
+        font,
+      ),
+    );
+    return;
+  }
+  const overlay = surface.overlay;
   const el = document.createElement('div');
   el.textContent = o.text;
   el.style.position = 'absolute';
@@ -46,7 +63,6 @@ function addText(overlay: HTMLElement, font: string, o: TextOptions): HTMLDivEle
   if (o.transform) el.style.transform = o.transform;
   el.style.pointerEvents = 'none';
   overlay.appendChild(el);
-  return el;
 }
 
 function xGridEnabled(model: CartesianModel): boolean {
@@ -233,7 +249,6 @@ function resolveXLabels(model: CartesianModel): PlacedLabel[] {
 
 /** Draw all overlay text: tick labels, axis titles, chart title, legend. */
 export function drawOverlay(surface: Surface, model: CartesianModel): void {
-  const overlay = surface.overlay;
   const { plot, tokens, frame } = model;
   const f = tokens.font;
   const smallFont = fontString(f.size.small, f.family, f.weight.normal);
@@ -242,7 +257,7 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
   if (model.spec.axes?.y?.labels !== false) {
     const gutterRight = plot.x - TICK_SIZE - 4;
     for (const t of model.yTicks) {
-      addText(overlay, smallFont, {
+      addText(surface, smallFont, {
         left: 0,
         top: t.pos,
         width: Math.max(0, gutterRight),
@@ -262,7 +277,7 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
   if (model.spec.axes?.x?.labels !== false) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
     for (const p of resolveXLabels(model)) {
-      addText(overlay, smallFont, {
+      addText(surface, smallFont, {
         left: p.left,
         top,
         text: p.text,
@@ -273,19 +288,19 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
     }
   }
 
-  drawAxisTitles(overlay, model);
-  drawTitle(overlay, frame, model.spec, tokens);
-  if (frame.legendItems) drawLegend(overlay, frame.legendItems, model);
+  drawAxisTitles(surface, model);
+  drawTitle(surface, frame, model.spec, tokens);
+  if (frame.legendItems) drawLegend(surface, frame.legendItems, model);
 }
 
-function drawAxisTitles(overlay: HTMLElement, model: CartesianModel): void {
+function drawAxisTitles(surface: Surface, model: CartesianModel): void {
   const { plot, tokens, frame } = model;
   const f = tokens.font;
   const baseFont = fontString(f.size.base, f.family, f.weight.medium);
 
   const xTitle = model.spec.axes?.x?.title ?? model.spec.encoding.x.title;
   if (xTitle) {
-    addText(overlay, baseFont, {
+    addText(surface, baseFont, {
       left: plot.x + plot.width / 2,
       top: frame.height - Math.round(f.size.base * 1.35),
       text: xTitle,
@@ -297,7 +312,7 @@ function drawAxisTitles(overlay: HTMLElement, model: CartesianModel): void {
   }
   const yTitle = model.spec.axes?.y?.title ?? model.spec.encoding.y.title;
   if (yTitle) {
-    addText(overlay, baseFont, {
+    addText(surface, baseFont, {
       left: Math.round(f.size.base * 0.4),
       top: plot.y + plot.height / 2,
       text: yTitle,
@@ -310,7 +325,7 @@ function drawAxisTitles(overlay: HTMLElement, model: CartesianModel): void {
 }
 
 function drawTitle(
-  overlay: HTMLElement,
+  surface: Surface,
   frame: Frame,
   spec: CartesianModel['spec'],
   tokens: ThemeTokens,
@@ -320,7 +335,7 @@ function drawTitle(
   const title = typeof spec.title === 'string' ? { text: spec.title } : spec.title ?? {};
   const align = (typeof spec.title === 'object' && spec.title?.align) || 'left';
   const titleFont = fontString(f.size.title, f.family, f.weight.bold);
-  addText(overlay, titleFont, {
+  addText(surface, titleFont, {
     left: frame.titleRect.x,
     top: frame.titleRect.y,
     width: frame.titleRect.width,
@@ -331,7 +346,7 @@ function drawTitle(
     align,
   });
   if (frame.subtitleRect && title.subtitle) {
-    addText(overlay, fontString(f.size.small, f.family, f.weight.normal), {
+    addText(surface, fontString(f.size.small, f.family, f.weight.normal), {
       left: frame.subtitleRect.x,
       top: frame.subtitleRect.y,
       width: frame.subtitleRect.width,
@@ -344,11 +359,33 @@ function drawTitle(
 }
 
 function drawLegend(
-  overlay: HTMLElement,
+  surface: Surface,
   items: PositionedLegendItem[],
   model: CartesianModel,
 ): void {
   const f = model.tokens.font;
+  const legendFont = fontString(f.size.small, f.family, f.weight.normal);
+
+  if (surface.headless) {
+    const ctx = surface.marks.ctx;
+    const swatch = 11;
+    for (const item of items) {
+      const midY = item.y + swatch / 2;
+      paintLegendSwatch(ctx, item.x, midY, item.symbol, item.color, swatch);
+      paintCanvasText(ctx, {
+        x: item.x + legendSwatchWidth(item.symbol, swatch) + 6,
+        y: midY,
+        text: item.label,
+        font: legendFont,
+        color: model.tokens.color.text,
+        size: f.size.small,
+        baseline: 'middle',
+      });
+    }
+    return;
+  }
+
+  const overlay = surface.overlay;
   for (const item of items) {
     const row = document.createElement('div');
     row.style.position = 'absolute';
@@ -379,7 +416,7 @@ function drawLegend(
 
     const label = document.createElement('span');
     label.textContent = item.label;
-    label.style.font = fontString(f.size.small, f.family, f.weight.normal);
+    label.style.font = legendFont;
     label.style.fontSize = `${f.size.small}px`;
     label.style.color = model.tokens.color.text;
     label.style.whiteSpace = 'nowrap';

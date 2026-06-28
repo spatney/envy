@@ -45,7 +45,7 @@
     "tests/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace graphein --workspace @graphein/react",
+    "build": "npm run build --workspace graphein --workspace @graphein/react --workspace @graphein/node",
     "build:all": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

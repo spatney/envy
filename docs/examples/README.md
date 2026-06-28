@@ -17,6 +17,7 @@ renderDashboard('#app', dashboard);
 | [line.json](./line.json) | line |
 | [area-stacked.json](./area-stacked.json) | area (stacked) |
 | [bar-grouped.json](./bar-grouped.json) | bar (grouped) |
+| [transform-aggregate.json](./transform-aggregate.json) | bar + in-spec `transform` (filter + aggregate) |
 | [scatter.json](./scatter.json) | scatter (bubble) |
 | [pie-donut.json](./pie-donut.json) | pie (donut) |
 | [donut-callouts.json](./donut-callouts.json) | pie (donut) + outside callout labels |

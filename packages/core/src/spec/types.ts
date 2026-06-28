@@ -3,6 +3,7 @@ import type { AggOp } from '../pivot';
 import type { ThemeInput } from '../theme';
 import type { FillStyle } from '../rough';
 import type { FilterClause, HighlightConfig, SelectionParam } from './selection';
+import type { Transform } from './transform';
 
 /**
  * Graphein declarative chart specs.
@@ -156,6 +157,13 @@ export interface SketchConfig {
 export interface BaseSpec {
   /** Row-oriented (tidy) data. Required for all charts/tables. */
   data?: Datum[];
+  /**
+   * Declarative data transforms applied to `data` (in order) before the chart is
+   * built — aggregate, bin, filter, fold, timeUnit. Reshape data *inside* the
+   * spec instead of pre-massaging the array, so encodings can reference fields
+   * the pipeline produces. Pure JSON; see {@link Transform}.
+   */
+  transform?: Transform[];
   /** Theme name ('light' | 'dark') or a partial override object. */
   theme?: ThemeInput;
   dimensions?: Dimensions;
@@ -208,6 +216,43 @@ export type CurveType =
   | 'stepAfter'
   | 'catmullRom';
 
+/**
+ * A reference annotation overlaid on a cartesian chart: a single reference
+ * **line** at a value, or a filled **band** / threshold **zone** between two
+ * values. Useful for targets, goals, averages, control limits, and "danger"
+ * ranges. Drawn over the gridlines and data marks; labels render in the overlay.
+ */
+export interface Annotation {
+  /**
+   * What to draw. Omit to infer: a `line` when `value` is set, a `band` when
+   * `from`/`to` are set. `zone` is a band — a semantic alias for a threshold band.
+   */
+  type?: 'line' | 'band' | 'zone';
+  /**
+   * Which axis the value(s) are measured against. `y` (default) draws a
+   * horizontal line / full-width band; `x` draws a vertical line / full-height band.
+   */
+  axis?: 'x' | 'y';
+  /** Reference value for a `line` (number, category, or date — matching the axis). */
+  value?: number | string | Date;
+  /** Start of the span for a `band`/`zone`. */
+  from?: number | string | Date;
+  /** End of the span for a `band`/`zone`. */
+  to?: number | string | Date;
+  /** Short text label drawn beside the annotation. */
+  label?: string;
+  /** Stroke (line) / fill (band) color. Defaults to a muted theme color. */
+  color?: string;
+  /** Line width in pixels for a `line` (default 1.5). */
+  strokeWidth?: number;
+  /** Dash pattern for the stroke; `[]` is solid. Lines/bands default to dashed. */
+  strokeDash?: number[];
+  /** Fill opacity for a `band`/`zone` (0..1, default 0.12). */
+  fillOpacity?: number;
+  /** Where the label anchors along the annotation (default `end`). */
+  labelPosition?: 'start' | 'middle' | 'end';
+}
+
 export interface LineSpec extends BaseSpec {
   type: 'line';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
@@ -216,6 +261,8 @@ export interface LineSpec extends BaseSpec {
   points?: boolean;
   /** Fill the area under the line. */
   area?: boolean;
+  /** Reference lines, bands, and threshold zones overlaid on the plot. */
+  annotations?: Annotation[];
 }
 
 export interface AreaSpec extends BaseSpec {
@@ -224,6 +271,8 @@ export interface AreaSpec extends BaseSpec {
   curve?: CurveType;
   /** Stack multiple series. */
   stack?: boolean;
+  /** Reference lines, bands, and threshold zones overlaid on the plot. */
+  annotations?: Annotation[];
 }
 
 export interface BarSpec extends BaseSpec {
@@ -235,11 +284,89 @@ export interface BarSpec extends BaseSpec {
   /** Group series side-by-side (default when `series` present and not stacked). */
   group?: boolean;
   cornerRadius?: number;
+  /** Reference lines, bands, and threshold zones overlaid on the plot. */
+  annotations?: Annotation[];
 }
 
 export interface ScatterSpec extends BaseSpec {
   type: 'scatter';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
+  /** Reference lines, bands, and threshold zones overlaid on the plot. */
+  annotations?: Annotation[];
+}
+
+/** The mark a single combo layer draws. */
+export type ComboMark = 'line' | 'bar' | 'area' | 'scatter';
+
+/**
+ * One layer of a {@link ComboSpec}: a mark plus the measure it plots on `y`. All
+ * layers share the combo's `x`. A layer can be measured against the primary
+ * (`left`) y-axis or an independent secondary (`right`) axis — the basis of a
+ * dual-axis bar+line chart.
+ */
+export interface ComboLayer {
+  /** Which mark to draw for this layer. */
+  mark: ComboMark;
+  /** The measure (and optional per-layer formatting) plotted on `y`. */
+  encoding: { y: FieldDef };
+  /** Which y-axis this layer is measured against. Defaults to `left`. */
+  axis?: 'left' | 'right';
+  /** Curve interpolation for `line`/`area` layers. */
+  curve?: CurveType;
+  /** Show point markers (line/area layers). */
+  points?: boolean;
+  /** Fill under the line (line layers — equivalent to an `area` mark). */
+  area?: boolean;
+  /** Bar corner radius (bar layers). */
+  cornerRadius?: number;
+  /** Legend label for the layer. Defaults to the y field's title or name. */
+  name?: string;
+  /** Override the layer's color (otherwise drawn from the theme palette). */
+  color?: string;
+}
+
+/**
+ * Combo / dual-axis chart: composes multiple cartesian {@link ComboLayer}s over a
+ * shared `x` axis — the canonical BI "bar + line" view. Layers may target a primary
+ * (`left`) or secondary (`right`) y-axis, each with its own independent scale.
+ * Bars require a categorical `x`; lines/areas/points align to category centers.
+ */
+export interface ComboSpec extends BaseSpec {
+  type: 'combo';
+  encoding: { x: FieldDef };
+  layers: ComboLayer[];
+}
+
+/** Binning controls for a {@link HistogramSpec} (mirror the `bin` transform). */
+export interface HistogramBin {
+  /** Target bin count (approximate — a "nice" step is chosen). Default 10. */
+  maxbins?: number;
+  /** Explicit bin width (overrides `maxbins`). */
+  step?: number;
+  /** Restrict binning to `[min, max]`; values outside are dropped. */
+  extent?: [number, number];
+  /** Snap bin edges to nice round numbers (default true). */
+  nice?: boolean;
+}
+
+/**
+ * Histogram: bins a single quantitative field and draws the per-bin frequency as
+ * gapless bars. Binning happens inside the chart (reusing the `bin` transform), so
+ * an agent passes raw observations — no manual pre-binning. Bar height is the bin
+ * count by default, or a probability density (area sums to 1) when `density:true`.
+ */
+export interface HistogramSpec extends BaseSpec {
+  type: 'histogram';
+  /** `x` is the quantitative field to bin (also carries the axis title/format). */
+  encoding: { x: FieldDef };
+  /** Binning controls (default ~10 nice bins, or an explicit `step`/`extent`). */
+  bin?: HistogramBin;
+  /** Normalize bar heights to a probability density (area sums to 1). */
+  density?: boolean;
+  /** Bar colour (defaults to the first theme palette colour). */
+  color?: string;
+  /** Bar corner radius. */
+  cornerRadius?: number;
 }
 
 export interface PieSpec extends BaseSpec {
@@ -434,6 +561,8 @@ export interface BoxSpec extends BaseSpec {
   whisker?: 'tukey' | 'minMax';
   /** Draw outlier points beyond the whiskers (tukey only; default true). */
   outliers?: boolean;
+  /** Reference lines, bands, and threshold zones overlaid on the plot. */
+  annotations?: Annotation[];
 }
 
 export interface SankeySpec extends BaseSpec {
@@ -604,6 +733,8 @@ export type ChartSpec =
   | AreaSpec
   | BarSpec
   | ScatterSpec
+  | ComboSpec
+  | HistogramSpec
   | PieSpec
   | HeatmapSpec
   | FunnelSpec
@@ -626,6 +757,8 @@ export const CHART_TYPES: readonly ChartType[] = [
   'area',
   'bar',
   'scatter',
+  'combo',
+  'histogram',
   'pie',
   'heatmap',
   'funnel',

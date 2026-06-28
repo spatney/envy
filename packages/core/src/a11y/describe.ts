@@ -14,6 +14,8 @@ const TYPE_LABELS: Record<string, string> = {
   area: 'Area chart',
   bar: 'Bar chart',
   scatter: 'Scatter plot',
+  combo: 'Combo chart',
+  histogram: 'Histogram',
   pie: 'Pie chart',
   heatmap: 'Heatmap',
   kpi: 'KPI card',

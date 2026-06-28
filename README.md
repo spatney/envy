@@ -23,6 +23,13 @@ Canvas2D + DOM rendering core.
   smooth from a handful of points to 50k+.
 - **From scratch.** Scales, ticks, color, shapes, the pivot engine, the sketch
   renderer, and the core renderer are all hand-written — no D3/charting dependencies.
+- **Self-correcting.** `validateSpec` returns structured, path-pointed errors *with
+  JSON-patch fixes* and best-practice lint warnings; after render, `chart.report()` flags
+  clipping, overflow, and contrast issues — so an agent can validate, repair, and critique
+  a chart **without a vision model**. Run the whole loop server-side with
+  [`@graphein/node`](./packages/node).
+- **Declarative data shaping.** In-spec `transform`s (aggregate, bin, filter, fold,
+  timeUnit, calculate) mean you never pre-pivot the `data` array by hand.
 
 ## Gallery
 
@@ -88,6 +95,17 @@ npm install @graphein/react react
 import { Chart } from '@graphein/react';
 ```
 
+Rendering on a server (CI, agents, report jobs)? Render straight to a PNG — no browser:
+
+```bash
+npm install @graphein/node graphein
+```
+
+```ts
+import { renderChart } from '@graphein/node';
+const { png, report } = renderChart(spec, { width: 900, height: 480, dpr: 2 });
+```
+
 ## Quick start
 
 ```ts
@@ -135,6 +153,46 @@ to update in place, and it tears down on unmount. For headless control over your
 own element, use the `useChart(spec)` hook (returns a ref to attach). `react` is a
 peer dependency (React 18+).
 
+## The agent feedback loop
+
+Graphein's real edge isn't the charts — it's that a model never trained on its API can
+still get them right, because the library is **self-validating, self-repairing, and
+self-critiquing** at runtime.
+
+```ts
+import { validateSpec, repairSpec, render } from 'graphein';
+
+// 1. Validate — structured, path-pointed errors plus best-practice lint warnings.
+const { valid, errors, warnings } = validateSpec(spec);
+
+// 2. Repair — apply the safe JSON-patch fixes Graphein suggests, instead of regenerating.
+const { spec: fixed, applied, remaining } = repairSpec(spec);
+
+// 3. Render, then critique — no vision model needed.
+const chart = render('#app', fixed);
+const report = chart.report();
+if (!report.ok) {
+  // report.diagnostics → 'axis-label-overlap', 'legend-overflow', 'low-contrast-mark', …
+}
+```
+
+- **Self-repairing validation.** Each `validateSpec` error can carry a `fix` (RFC-6902
+  JSON Patch) and a "did you mean" `suggestion`, turning a mistake into a one-step
+  correction; `repairSpec` applies the safe ones for you.
+- **Built-in dataviz linter.** Best-practice warnings (too many pie slices, a temporal
+  field typed nominal, dual-axis misuse, too many colors) bake in expertise the agent lacks.
+- **Declarative transforms.** Shape data *inside* the validatable spec — `aggregate`,
+  `bin`, `filter`, `fold`, `timeUnit`, and a safe `calculate` expression engine.
+- **Reference annotations.** Reusable `annotations` (lines, bands, threshold zones) on
+  every cartesian chart.
+- **Render report.** `chart.report()` returns machine-readable diagnostics — clipped
+  labels, legend overflow, contrast failures, mark counts — to verify a chart came out right.
+- **Headless rendering.** [`@graphein/node`](./packages/node) runs that whole loop
+  server-side to a PNG (no browser, no JSDOM), so an agent can generate → validate →
+  repair → render → critique entirely in CI or a report job.
+
+See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
+
 ## Chart catalog
 
 | Type | What it's for | Example |
@@ -142,15 +200,21 @@ peer dependency (React 18+).
 | `line` | Trends over time; multi-series, curves, markers, area fill | [line.json](./docs/examples/line.json) |
 | `area` | Volume/part-to-whole over time; stacking | [area-stacked.json](./docs/examples/area-stacked.json) |
 | `bar` | Compare categories; grouped or stacked series | [bar-grouped.json](./docs/examples/bar-grouped.json) |
+| `combo` | Two measures / different units: bar + line on a shared `x`, dual axes | [combo-dual-axis.json](./docs/examples/combo-dual-axis.json) |
 | `scatter` | Correlation/distribution; bubble size + color groups | [scatter.json](./docs/examples/scatter.json) |
+| `histogram` | Distribution of one measure; auto-binned bars + optional density | [histogram.json](./docs/examples/histogram.json) |
 | `pie` | Composition as shares; pie or donut | [pie-donut.json](./docs/examples/pie-donut.json) |
 | `heatmap` | Density across two categories | [heatmap.json](./docs/examples/heatmap.json) |
+| `funnel` | Conversion through ordered stages | [funnel.json](./docs/examples/funnel.json) |
 | `kpi` | Headline metric with delta + sparkline | [kpi.json](./docs/examples/kpi.json) |
 | `table` | Virtualized, sortable data table + conditional formatting | [table.json](./docs/examples/table.json) |
 | `matrix` | Pivot/cross-tab: groups, aggregates, subtotals/grand totals | [matrix.json](./docs/examples/matrix.json) |
 | `box` | Distributions by category; Tukey/min-max whiskers + outliers | [box.json](./docs/examples/box.json) |
 | `sankey` | Flows between nodes from `source → target` link rows | [sankey.json](./docs/examples/sankey.json) |
 | `choropleth` | Values shaded over GeoJSON regions; sequential color scale | [choropleth.json](./docs/examples/choropleth.json) |
+
+Every cartesian chart also takes `transform`s (in-spec data shaping) and `annotations`
+(reference lines, bands, threshold zones).
 
 Add `"sketch": true` to **any** spec for a hand-drawn look — see
 [bar-sketch.json](./docs/examples/bar-sketch.json) and the
@@ -179,6 +243,11 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
 - **Ready signal** — when a render settles, Graphein sets `data-graphein-ready="true"` on the
   surface root and increments `window.__GRAPHEIN_READY`, so automation can wait
   deterministically.
+- **Headless & self-critiquing** — the same model build and mark renderers run in Node via
+  [`@graphein/node`](./packages/node) (backed by `@napi-rs/canvas`), painting overlay text
+  onto the canvas to emit a PNG plus a `RenderReport` — so the validate → render → critique
+  loop runs with no browser. Core's `renderToContext(target, spec)` paints onto any 2D
+  context if you bring your own canvas.
 
 ## Packages
 
@@ -186,6 +255,7 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
 | --- | --- | --- |
 | `graphein` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
 | `@graphein/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
+| `@graphein/node` | Headless rendering: `ChartSpec` → PNG + `RenderReport`, no browser. | ✅ |
 | `apps/gallery` | Vite gallery + screenshot harness for visual iteration. | ✅ (dev) |
 
 ## Development

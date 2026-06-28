@@ -164,6 +164,107 @@ export const presets: Preset[] = [
       stack: true,
     }),
   },
+  // --- Transform (in-spec data reshaping) ---
+  {
+    id: 'transform-aggregate',
+    label: 'Transform · aggregate raw rows',
+    group: 'Transform',
+    note: 'filter + group-by sum, one row per bar',
+    build: () => ({
+      type: 'bar',
+      title: 'Revenue by region (aggregated in-spec)',
+      data: [
+        { ts: '2024-01-08', region: 'West', amount: 120 },
+        { ts: '2024-01-22', region: 'West', amount: 95 },
+        { ts: '2024-02-03', region: 'East', amount: 80 },
+        { ts: '2024-02-19', region: 'East', amount: 60 },
+        { ts: '2024-03-11', region: 'West', amount: 140 },
+        { ts: '2024-03-27', region: 'East', amount: 75 },
+        { ts: '2024-01-15', region: 'North', amount: 0 },
+        { ts: '2024-02-26', region: 'North', amount: 45 },
+      ],
+      transform: [
+        { filter: { field: 'amount', gt: 0 } },
+        { aggregate: [{ op: 'sum', field: 'amount', as: 'revenue' }], groupby: ['region'] },
+      ],
+      encoding: { x: { field: 'region' }, y: { field: 'revenue', title: 'Revenue' } },
+    }),
+  },
+  {
+    id: 'transform-timeunit',
+    label: 'Transform · group by month',
+    group: 'Transform',
+    note: 'timeUnit + aggregate raw timestamps',
+    build: () => ({
+      type: 'line',
+      title: 'Monthly revenue by region',
+      data: [
+        { ts: '2024-01-08', region: 'West', amount: 120 },
+        { ts: '2024-01-22', region: 'West', amount: 95 },
+        { ts: '2024-01-12', region: 'East', amount: 70 },
+        { ts: '2024-02-03', region: 'East', amount: 80 },
+        { ts: '2024-02-19', region: 'West', amount: 60 },
+        { ts: '2024-02-26', region: 'East', amount: 45 },
+        { ts: '2024-03-11', region: 'West', amount: 140 },
+        { ts: '2024-03-27', region: 'East', amount: 75 },
+      ],
+      transform: [
+        { timeUnit: 'month', field: 'ts', as: 'month' },
+        { aggregate: [{ op: 'sum', field: 'amount', as: 'amount' }], groupby: ['month', 'region'] },
+      ],
+      encoding: {
+        x: { field: 'month', type: 'temporal' },
+        y: { field: 'amount', title: 'Revenue' },
+        series: { field: 'region' },
+      },
+    }),
+  },
+  {
+    id: 'transform-calculate',
+    label: 'Transform · calculate a column',
+    group: 'Transform',
+    note: 'derive margin % from raw rows',
+    build: () => ({
+      type: 'bar',
+      title: 'Gross margin by product',
+      data: [
+        { product: 'Alpha', revenue: 400, cost: 250 },
+        { product: 'Beta', revenue: 320, cost: 300 },
+        { product: 'Gamma', revenue: 540, cost: 210 },
+        { product: 'Delta', revenue: 280, cost: 260 },
+      ],
+      transform: [{ calculate: 'round((revenue - cost) / revenue, 3)', as: 'margin' }],
+      encoding: { x: { field: 'product' }, y: { field: 'margin', title: 'Margin', format: '.0%' } },
+    }),
+  },
+  // --- Annotations ---
+  {
+    id: 'annotations-target',
+    label: 'Annotations · target + zone',
+    group: 'Annotations',
+    note: 'reference line, threshold zone, event marker',
+    build: () => ({
+      type: 'line',
+      title: 'API latency vs. SLA',
+      data: [
+        { month: '2024-01', latency: 140 },
+        { month: '2024-02', latency: 165 },
+        { month: '2024-03', latency: 90 },
+        { month: '2024-04', latency: 210 },
+        { month: '2024-05', latency: 180 },
+        { month: '2024-06', latency: 120 },
+      ],
+      encoding: {
+        x: { field: 'month', type: 'temporal' },
+        y: { field: 'latency', title: 'p95 (ms)' },
+      },
+      annotations: [
+        { type: 'zone', from: 0, to: 100, label: 'Healthy', color: '#10b981' },
+        { value: 200, label: 'SLA', color: '#ef4444' },
+        { axis: 'x', value: '2024-04', label: 'Launch' },
+      ],
+    }),
+  },
   // --- Scatter ---
   {
     id: 'scatter-md',
@@ -197,6 +298,104 @@ export const presets: Preset[] = [
         color: { field: 'group' },
       },
     }),
+  },
+  // --- Combo / dual-axis ---
+  {
+    id: 'combo-dual-axis',
+    label: 'Combo · bars + line (dual-axis)',
+    group: 'Combo',
+    note: 'revenue bars (left) + conversion line (right)',
+    build: () => ({
+      type: 'combo',
+      title: 'Revenue vs. conversion rate',
+      data: [
+        { month: 'Jan', revenue: 120, conversion: 0.041 },
+        { month: 'Feb', revenue: 145, conversion: 0.046 },
+        { month: 'Mar', revenue: 138, conversion: 0.044 },
+        { month: 'Apr', revenue: 172, conversion: 0.052 },
+        { month: 'May', revenue: 196, conversion: 0.058 },
+        { month: 'Jun', revenue: 210, conversion: 0.061 },
+      ],
+      encoding: { x: { field: 'month', title: 'Month' } },
+      layers: [
+        { mark: 'bar', encoding: { y: { field: 'revenue', title: 'Revenue ($k)' } } },
+        {
+          mark: 'line',
+          axis: 'right',
+          points: true,
+          encoding: { y: { field: 'conversion', title: 'Conversion', format: '.1%' } },
+        },
+      ],
+    }),
+  },
+  {
+    id: 'combo-grouped',
+    label: 'Combo · grouped bars + line',
+    group: 'Combo',
+    note: 'two bar measures + a target line, shared axis',
+    build: () => ({
+      type: 'combo',
+      title: 'Plan vs. actual with target',
+      data: [
+        { quarter: 'Q1', plan: 80, actual: 72, target: 75 },
+        { quarter: 'Q2', plan: 95, actual: 101, target: 90 },
+        { quarter: 'Q3', plan: 110, actual: 98, target: 105 },
+        { quarter: 'Q4', plan: 130, actual: 142, target: 125 },
+      ],
+      encoding: { x: { field: 'quarter', title: 'Quarter' } },
+      layers: [
+        { mark: 'bar', encoding: { y: { field: 'plan' } } },
+        { mark: 'bar', encoding: { y: { field: 'actual' } } },
+        { mark: 'line', points: true, encoding: { y: { field: 'target' } } },
+      ],
+    }),
+  },
+  // --- Histogram ---
+  {
+    id: 'histogram-count',
+    label: 'Histogram · counts',
+    group: 'Histogram',
+    note: '~240 raw observations, auto-binned',
+    build: () => {
+      const r = rng(42);
+      const data: Datum[] = [];
+      for (let i = 0; i < 240; i++) {
+        const v = -Math.log(1 - r()) * 40 + r() * 15 + 18;
+        data.push({ latency_ms: Math.round(v * 10) / 10 });
+      }
+      return {
+        type: 'histogram',
+        title: 'Request latency distribution',
+        data,
+        encoding: { x: { field: 'latency_ms', title: 'Latency (ms)' } },
+        bin: { maxbins: 24 },
+        color: '#4F46E5',
+      };
+    },
+  },
+  {
+    id: 'histogram-density',
+    label: 'Histogram · density',
+    group: 'Histogram',
+    note: 'fixed-width bins, area normalized to 1',
+    build: () => {
+      const r = rng(7);
+      const data: Datum[] = [];
+      // approx-normal via central limit (sum of uniforms)
+      for (let i = 0; i < 300; i++) {
+        let s = 0;
+        for (let k = 0; k < 6; k++) s += r();
+        data.push({ score: Math.round((50 + (s - 3) * 18) * 10) / 10 });
+      }
+      return {
+        type: 'histogram',
+        title: 'Score density',
+        data,
+        encoding: { x: { field: 'score', title: 'Score' } },
+        bin: { step: 5 },
+        density: true,
+      };
+    },
   },
   // --- Pie ---
   {

@@ -28,6 +28,10 @@ import { drawChoropleth } from './choropleth';
 import { drawTable } from './table';
 import { drawMatrix } from './matrix';
 import { drawDropdown, drawSearch, drawList, drawRange, drawDateRange } from './slicers';
+import { drawCombo } from './combo';
+import { drawHistogram } from './histogram';
+
+export { drawAnnotations, drawAnnotationLabels } from './annotations';
 
 export type CartesianRenderer = (surface: Surface, model: CartesianModel) => void;
 export type CartesianInteractionBuilder = (model: CartesianModel) => InteractionModel | void;
@@ -102,6 +106,8 @@ export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {
   pie: drawPie,
   funnel: drawFunnel,
   kpi: drawKpi,
+  combo: drawCombo,
+  histogram: drawHistogram,
   sankey: drawSankey,
   choropleth: drawChoropleth,
   table: drawTable,

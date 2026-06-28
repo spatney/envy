@@ -12,6 +12,13 @@ import type { Surface } from '../render/surface';
 import type { ThemeTokens } from '../theme';
 import type { Rect, Size } from '../types';
 import { fontString, measureText } from '../render/text';
+import {
+  overlayTextToCanvasCmd,
+  paintCanvasText,
+  paintLegendSwatch,
+  legendSwatchWidth,
+  type LegendSymbol,
+} from '../render/overlayText';
 
 export const CHROME_PAD = { top: 14, right: 16, bottom: 14, left: 16 } as const;
 
@@ -48,10 +55,33 @@ interface TextSpec {
 
 /** Append an absolutely-positioned text node to the overlay. Returns the node. */
 export function addOverlayText(surface: Surface, tokens: ThemeTokens, o: TextSpec): HTMLDivElement {
+  const font = fontString(o.size, tokens.font.family, o.weight ?? tokens.font.weight.normal);
+  if (surface.headless) {
+    paintCanvasText(
+      surface.marks.ctx,
+      overlayTextToCanvasCmd(
+        {
+          left: o.left,
+          top: o.top,
+          width: o.width,
+          text: o.text,
+          color: o.color,
+          size: o.size,
+          align: o.align,
+          transform: o.transform,
+          opacity: o.opacity,
+          pill: o.pill,
+        },
+        font,
+      ),
+    );
+    // Headless has no DOM; callers ignore the return (geometry is pre-computed).
+    return null as unknown as HTMLDivElement;
+  }
   const el = document.createElement('div');
   el.textContent = o.text;
   el.style.position = 'absolute';
-  el.style.font = fontString(o.size, tokens.font.family, o.weight ?? tokens.font.weight.normal);
+  el.style.font = font;
   el.style.color = o.color;
   el.style.left = `${o.left}px`;
   el.style.top = `${o.top}px`;
@@ -151,6 +181,58 @@ export function drawCategoricalLegend(
   const swatch = 11;
   const gap = 16;
   const font = fontString(labelSize, f.family, f.weight.normal);
+
+  // Headless: paint swatch + label onto the marks canvas at the same positions
+  // (and reserve the same content rect) the DOM path below would use.
+  if (surface.headless) {
+    const ctx = surface.marks.ctx;
+    if (position === 'right') {
+      let maxLabel = 0;
+      for (const e of entries) maxLabel = Math.max(maxLabel, measureText(e.label, font).width);
+      const colW = Math.ceil(swatch + 6 + maxLabel + 4);
+      const x = area.x + area.width - colW;
+      let y = area.y + Math.max(0, (area.height - entries.length * rowH) / 2);
+      for (const e of entries) {
+        const midY = y + rowH / 2;
+        paintLegendSwatch(ctx, x, midY, e.symbol as LegendSymbol, e.color, swatch);
+        paintCanvasText(ctx, {
+          x: x + legendSwatchWidth(e.symbol as LegendSymbol, swatch) + 6,
+          y: midY,
+          text: e.label,
+          font,
+          color: tokens.color.text,
+          size: labelSize,
+          baseline: 'middle',
+        });
+        y += rowH;
+      }
+      return { x: area.x, y: area.y, width: Math.max(0, area.width - colW - gap), height: area.height };
+    }
+    const widths = entries.map(
+      (e) => legendSwatchWidth(e.symbol as LegendSymbol, swatch) + 6 + measureText(e.label, font).width,
+    );
+    const total = widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, entries.length - 1);
+    let cx = area.x + Math.max(0, (area.width - total) / 2);
+    const barH = rowH;
+    const barTop = position === 'top' ? area.y : area.y + area.height - barH;
+    const midY = barTop + barH / 2;
+    entries.forEach((e, i) => {
+      paintLegendSwatch(ctx, cx, midY, e.symbol as LegendSymbol, e.color, swatch);
+      paintCanvasText(ctx, {
+        x: cx + legendSwatchWidth(e.symbol as LegendSymbol, swatch) + 6,
+        y: midY,
+        text: e.label,
+        font,
+        color: tokens.color.text,
+        size: labelSize,
+        baseline: 'middle',
+      });
+      cx += widths[i] + gap;
+    });
+    return position === 'top'
+      ? { x: area.x, y: area.y + barH + 6, width: area.width, height: Math.max(0, area.height - barH - 6) }
+      : { x: area.x, y: area.y, width: area.width, height: Math.max(0, area.height - barH - 6) };
+  }
 
   const makeSwatch = (e: LegendEntry): HTMLSpanElement => {
     const s = document.createElement('span');

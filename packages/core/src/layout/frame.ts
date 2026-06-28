@@ -56,6 +56,8 @@ export interface FrameInput {
   /** Cartesian charts pass both axes; non-cartesian omit them. */
   xAxis?: AxisInput;
   yAxis?: AxisInput;
+  /** Secondary (right) y-axis for dual-axis combo charts; reserves a right gutter. */
+  y2Axis?: AxisInput;
 }
 
 export interface Frame {
@@ -214,6 +216,22 @@ export function computeFrame(input: FrameInput): Frame {
     const yHalf = Math.ceil(lineHeight(font.size.small) / 2);
     top += yHalf;
     bottom -= yHalf;
+  }
+  // Secondary (right) y-axis — mirror of the left gutter on the right edge.
+  if (input.y2Axis?.show) {
+    let gutter = 0;
+    if (input.y2Axis.labels.length) {
+      const wfont = fontString(font.size.small, font.family, font.weight.normal);
+      const widest = Math.max(...input.y2Axis.labels.map((l) => measureText(l, wfont).width));
+      gutter = Math.ceil(widest) + TICK_SIZE + AXIS_LABEL_GAP;
+    }
+    if (input.y2Axis.title) gutter += lineHeight(font.size.base) + AXIS_TITLE_GAP;
+    right -= gutter;
+    if (!input.yAxis?.show) {
+      const yHalf = Math.ceil(lineHeight(font.size.small) / 2);
+      top += yHalf;
+      bottom -= yHalf;
+    }
   }
   if (input.xAxis?.show) {
     let gutter = lineHeight(font.size.small) + TICK_SIZE + AXIS_LABEL_GAP;

@@ -1082,6 +1082,68 @@ code {
   color: var(--err);
 }
 
+.pg-report {
+  flex: 0 0 auto;
+  max-height: 168px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.pg-report:empty {
+  display: none;
+}
+.pg-report-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.pg-report-badge {
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.pg-report-badge.ok {
+  background: var(--accent-soft);
+  color: var(--ok);
+}
+.pg-report-badge.warn {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
+}
+.pg-report-meta {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.pg-report-diag {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  padding: 4px 0 4px 9px;
+  border-left: 2px solid var(--border-strong);
+  margin-bottom: 4px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.pg-report-diag code {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+}
+.pg-report-diag.sev-error {
+  border-left-color: var(--err);
+}
+.pg-report-diag.sev-warning {
+  border-left-color: var(--warn);
+}
+.pg-report-diag.sev-info {
+  border-left-color: var(--accent-line);
+}
+
 .pg-preview {
   background: var(--surface-2);
 }

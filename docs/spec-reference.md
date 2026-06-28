@@ -32,8 +32,10 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Common fields (`BaseSpec`)](#common-fields-basespec)
 - [Encoding & `FieldDef`](#encoding--fielddef)
 - [Scales](#scales)
+- [Transforms](#transforms)
+- [Annotations (reference lines, bands, zones)](#annotations-reference-lines-bands-zones)
 - [Chart types](#chart-types)
-  - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [pie](#pie)
+  - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [combo](#combo) · [histogram](#histogram) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
   - [box](#box) · [funnel](#funnel) · [sankey](#sankey) · [choropleth](#choropleth)
 - [Slicers](#slicers)
@@ -46,7 +48,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Format mini‑language](#format-mini-language)
 - [Enumerations](#enumerations)
 - [Runtime API](#runtime-api)
-  - [Performance](#performance) · [Animation](#animation)
+  - [Validation & linting](#validation--linting) · [Self-repairing specs](#self-repairing-specs) · [Render report](#render-report) · [Performance](#performance) · [Animation](#animation)
 - [Accessibility](#accessibility)
 
 ---
@@ -58,6 +60,7 @@ Shared by **all** chart types.
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `data` | `Datum[]` | — | Row‑oriented records. Required for every chart/table. |
+| `transform` | `Transform[]` | — | Declarative pipeline that reshapes `data` **before** charting (aggregate, bin, filter, fold, timeUnit). See [Transforms](#transforms). |
 | `theme` | `'light' \| 'dark' \| ThemeOverride` | `'light'` | Theme name or a partial override (see [Themes](#themes)). |
 | `dimensions` | `{ width?, height?, autoResize? }` | responsive | Omit `width`/`height` to fill the container and track resizes. |
 | `title` | `string \| TitleConfig` | — | `string`, or `{ text, subtitle?, align? }`. |
@@ -191,6 +194,141 @@ columns onto visual **channels** through `encoding`.
 
 ---
 
+## Transforms
+
+`transform` is an ordered pipeline that reshapes the `data` array **inside the
+spec**, before the chart model is built. It exists to kill the most common agent
+mistake — *mis‑shaping the data array before charting*. Instead of pre‑aggregating
+or pivoting rows in code, point a chart at raw rows and let a validatable transform
+do the shaping. Encodings may reference columns the pipeline produces.
+
+```json
+{
+  "type": "bar",
+  "data": [ { "region": "West", "sales": 10 }, { "region": "West", "sales": 5 }, { "region": "East", "sales": 8 } ],
+  "transform": [
+    { "filter": { "field": "sales", "gt": 0 } },
+    { "aggregate": [ { "op": "sum", "field": "sales", "as": "sales" } ], "groupby": ["region"] }
+  ],
+  "encoding": { "x": { "field": "region" }, "y": { "field": "sales" } }
+}
+```
+
+Steps run in array order. Each step carries **exactly one** operator key. The
+pipeline is pure (it never mutates `data`) and is also exported standalone as
+`applyTransforms(transforms, data)`. It runs **before** any selection cross‑filter.
+
+| Operator | Shape | Notes |
+| --- | --- | --- |
+| `aggregate` | `{ aggregate: AggregateOp[], groupby?: string[] }` | Group rows and summarize. Omit `groupby` to collapse to one row. |
+| `bin` | `{ bin: string, as: string \| [string,string], maxbins?, step?, extent?, nice? }` | Bucket a numeric field. `as` as a `[start,end]` pair captures both edges (drives the histogram). |
+| `filter` | `{ filter: FilterPredicate }` | Keep rows matching a JSON predicate. |
+| `fold` | `{ fold: string[], as?: [string,string] }` | Wide → long: gather columns into key/value rows (`as` defaults to `['key','value']`). |
+| `timeUnit` | `{ timeUnit: TimeUnit, field: string, as: string }` | Truncate a timestamp to a calendar unit start (writes a `Date`). |
+| `calculate` | `{ calculate: string, as: string }` | Derive a column from a safe expression (see [`calculate`](#calculate-expressions)). |
+
+### `AggregateOp`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `op` | `AggOp` | `sum \| mean \| avg \| min \| max \| count \| countDistinct \| median \| first \| last`. |
+| `field` | `string` | Source column. Omit only for `count`. |
+| `as` | `string` | Output column. |
+
+### `FilterPredicate`
+
+A leaf predicate tests one `field`; `and` / `or` / `not` compose them. Comparisons
+coerce numerically (numbers first, then dates), so temporal bounds work as ISO
+strings.
+
+- Leaf on a `field`: one of `equals`, `ne`, `oneOf`, `range: [lo,hi]`, `contains`,
+  `gt`, `gte`, `lt`, `lte`, or `valid: boolean` (drops null/NaN when `true`).
+- Composite: `{ and: [...] }`, `{ or: [...] }`, `{ not: {...} }`.
+
+```json
+{ "filter": { "and": [
+  { "field": "year", "gte": 2020 },
+  { "field": "region", "oneOf": ["West", "East"] }
+] } }
+```
+
+### `TimeUnit`
+
+`year · quarter · month · week · day · hour · minute · second`. Truncates to the
+start of the unit so rows aggregate by period without manual date math:
+
+```json
+{ "timeUnit": "month", "field": "date", "as": "month" }
+```
+
+### `calculate` expressions
+
+`{ "calculate": "<expr>", "as": "col" }` derives a column by evaluating `<expr>`
+for each row. Bare identifiers reference columns; use `datum['my field']` for
+names with spaces. The expression is parsed to an AST and evaluated with **no
+`eval`/`Function`** and no access to globals — it is pure and deterministic.
+
+```json
+{ "calculate": "round(revenue / users, 2)", "as": "arpu" }
+```
+
+Supported:
+
+- **Operators:** `+ - * / %`, comparisons `< <= > >= == != === !==`, logical
+  `&& || !`, ternary `cond ? a : b`. `+` concatenates if either side is a string,
+  else adds numerically; comparisons coerce to numbers when both sides are numeric.
+- **Literals:** numbers, `'single'`/`"double"` quoted strings, `true`, `false`, `null`.
+- **Member access:** `datum.field` and `datum['field']` (prototype keys are blocked).
+- **Functions:** `abs round floor ceil trunc sign sqrt exp log log10 log2 pow min
+  max number isFinite isNaN str lower upper trim length substring replace contains
+  startsWith endsWith concat coalesce if year month day hours minutes`. No
+  `now()`/`random()` — transforms stay deterministic.
+
+> **Note:** `FieldDef.aggregate` (on `kpi`/`matrix`) still aggregates at encode
+> time. For cartesian charts, prefer a `transform` `aggregate` step so there is one
+> row per mark.
+
+---
+
+## Annotations (reference lines, bands, zones)
+
+Cartesian charts (`line`, `area`, `bar`, `scatter`, `box`) accept an optional
+`annotations: Annotation[]` — reference lines, shaded bands, and threshold zones drawn
+over the plot. They're declarative data (no callbacks) and ship as overlay marks plus an
+HTML label layer, so an agent can call out a target, SLA, or safe range in one field.
+
+```ts
+{
+  type: 'line',
+  data: rows,
+  encoding: { x: { field: 'month', type: 'temporal' }, y: { field: 'latency' } },
+  annotations: [
+    { value: 200, label: 'SLA', color: '#ef4444' },            // horizontal rule on y
+    { type: 'zone', from: 0, to: 100, label: 'Healthy' },      // shaded threshold band
+    { axis: 'x', value: '2024-06', label: 'Launch' },          // vertical rule on x
+  ],
+}
+```
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `type` | `'line' \| 'band' \| 'zone'` | inferred | Omit to infer: `line` when `value` is set, `band` when `from`/`to` are set. `zone` is a semantic alias for a threshold band. |
+| `axis` | `'x' \| 'y'` | `'y'` | `y` draws a horizontal line / full‑width band; `x` draws a vertical line / full‑height band. |
+| `value` | `number \| string \| Date` | — | Reference value for a `line` (matches the chosen axis). |
+| `from`, `to` | `number \| string \| Date` | — | Span extents for a `band`/`zone`. |
+| `label` | `string` | — | Short text drawn beside the annotation. |
+| `color` | `string` | muted theme color | Stroke (line) / fill (band) color. |
+| `strokeWidth` | `number` | `1.5` | Line width in pixels. |
+| `strokeDash` | `number[]` | dashed | Dash pattern; `[]` is solid. |
+| `fillOpacity` | `number` | `0.12` | Band/zone fill opacity (0..1). |
+| `labelPosition` | `'start' \| 'middle' \| 'end'` | `'end'` | Where the label anchors along the annotation. |
+
+Validation rules: a `line` needs `value`; a `band`/`zone` needs both `from` and `to`;
+`value` and `from`/`to` are mutually exclusive; values must be scalars (number, string,
+or date). Annotations on a non‑cartesian chart produce a warning (they're ignored).
+
+---
+
 ## Chart types
 
 ### line
@@ -242,6 +380,65 @@ Points/bubbles with optional size and color grouping. Hover focuses the nearest 
 | `encoding` | requires `x`, `y`; optional `size`, `series` | `size` drives bubble radius; `series` colors groups. |
 
 → [`examples/scatter.json`](./examples/scatter.json)
+
+### combo
+
+Dual-axis / layered cartesian chart — the canonical BI **bar + line**. Each entry in
+`layers` is a mark (`bar`/`line`/`area`/`scatter`) plotting its own `y` measure over the
+shared `encoding.x`. A layer can read against the primary (`left`) or a secondary
+(`right`) y-axis, each with an independent scale. Multiple `bar` layers group side-by-side;
+line/area/point layers align to category centres. The legend shows one entry per layer.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `x` | The shared category/time axis. Bars force a categorical x. |
+| `layers` | `ComboLayer[]` (≥1) | One mark + measure per layer (see below). |
+
+**`ComboLayer`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `mark` | `'line' \| 'bar' \| 'area' \| 'scatter'` | The mark drawn for this layer. |
+| `encoding` | requires `y` | The measure (a `FieldDef`, with optional per-layer `format`) plotted on `y`. |
+| `axis` | `'left' \| 'right'` | Which y-axis to measure against (default `left`). Add a `right` layer for dual-axis. |
+| `curve` | `CurveType` | Interpolation for `line`/`area` layers. |
+| `points` | `boolean` | Show point markers (line/area). |
+| `area` | `boolean` | Fill under a `line` layer. |
+| `cornerRadius` | `number` | Bar corner radius. |
+| `name` | `string` | Legend label (defaults to the y field's title/name). |
+| `color` | `string` | Override the layer colour (else the theme palette). |
+
+> Dual-axis charts can imply correlations that aren't real — the linter emits an
+> advisory `combo-dual-axis` (info) when both axes are used. Reserve a secondary axis for
+> genuinely different units, and label both axes.
+
+→ [`examples/combo-dual-axis.json`](./examples/combo-dual-axis.json)
+
+### histogram
+
+Distribution of a single quantitative field. Binning happens **inside** the chart
+(reusing the `bin` transform), so you pass raw observations — no manual pre-binning. Bars
+are gapless on a continuous x-axis; height is the per-bin count, or a probability density
+when `density:true`.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `x` | `x` is the quantitative field to bin (carries the axis title/format). |
+| `bin` | `HistogramBin` | `{ maxbins?, step?, extent?, nice? }` — default ~10 nice bins. |
+| `density` | `boolean` | Normalize heights to a probability density (area sums to 1). Default `false` (raw counts). |
+| `color` | `string` | Bar colour (defaults to the first theme palette colour). |
+| `cornerRadius` | `number` | Bar corner radius. |
+
+**`HistogramBin`**
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `maxbins` | `number` | Target bin count (approximate — a "nice" step is chosen). Default `10`. |
+| `step` | `number` | Explicit bin width (overrides `maxbins`). |
+| `extent` | `[number, number]` | Restrict binning to `[min, max]`; values outside are dropped. |
+| `nice` | `boolean` | Snap bin edges to round numbers (default `true`). |
+
+→ [`examples/histogram.json`](./examples/histogram.json)
 
 ### pie
 
@@ -747,6 +944,114 @@ chart.spec;                         // the currently rendered spec (readonly)
 default), the chart tracks its container via `ResizeObserver`. When a render
 settles, Graphein sets `data-graphein-ready="true"` on the surface root and increments
 `window.__GRAPHEIN_READY` — handy for screenshot/automation tooling to wait on.
+
+### Validation & linting
+
+```ts
+import { validateSpec, lintSpec } from 'graphein';
+
+const { valid, errors, warnings } = validateSpec(spec);
+```
+
+`validateSpec(spec)` returns `{ valid, errors, warnings }`. Each item is a
+`ValidationError` `{ path, message, rule?, severity?, fix?, suggestion? }`:
+
+- **`errors`** are structural problems (missing channel, bad enum, unknown field).
+  Fix every one — `valid` is `false` while any remain.
+- **`warnings`** include **dataviz lint** findings: best-practice advice that never
+  blocks rendering. Lint findings carry a stable `rule` id and a `severity`
+  (`'warning'` | `'info'`) so you can recognize or suppress a specific one.
+- **`fix`** — when the right correction is unambiguous (a misspelled chart `type`
+  or enum value, a temporal-looking field typed as a category), the error carries
+  a list of **JSON Patch** (RFC 6902) ops that resolve it. Apply them directly
+  instead of regenerating, or let [`repairSpec`](#self-repairing-specs) do it.
+- **`suggestion`** — `{ kind, candidates }` "did you mean" hints (nearest first)
+  for an unrecognized `type`, enum, or field name. Suggestions are advisory; only
+  the unambiguous ones also come with a `fix`.
+
+`lintSpec(spec)` runs just the lint rules (also reachable via `validateSpec`
+warnings). Current rules:
+
+| `rule` | Fires when |
+| --- | --- |
+| `temporal-typed-as-categorical` | a date‑like field is typed `nominal`/`ordinal` (set `type:"temporal"`). |
+| `pie-too-many-slices` | a pie/donut has more than 7 slices. |
+| `too-many-series` | a `series`/`color` field has more than 12 distinct values. |
+| `bar-nonzero-baseline` | a bar's `y` scale disables zero (`zero:false`) or starts above 0. |
+| `log-nonpositive-data` | a `log` axis covers data with values ≤ 0. |
+| `high-cardinality-axis` | a discrete `x`/`y` axis has more than 50 categories. |
+
+Lint rules evaluate the **post‑`transform`** data, so cardinality reflects what
+actually renders.
+
+### Self-repairing specs
+
+```ts
+import { repairSpec } from 'graphein';
+
+const { spec, applied, remaining } = repairSpec(brokenSpec);
+// spec      → a corrected copy (input is never mutated)
+// applied   → the JsonPatchOp[] that were applied, in order
+// remaining → structural errors still unresolved (empty ⇒ the spec is now valid)
+```
+
+`repairSpec(spec)` applies every **safe, unambiguous** `fix` that `validateSpec`
+attaches, then re-validates — iterating, because one fix can unlock another (e.g.
+correcting `type` changes which channels are required). It only applies fixes the
+validator is confident about; genuinely ambiguous problems (a missing channel
+with no obvious field, a far-from-anything type) are left in `remaining` for you
+to resolve. This turns the common agent mistakes — a typo'd chart type, a
+misspelled aggregate `op`, a date field typed `nominal` — into a one-step
+correction rather than a full regenerate.
+
+You can also apply fixes yourself with the exported JSON Patch helpers
+`applyPatch(doc, ops)` and `toPointer(dottedPath)`.
+
+### Render report
+
+After a chart draws, `instance.report()` returns a **machine-readable** description
+of what was actually rendered — so an agent can verify the chart "looks right"
+without ever seeing a pixel. It closes the critique loop: generate → validate →
+render → **report** → repair.
+
+```ts
+const chart = render('#app', spec);
+const report = chart.report();
+// report.ok          → true when no warning/error diagnostics were raised
+// report.markCount   → number of data marks drawn
+// report.seriesCount → distinct series
+// report.colorCount  → distinct series colors
+// report.plot        → the plot rectangle (cartesian charts)
+// report.diagnostics → RenderDiagnostic[] (most-severe first)
+for (const d of report.diagnostics) {
+  // d.code · d.severity ('error' | 'warning' | 'info') · d.message · d.axis? · d.details?
+}
+```
+
+`buildRenderReport(input)` is also exported as a pure function if you want to
+compute a report outside the render lifecycle. The report is derived entirely
+from the resolved model (scales, ticks, legend, theme colors) — **no canvas
+read-back** — so it returns identically in the browser and headless. To run the
+loop server-side, [`@graphein/node`](https://www.npmjs.com/package/@graphein/node)'s
+`renderChart(spec)` returns the PNG **and** this report; core's dependency-free
+`renderToContext(target, spec)` returns it while painting onto any 2D context.
+
+**Diagnostic codes**
+
+| `code` | Severity | Meaning |
+| --- | --- | --- |
+| `empty-data` | warning | No rows to plot — the chart is blank. |
+| `empty-plot` | error | The plot area collapsed (chrome ate all the space). |
+| `axis-label-overlap` | warning | Adjacent x-axis category labels collide — too many to show. |
+| `legend-overflow` | warning | A vertical legend was truncated; some series aren't shown. |
+| `degenerate-axis` | warning/info | The y values are all equal (flat line) or the scale is too narrow. |
+| `marks-clipped` | warning | Data falls outside the y range and is clipped at the plot edge. |
+| `low-contrast-mark` | warning | A series color is nearly invisible against the background. |
+| `low-contrast-text` | warning | Axis/legend label color fails the 4.5:1 text-contrast minimum. |
+| `too-many-colors` | info | More than ~8 series share one color scale — hard to tell apart. |
+
+In `@graphein/react`, read the report from the instance handed to `onReady`:
+`<Chart spec onReady={(c) => console.log(c.report())} />`.
 
 ### Selections & dashboards
 

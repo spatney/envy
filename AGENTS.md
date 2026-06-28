@@ -27,6 +27,7 @@ const spec = {
 const { valid, errors } = validateSpec(spec); // check BEFORE rendering
 const chart = render('#app', spec);
 // chart.update(next) · chart.resize() · chart.destroy()
+// chart.report() → machine-readable diagnostics to verify the render looks right
 ```
 
 ### Workflow
@@ -35,8 +36,13 @@ const chart = render('#app', spec);
    Don't pre-pivot; add a `series` channel to split groups.
 2. **Pick the type** (see the table below), set the `encoding`, add a `title`.
 3. **`validateSpec(spec)`** and fix every `error` (warnings are advisory). Validation
-   is pure and dependency-free — always run it on generated specs.
+   is pure and dependency-free — always run it on generated specs. Errors with an
+   unambiguous correction carry a `fix` (JSON Patch) and/or `suggestion`; call
+   **`repairSpec(spec)`** to auto-apply the safe ones and re-validate in one step.
 4. `render(container, spec)` (or `<Chart spec={…} />` from `@graphein/react`).
+5. **Verify with `chart.report()`** — a vision-free `RenderReport` (mark count, clipped
+   labels, legend overflow, low-contrast colors, degenerate/clipped axes). If
+   `report.ok` is false, adjust the spec and re-render. Closes the agent critique loop.
 
 ### Chart types at a glance
 
@@ -46,6 +52,8 @@ const chart = render('#app', spec);
 | Part-to-whole over time | `area` + `stack:true` | `x`, `y`, `series` |
 | Compare categories | `bar` (`stack:true` to stack) | `x`, `y`, `series?` |
 | Correlation / distribution | `scatter` | `x`, `y`, `size?`, `color?` |
+| Two measures / different units | `combo` (bar + line) | shared `x`, `layers[]` (`mark`, `y`, `axis?`) |
+| Distribution of one measure | `histogram` (auto-bins) | `x` quantitative (+ `bin`, `density?`) |
 | Composition of a total | `pie` / donut | `theta`, `color` |
 | Density across two categories | `heatmap` | `x`, `y`, `color` |
 | Spread / distribution by group | `box` | `x` category, `y` observations, `series?` |
@@ -129,8 +137,10 @@ highlight) you can copy.
 ## Contributing to this repo
 
 - Monorepo via npm workspaces: `graphein` (engine, zero deps), `@graphein/react`
-  (wrapper), `apps/gallery` (Vite harness), `tests/visual` (Playwright shots).
+  (wrapper), `@graphein/node` (headless PNG rendering via `@napi-rs/canvas`),
+  `apps/gallery` (Vite harness), `tests/visual` (Playwright shots).
 - `npm install` · `npm run build` · `npm test` · `npm run typecheck` · `npm run lint`.
 - The core engine is **dependency-free** — do not add runtime dependencies to
-  `graphein`. Keep exports explicit and tree-shakeable.
+  `graphein`. Keep exports explicit and tree-shakeable. (Native/runtime deps live in
+  leaf packages like `@graphein/node`, never in core.)
 - Validate visual changes against the gallery/screenshot harness, not by assumption.

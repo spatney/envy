@@ -1,0 +1,61 @@
+{
+  "name": "@graphein/node",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Headless Graphein rendering for Node — render any ChartSpec to a PNG buffer with a RenderReport, no browser required.",
+  "license": "MIT",
+  "author": "Sachin Patney <sachin.patney@gmail.com>",
+  "homepage": "https://github.com/spatney/graphein/tree/main/packages/node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spatney/graphein.git",
+    "directory": "packages/node"
+  },
+  "bugs": {
+    "url": "https://github.com/spatney/graphein/issues"
+  },
+  "keywords": [
+    "visualization",
+    "charts",
+    "dataviz",
+    "graphein",
+    "agent",
+    "headless",
+    "server-side",
+    "png",
+    "canvas"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepack": "tsup"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.1",
+    "graphein": "^0.3.0"
+  }
+}

@@ -3,4 +3,5 @@ export * from './sizing';
 export * from './dom';
 export * from './canvasLayer';
 export * from './surface';
+export * from './overlayText';
 export * from './text';

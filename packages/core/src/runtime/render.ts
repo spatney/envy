@@ -6,21 +6,25 @@
  * plus a deterministic "ready" signal for screenshot harnesses.
  */
 
-import type { Size } from '../types';
+import type { Datum, Size } from '../types';
 import type { ChartSpec, ChartType } from '../spec/types';
 import { resolveSketch } from '../spec/sketch';
+import { applyTransforms } from '../spec/transform';
 import { resolveTheme, withSketchFont, ensureSketchFont, type ThemeTokens } from '../theme';
 import { Surface } from '../render/surface';
 import type { CanvasLayer } from '../render/canvasLayer';
 import { getDevicePixelRatio } from '../render/env';
 import { fontsLoading, onFontsReady } from '../render/fonts';
 import { buildCartesianModel, type CartesianChartSpec, type CartesianModel } from './cartesian';
+import { buildRenderReport, type RenderReport } from './report';
 import { drawAxesUnderlay, drawOverlay } from '../axes';
 import {
   CARTESIAN_TYPES,
   cartesianRenderers,
   cartesianInteractionBuilders,
   customRenderers,
+  drawAnnotations,
+  drawAnnotationLabels,
   type CartesianRenderer,
 } from '../charts';
 import { InteractionController, buildCartesianInteraction } from '../interaction';
@@ -77,6 +81,14 @@ export interface ChartInstance {
   readonly spec: ChartSpec;
   /** The mounted surface (advanced/imperative use). */
   readonly surface: Surface;
+  /**
+   * Machine-readable diagnostics from the most recent render: mark count,
+   * clipped axis labels, legend overflow, low-contrast colors, degenerate axes,
+   * and out-of-bounds marks. Lets an agent verify the chart "looks right"
+   * without vision. Computed purely from the resolved model, so it works
+   * identically in the browser and headless.
+   */
+  report(): RenderReport;
   /** The selection bus this chart is bound to (advanced/linking use). */
   readonly store: SelectionStore;
   /** Read a param's current value, or a snapshot of all params when omitted. */
@@ -180,6 +192,25 @@ export function render(
   let pendingFontRefresh = false;
   // One-shot guard so the lazy sketch-font load only ever arms a single redraw.
   let sketchFontArmed = false;
+  // The diagnostics from the most recent draw(), exposed via instance.report().
+  let lastReport: RenderReport | null = null;
+
+  // Memoize the transform pipeline so resize/redraw don't recompute it. Keyed on
+  // the (immutable) spec.data and spec.transform references, so a new spec passed
+  // to update() naturally refreshes the cache.
+  let txSrc: Datum[] | undefined;
+  let txDef: unknown;
+  let txOut: Datum[] = [];
+  const effectiveData = (): Datum[] => {
+    const src = currentSpec.data ?? [];
+    const tx = currentSpec.transform;
+    if (!tx || tx.length === 0) return src;
+    if (txSrc === src && txDef === tx) return txOut;
+    txSrc = src;
+    txDef = tx;
+    txOut = applyTransforms(tx, src);
+    return txOut;
+  };
 
   // Selection bus: shared (linked charts) or private to this instance. Seed any
   // initial param values that aren't already present so a shared store wins.
@@ -216,7 +247,7 @@ export function render(
     // Resolve interactivity for this frame: the rows after cross-filtering, and
     // the highlight (emphasis) to dim non-selected marks.
     const filterValues = resolveFilterValues(currentSpec.filter, store);
-    const baseData = currentSpec.data ?? [];
+    const baseData = effectiveData();
     const filtered = filterValues.length ? filterRows(baseData, filterValues) : baseData;
     const effectiveSpec =
       filtered === baseData ? currentSpec : ({ ...currentSpec, data: filtered } as ChartSpec);
@@ -224,18 +255,22 @@ export function render(
     const ownParam = currentSpec.params?.[0];
 
     let interactionModel: InteractionModel | null = null;
+    let reportModel: CartesianModel | undefined;
     const type = currentSpec.type;
     if (CARTESIAN_TYPES.has(type)) {
       const renderer = cartesianRenderers[type];
       const model = buildCartesianModel(effectiveSpec as CartesianChartSpec, tokens, size);
       model.emphasis = emphasis;
+      reportModel = model;
       // When animating, the marks (and their gridline underlay) are painted by
       // the entrance loop frame-by-frame; otherwise paint them once now.
       if (!anim.enabled) {
         drawAxesUnderlay(surface, model);
         if (renderer) renderer(surface, model);
+        drawAnnotations(surface, model);
       }
       drawOverlay(surface, model);
+      drawAnnotationLabels(surface, model);
       const overrideInteraction = cartesianInteractionBuilders[type];
       interactionModel = overrideInteraction
         ? (overrideInteraction(model) ?? null)
@@ -287,6 +322,17 @@ export function render(
     }
 
     applyA11y(surface, currentSpec);
+
+    // Derive the machine-readable render report from the resolved model. Pure
+    // (reads the model + theme, never the canvas), so it works headlessly too.
+    lastReport = buildRenderReport({
+      type,
+      spec: currentSpec,
+      data: filtered,
+      tokens,
+      size,
+      model: reportModel,
+    });
 
     // Animated entrances signal ready on their final frame; everything else now.
     if (!entrance) signalReady(surface);
@@ -378,6 +424,20 @@ export function render(
     },
     surface,
     store,
+    report(): RenderReport {
+      // Fall back to a minimal report if called before the first draw settles.
+      return (
+        lastReport ?? {
+          type: currentSpec.type,
+          size: resolveSize(container, currentSpec),
+          markCount: 0,
+          seriesCount: 0,
+          colorCount: 0,
+          ok: true,
+          diagnostics: [],
+        }
+      );
+    },
     getSelection(name?: string): SelectionValue | null | Record<string, SelectionValue | null> {
       return name === undefined ? store.all() : store.get(name);
     },
@@ -482,6 +542,7 @@ function runCartesianEntrance(
     ctx.clip();
     renderer(surface, model);
     ctx.restore();
+    drawAnnotations(surface, model);
   };
 
   paintFrame(0);

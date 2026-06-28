@@ -157,7 +157,9 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
   textarea.setAttribute('autocapitalize', 'off');
   const status = document.createElement('div');
   status.className = 'pg-status';
-  editorPane.append(editorHead, textarea, status);
+  const reportEl = document.createElement('div');
+  reportEl.className = 'pg-report';
+  editorPane.append(editorHead, textarea, status, reportEl);
 
   // Preview pane
   const previewPane = document.createElement('div');
@@ -196,6 +198,48 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     status.innerHTML = `<span class="pg-badge">${label}</span>${detail ? `<span class="pg-detail">${detail}</span>` : ''}`;
   }
 
+  // Pull the live render report off the instance and list its diagnostics — the
+  // visible payoff of the critique loop. Charts only (dashboards have no report()).
+  function showReport(): void {
+    reportEl.replaceChildren();
+    const inst = instance as ChartInstance | undefined;
+    if (!inst || renderedType === 'dashboard' || typeof inst.report !== 'function') return;
+    let rep;
+    try {
+      rep = inst.report();
+    } catch {
+      return;
+    }
+
+    const head = document.createElement('div');
+    head.className = 'pg-report-head';
+    const title = document.createElement('span');
+    title.className = 'pg-pane-title';
+    title.textContent = 'Render report';
+    const badge = document.createElement('span');
+    const issues = rep.diagnostics.length;
+    badge.className = 'pg-report-badge ' + (rep.ok ? 'ok' : 'warn');
+    badge.textContent = rep.ok ? 'looks clean' : `${issues} issue${issues === 1 ? '' : 's'}`;
+    head.append(title, badge);
+    reportEl.appendChild(head);
+
+    const meta = document.createElement('div');
+    meta.className = 'pg-report-meta';
+    meta.textContent = `${rep.markCount} marks · ${rep.seriesCount} series · ${rep.colorCount} color${rep.colorCount === 1 ? '' : 's'}`;
+    reportEl.appendChild(meta);
+
+    for (const d of rep.diagnostics) {
+      const row = document.createElement('div');
+      row.className = `pg-report-diag sev-${d.severity}`;
+      const code = document.createElement('code');
+      code.textContent = d.code;
+      const msg = document.createElement('span');
+      msg.textContent = d.message;
+      row.append(code, msg);
+      reportEl.appendChild(row);
+    }
+  }
+
   function renderFromText(text: string): void {
     savedText = text;
     let parsed: Record<string, unknown>;
@@ -203,6 +247,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
       parsed = JSON.parse(text) as Record<string, unknown>;
     } catch (e) {
       setStatus('err', 'Invalid JSON', (e as Error).message);
+      reportEl.replaceChildren();
       return;
     }
 
@@ -232,6 +277,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
       instance = undefined;
       renderedType = undefined;
       setStatus('err', 'Render error', (e as Error).message);
+      reportEl.replaceChildren();
       return;
     }
 
@@ -244,6 +290,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     } else {
       setStatus('ok', 'Valid', `${(parsed.type as string) ?? 'chart'} · ${Array.isArray(parsed.data) ? parsed.data.length : 0} rows`);
     }
+    showReport();
   }
 
   function scheduleRender(): void {
@@ -290,6 +337,7 @@ export function mountPlayground(mainEl: HTMLElement, opts: MountOpts): Playgroun
     savedH = h;
     sizeBadge.textContent = `${w} × ${h}`;
     instance?.resize();
+    showReport();
   });
   ro.observe(frame);
 

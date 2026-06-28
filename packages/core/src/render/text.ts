@@ -1,11 +1,25 @@
 /**
  * Text measurement using a shared offscreen canvas context. Falls back to a
- * rough heuristic when no canvas is available (SSR/test).
+ * rough heuristic when no canvas is available (SSR/test). In a non-DOM
+ * environment (e.g. `@graphein/node`) a real 2D context can be injected via
+ * {@link setMeasureContext} so layout uses true font metrics.
  */
 
 let measureCtx: CanvasRenderingContext2D | null | undefined;
+let injectedCtx: CanvasRenderingContext2D | null = null;
+
+/**
+ * Provide a 2D context used to measure text advance widths when no DOM is
+ * available (headless rendering). Pass `null` to clear and fall back to the
+ * DOM canvas / heuristic. The context's `font` is overwritten on each measure,
+ * so use a dedicated measurement context rather than your drawing context.
+ */
+export function setMeasureContext(ctx: CanvasRenderingContext2D | null): void {
+  injectedCtx = ctx;
+}
 
 function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (injectedCtx) return injectedCtx;
   if (measureCtx !== undefined) return measureCtx;
   try {
     measureCtx = document.createElement('canvas').getContext('2d');

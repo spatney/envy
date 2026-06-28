@@ -47,6 +47,47 @@ The *same* table drives every chart — you just point different channels at col
 To compare groups, add a `series` channel (line/area/bar) instead of widening:
 `"series": { "field": "region" }`.
 
+## Reshape data in the spec with `transform`
+
+The #1 way agents get a chart wrong is **mis‑shaping the data array** — charting
+raw rows that needed aggregating, filtering, or pivoting first. Don't massage rows
+in code. Add a `transform` pipeline to the spec and let Graphein reshape `data`
+*before* it charts. It's plain JSON, it's validated, and a chart's encodings can
+reference the columns a transform produces.
+
+```json
+{
+  "type": "line",
+  "data": [
+    { "ts": "2024-01-03", "region": "West", "amount": 12 },
+    { "ts": "2024-01-19", "region": "West", "amount": 18 },
+    { "ts": "2024-02-08", "region": "East", "amount": 9 }
+  ],
+  "transform": [
+    { "filter": { "field": "amount", "gt": 0 } },
+    { "timeUnit": "month", "field": "ts", "as": "month" },
+    { "aggregate": [ { "op": "sum", "field": "amount", "as": "amount" } ], "groupby": ["month", "region"] }
+  ],
+  "encoding": { "x": { "field": "month", "type": "temporal" }, "y": { "field": "amount" }, "series": { "field": "region" } }
+}
+```
+
+Steps run top‑to‑bottom; each step has exactly one operator key:
+
+| Need | Step |
+| --- | --- |
+| One row per bar/point (sum, mean, count…) | `{ "aggregate": [{ "op": "sum", "field": "x", "as": "x" }], "groupby": ["cat"] }` |
+| Keep a subset of rows | `{ "filter": { "field": "year", "gte": 2020 } }` (compose with `and`/`or`/`not`) |
+| Group a timestamp by period | `{ "timeUnit": "month", "field": "ts", "as": "month" }` |
+| Bucket a number (distribution) | `{ "bin": "price", "as": ["lo", "hi"], "maxbins": 20 }` |
+| Wide → long (so `series` can split it) | `{ "fold": ["West", "East"], "as": ["region", "amount"] }` |
+| Derive a column (ratio, label, bucket) | `{ "calculate": "round(revenue / users, 2)", "as": "arpu" }` |
+
+Rules of thumb: **pre‑aggregate with a `transform` so there's exactly one row per
+mark** (cartesian charts plot rows as‑is); reach for `fold` instead of pre‑pivoting;
+filter in the spec so the same raw `data` can feed several views. Full field‑by‑field
+reference: [spec-reference → Transforms](./spec-reference.md#transforms).
+
 ## Picking a chart type
 
 | Goal | Use | Key channels |
@@ -56,6 +97,8 @@ To compare groups, add a `series` channel (line/area/bar) instead of widening:
 | Compare categories | `bar` | `x` category, `y`, optional `series` |
 | Composition of a total | `bar` + `stack`, or `pie`/donut | bar: `series`; pie: `theta`, `color` |
 | Correlation / distribution | `scatter` (+ `size` for a 3rd dim) | `x`, `y`, optional `size`, `series` |
+| Distribution of one measure | `histogram` (auto-bins) | `x` quantitative (+ `bin`, `density?`) |
+| Two measures / different units | `combo` (bar + line, dual-axis) | shared `x`; `layers[]` each with `mark` + `y` (+ `axis:'right'`) |
 | Density across two categories | `heatmap` | `x`, `y`, `color` |
 | Distribution / spread by group | `box` | `x` category, `y` observations, optional `series` |
 | Flow between nodes / stages | `sankey` | `source`, `target`, `value` |
@@ -89,6 +132,63 @@ them outside onto leader lines.
   "curve": "monotone"
 }
 ```
+
+**Reference line + threshold zone** — call out a target or safe range with `annotations`
+(works on `line`, `area`, `bar`, `scatter`, `box`):
+
+```jsonc
+{
+  "type": "line",
+  "data": [/* { month, latency } rows */],
+  "encoding": {
+    "x": { "field": "month", "type": "temporal" },
+    "y": { "field": "latency" }
+  },
+  "annotations": [
+    { "value": 200, "label": "SLA", "color": "#ef4444" },   // horizontal rule on y
+    { "type": "zone", "from": 0, "to": 100, "label": "Healthy" }, // shaded band
+    { "axis": "x", "value": "2024-06", "label": "Launch" }  // vertical rule on x
+  ]
+}
+```
+
+A bare `value` infers a `line`; `from`/`to` infers a `band` (`zone` is an alias). Default
+`axis` is `y`. Full field list: [spec-reference → Annotations](./spec-reference.md#annotations-reference-lines-bands-zones).
+
+**Combo / dual-axis (bar + line)** — two measures with different units over a shared x.
+Each layer plots its own `y`; add `axis:"right"` for a secondary scale:
+
+```jsonc
+{
+  "type": "combo",
+  "data": [/* { month, revenue, conversion } rows */],
+  "encoding": { "x": { "field": "month" } },     // shared category/time axis
+  "layers": [
+    { "mark": "bar",  "encoding": { "y": { "field": "revenue" } } },               // left axis
+    { "mark": "line", "axis": "right", "points": true,
+      "encoding": { "y": { "field": "conversion", "format": ".1%" } } }            // right axis
+  ]
+}
+```
+
+Bars force a categorical x; multiple `bar` layers group side-by-side. Reserve the `right`
+axis for genuinely different units — a secondary axis can imply a correlation that isn't
+there (the linter warns with `combo-dual-axis`).
+
+**Histogram (distribution)** — pass raw observations; the chart bins them for you:
+
+```jsonc
+{
+  "type": "histogram",
+  "data": [/* { latency } rows — one per observation */],
+  "encoding": { "x": { "field": "latency", "title": "Latency (ms)" } },
+  "bin": { "maxbins": 20 },   // or { "step": 25 } for fixed-width bins
+  "density": false             // true ⇒ probability density (area sums to 1)
+}
+```
+
+Don't pre-bin or pre-count — feed one row per observation and let `bin` do the work.
+`x` must be quantitative (the linter warns otherwise).
 
 **KPI with delta + sparkline**
 
@@ -358,6 +458,66 @@ charts. The output is deterministic, so the same spec always looks identical.
   Matrix `showAs` percentages compute denominators from leaf cells even when
   subtotals/grand totals are not shown.
 - Everything is plain JSON: no functions, no DOM nodes, no `Date` objects inside a spec.
+- **Read the `warnings`.** Beyond structural `errors`, `validateSpec` runs a **dataviz
+  linter** (also `lintSpec(spec)`) that flags best‑practice issues — too many pie
+  slices, a date field typed `nominal`, a truncated bar baseline, a log axis over
+  non‑positive data, too many series, a high‑cardinality axis. Each finding has a
+  stable `rule` id and a `severity`; they never block rendering but usually point at a
+  better chart.
+- **Let the spec repair itself.** When a mistake has an unambiguous fix (a typo'd
+  chart `type` or aggregate `op`, a temporal field typed `nominal`), the
+  `ValidationError` carries a `fix` (JSON Patch ops) and/or a `suggestion`
+  (`{ kind, candidates }` "did you mean"). Call `repairSpec(spec)` to apply every
+  safe fix and re-validate in one shot — it returns `{ spec, applied, remaining }`,
+  where `remaining` is empty once the spec is valid. Prefer this over regenerating
+  from scratch; only the truly ambiguous problems are left for you to resolve.
+
+## Verify the render (the critique loop)
+
+Validation catches structural and best-practice problems **before** drawing. After
+drawing, ask the chart whether it actually came out right — without needing to look
+at it:
+
+```ts
+const chart = render('#chart', spec);
+const report = chart.report();
+if (!report.ok) {
+  for (const d of report.diagnostics) {
+    // d.code, d.severity, d.message — e.g. 'axis-label-overlap', 'legend-overflow',
+    // 'low-contrast-mark', 'marks-clipped', 'degenerate-axis'
+  }
+}
+```
+
+`report()` returns counts (`markCount`, `seriesCount`, `colorCount`) plus
+`diagnostics` — clipped axis labels, a truncated legend, near-invisible colors, a
+flat/degenerate axis, marks falling outside the plot. It's computed from the
+resolved model (no pixels read), so it works the same in the browser and headless.
+The full loop is **generate → `validateSpec` → `repairSpec` → render → `report()`**:
+if the report isn't `ok`, adjust the spec (widen the chart, move the legend, reduce
+categories) and re-render. See [Render report](./spec-reference.md#render-report)
+for every diagnostic code.
+
+### Running the loop server-side (no browser)
+
+The whole critique loop runs in Node with [`@graphein/node`](https://www.npmjs.com/package/@graphein/node)
+— no browser, no JSDOM. It renders a spec to a PNG **and** returns the same report,
+so an agent can generate, validate, render, and critique a chart entirely on the
+server (CI, report emails, PDF assets):
+
+```ts
+import { renderChart } from '@graphein/node';
+const { png, report } = renderChart(spec, { width: 900, height: 480, dpr: 2 });
+if (!report.ok) {
+  // adjust the spec from report.diagnostics and re-render — same codes as the browser
+}
+await fs.writeFile('chart.png', png);
+```
+
+It supports every canvas-backed chart (line, area, bar, scatter, box, pie, heatmap,
+sankey, choropleth, combo, histogram, funnel). DOM-only visuals (kpi/table/matrix/
+slicers/dashboard) throw. Core's dependency-free `renderToContext(target, spec)` paints
+onto any 2D context if you bring your own canvas (`OffscreenCanvas`, `node-canvas`, …).
 
 ## Lifecycle
 
