@@ -226,8 +226,9 @@ export interface Annotation {
   /**
    * What to draw. Omit to infer: a `line` when `value` is set, a `band` when
    * `from`/`to` are set. `zone` is a band — a semantic alias for a threshold band.
+   * A `point` marks a single (`x`, `y`) data coordinate with a labeled dot.
    */
-  type?: 'line' | 'band' | 'zone';
+  type?: 'line' | 'band' | 'zone' | 'point';
   /**
    * Which axis the value(s) are measured against. `y` (default) draws a
    * horizontal line / full-width band; `x` draws a vertical line / full-height band.
@@ -239,6 +240,12 @@ export interface Annotation {
   from?: number | string | Date;
   /** End of the span for a `band`/`zone`. */
   to?: number | string | Date;
+  /** X coordinate of a `point` callout (a data value on the x-axis). */
+  x?: number | string | Date;
+  /** Y coordinate of a `point` callout (a data value on the y-axis). */
+  y?: number | string | Date;
+  /** Marker radius in pixels for a `point` (default 3.5). */
+  markerRadius?: number;
   /** Short text label drawn beside the annotation. */
   label?: string;
   /** Stroke (line) / fill (band) color. Defaults to a muted theme color. */
@@ -253,6 +260,21 @@ export interface Annotation {
   labelPosition?: 'start' | 'middle' | 'end';
 }
 
+/**
+ * Which automatic data insights to mark on a cartesian plot. Enable via a
+ * chart's `insights` field — `true` marks the max and min; an object opts into
+ * specific callouts. The library derives the points and draws labeled markers,
+ * so an agent never has to reason out (or hardcode) where the peak is.
+ */
+export interface InsightOptions {
+  /** Mark the maximum point (default true). */
+  max?: boolean;
+  /** Mark the minimum point (default true). */
+  min?: boolean;
+  /** Mark statistical outliers beyond the 1.5×IQR fences (default false). */
+  outliers?: boolean;
+}
+
 export interface LineSpec extends BaseSpec {
   type: 'line';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
@@ -263,6 +285,8 @@ export interface LineSpec extends BaseSpec {
   area?: boolean;
   /** Reference lines, bands, and threshold zones overlaid on the plot. */
   annotations?: Annotation[];
+  /** Auto-mark notable data points (`true` = max + min). See {@link InsightOptions}. */
+  insights?: boolean | InsightOptions;
 }
 
 export interface AreaSpec extends BaseSpec {
@@ -273,6 +297,8 @@ export interface AreaSpec extends BaseSpec {
   stack?: boolean;
   /** Reference lines, bands, and threshold zones overlaid on the plot. */
   annotations?: Annotation[];
+  /** Auto-mark notable data points (`true` = max + min). See {@link InsightOptions}. */
+  insights?: boolean | InsightOptions;
 }
 
 export interface BarSpec extends BaseSpec {
@@ -286,6 +312,8 @@ export interface BarSpec extends BaseSpec {
   cornerRadius?: number;
   /** Reference lines, bands, and threshold zones overlaid on the plot. */
   annotations?: Annotation[];
+  /** Auto-mark notable data points (`true` = top + bottom category). See {@link InsightOptions}. */
+  insights?: boolean | InsightOptions;
 }
 
 export interface ScatterSpec extends BaseSpec {

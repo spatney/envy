@@ -33,7 +33,8 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Encoding & `FieldDef`](#encoding--fielddef)
 - [Scales](#scales)
 - [Transforms](#transforms)
-- [Annotations (reference lines, bands, zones)](#annotations-reference-lines-bands-zones)
+- [Annotations (reference lines, bands, zones, points)](#annotations-reference-lines-bands-zones-points)
+- [Self-explaining charts (summaries & auto-insights)](#self-explaining-charts-summaries--auto-insights)
 - [Chart types](#chart-types)
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [combo](#combo) · [histogram](#histogram) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
@@ -292,12 +293,13 @@ Supported:
 
 ---
 
-## Annotations (reference lines, bands, zones)
+## Annotations (reference lines, bands, zones, points)
 
 Cartesian charts (`line`, `area`, `bar`, `scatter`, `box`) accept an optional
-`annotations: Annotation[]` — reference lines, shaded bands, and threshold zones drawn
-over the plot. They're declarative data (no callbacks) and ship as overlay marks plus an
-HTML label layer, so an agent can call out a target, SLA, or safe range in one field.
+`annotations: Annotation[]` — reference lines, shaded bands, threshold zones, and labeled
+points drawn over the plot. They're declarative data (no callbacks) and ship as overlay
+marks plus an HTML label layer, so an agent can call out a target, SLA, safe range, or a
+specific data point in one field.
 
 ```ts
 {
@@ -308,26 +310,70 @@ HTML label layer, so an agent can call out a target, SLA, or safe range in one f
     { value: 200, label: 'SLA', color: '#ef4444' },            // horizontal rule on y
     { type: 'zone', from: 0, to: 100, label: 'Healthy' },      // shaded threshold band
     { axis: 'x', value: '2024-06', label: 'Launch' },          // vertical rule on x
+    { type: 'point', x: '2024-04', y: 210, label: 'Spike' },   // labeled marker dot
   ],
 }
 ```
 
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `type` | `'line' \| 'band' \| 'zone'` | inferred | Omit to infer: `line` when `value` is set, `band` when `from`/`to` are set. `zone` is a semantic alias for a threshold band. |
+| `type` | `'line' \| 'band' \| 'zone' \| 'point'` | inferred | Omit to infer: `line` when `value` is set, `band` when `from`/`to` are set. `zone` is a semantic alias for a threshold band; `point` marks a single `(x, y)` coordinate. |
 | `axis` | `'x' \| 'y'` | `'y'` | `y` draws a horizontal line / full‑width band; `x` draws a vertical line / full‑height band. |
 | `value` | `number \| string \| Date` | — | Reference value for a `line` (matches the chosen axis). |
 | `from`, `to` | `number \| string \| Date` | — | Span extents for a `band`/`zone`. |
+| `x`, `y` | `number \| string \| Date` | — | Data coordinates for a `point` callout (matching the x/y axes). |
+| `markerRadius` | `number` | `3.5` | Dot radius in pixels for a `point`. |
 | `label` | `string` | — | Short text drawn beside the annotation. |
-| `color` | `string` | muted theme color | Stroke (line) / fill (band) color. |
+| `color` | `string` | muted theme color | Stroke (line) / fill (band) / dot (point) color. |
 | `strokeWidth` | `number` | `1.5` | Line width in pixels. |
 | `strokeDash` | `number[]` | dashed | Dash pattern; `[]` is solid. |
 | `fillOpacity` | `number` | `0.12` | Band/zone fill opacity (0..1). |
-| `labelPosition` | `'start' \| 'middle' \| 'end'` | `'end'` | Where the label anchors along the annotation. |
+| `labelPosition` | `'start' \| 'middle' \| 'end'` | `'end'` | Where the label anchors along a line/band. |
 
 Validation rules: a `line` needs `value`; a `band`/`zone` needs both `from` and `to`;
 `value` and `from`/`to` are mutually exclusive; values must be scalars (number, string,
 or date). Annotations on a non‑cartesian chart produce a warning (they're ignored).
+
+---
+
+## Self-explaining charts (summaries & auto-insights)
+
+Graphein derives the analytical labeling and prose an agent would otherwise have to reason
+out — deterministically, with no LLM. Two surfaces share one pure analysis core
+([`analyze/`](../packages/core/src/analyze)):
+
+**`summarize(spec): string`** — a one-line natural-language summary of what the numbers say
+(trend + net change, the largest/smallest category and its share, scatter correlation, a
+value vs. its target). It doubles as alt-text and is attached to every render report:
+
+```ts
+import { summarize, render } from 'graphein';
+
+summarize(spec);              // "Users rose 46% from 4,200 to 6,150 between 2024-01 and 2024-06, peaking at 6,400 in 2024-03."
+render('#app', spec).report().summary;   // same string, on the RenderReport
+```
+
+The summary also feeds the chart's `aria-description` automatically (unless you set an
+explicit `description`), so the chart explains itself to screen readers.
+
+**`insights: boolean | InsightOptions`** — opt a cartesian chart (`line`, `area`, `bar`)
+into automatic on-chart callouts. The library finds the notable points and draws labeled
+`point` annotations, so an agent never hardcodes where the peak is:
+
+```ts
+{ type: 'line', data: rows, encoding: { /* … */ }, insights: true }       // marks max ▲ + min ▼
+{ type: 'bar',  data: rows, encoding: { /* … */ }, insights: { outliers: true } }
+```
+
+| `InsightOptions` | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `max` | `boolean` | `true` | Mark the maximum point (or top category for a `bar`). |
+| `min` | `boolean` | `true` | Mark the minimum point (or bottom category). |
+| `outliers` | `boolean` | `false` | Mark points beyond the 1.5×IQR Tukey fences. |
+
+`insights: true` is shorthand for `{ max: true, min: true }`. Multi-series charts are
+skipped (markers on every series would clutter the plot) — use `insights` on a single
+series. Auto-insight annotations merge with any explicit `annotations` you provide.
 
 ---
 

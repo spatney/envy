@@ -265,6 +265,29 @@ export const presets: Preset[] = [
       ],
     }),
   },
+  {
+    id: 'insights-auto',
+    label: 'Auto-insights · peak + low',
+    group: 'Annotations',
+    note: 'insights:true marks the max & min for you',
+    build: () => ({
+      type: 'line',
+      title: 'Monthly active users',
+      data: [
+        { month: '2024-01', users: 4200 },
+        { month: '2024-02', users: 4650 },
+        { month: '2024-03', users: 6400 },
+        { month: '2024-04', users: 5100 },
+        { month: '2024-05', users: 5550 },
+        { month: '2024-06', users: 3000 },
+      ],
+      encoding: {
+        x: { field: 'month', type: 'temporal' },
+        y: { field: 'users', title: 'MAU' },
+      },
+      insights: true,
+    }),
+  },
   // --- Scatter ---
   {
     id: 'scatter-md',

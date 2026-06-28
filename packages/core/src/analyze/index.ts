@@ -4,3 +4,4 @@
  */
 export * from './insights';
 export * from './summarize';
+export * from './autoInsights';

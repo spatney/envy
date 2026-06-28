@@ -78,6 +78,42 @@ describe('validateSpec — annotations', () => {
     expect(res.errors).toEqual([]);
     expect(res.warnings.some((w) => w.path === 'annotations')).toBe(true);
   });
+
+  it('accepts a point annotation with x and y', () => {
+    const spec = { ...base, annotations: [{ type: 'point', x: '2024-01', y: 10, label: 'P' }] } as ChartSpec;
+    expect(validateSpec(spec).errors).toEqual([]);
+  });
+
+  it('requires both x and y for a point', () => {
+    expect(errPaths({ ...base, annotations: [{ type: 'point', x: '2024-01' }] } as ChartSpec)).toContain('annotations[0]');
+  });
+});
+
+describe('validateSpec — insights', () => {
+  it('accepts insights:true and an options object on a line', () => {
+    expect(validateSpec({ ...base, insights: true } as ChartSpec).errors).toEqual([]);
+    expect(validateSpec({ ...base, insights: { max: true, outliers: false } } as ChartSpec).errors).toEqual([]);
+  });
+
+  it('errors when insights is neither a boolean nor an object', () => {
+    expect(errPaths({ ...base, insights: 5 } as unknown as ChartSpec)).toContain('insights');
+  });
+
+  it('errors when an option flag is not a boolean', () => {
+    expect(errPaths({ ...base, insights: { max: 'yes' } } as unknown as ChartSpec)).toContain('insights.max');
+  });
+
+  it('warns (not errors) when used on a non-applicable chart', () => {
+    const spec = {
+      type: 'scatter',
+      data: [{ x: 1, y: 2 }],
+      encoding: { x: { field: 'x' }, y: { field: 'y' } },
+      insights: true,
+    } as unknown as ChartSpec;
+    const res = validateSpec(spec);
+    expect(res.errors).toEqual([]);
+    expect(res.warnings.some((w) => w.path === 'insights')).toBe(true);
+  });
 });
 
 // --- Drawing geometry -----------------------------------------------------
@@ -86,11 +122,13 @@ interface Recorder {
   moves: Array<[number, number]>;
   lines: Array<[number, number]>;
   rects: Array<[number, number, number, number]>;
+  arcs: Array<[number, number, number]>;
   strokes: number;
+  fills: number;
 }
 
 function mockSurface(): { surface: Surface; rec: Recorder } {
-  const rec: Recorder = { moves: [], lines: [], rects: [], strokes: 0 };
+  const rec: Recorder = { moves: [], lines: [], rects: [], arcs: [], strokes: 0, fills: 0 };
   const ctx = {
     save() {},
     restore() {},
@@ -104,8 +142,14 @@ function mockSurface(): { surface: Surface; rec: Recorder } {
     lineTo(x: number, y: number) {
       rec.lines.push([x, y]);
     },
+    arc(x: number, y: number, r: number) {
+      rec.arcs.push([x, y, r]);
+    },
     stroke() {
       rec.strokes++;
+    },
+    fill() {
+      rec.fills++;
     },
     fillRect(x: number, y: number, w: number, h: number) {
       rec.rects.push([x, y, w, h]);
@@ -126,6 +170,11 @@ function mockSurface(): { surface: Surface; rec: Recorder } {
 
 function modelWith(annotations: LineSpec['annotations']) {
   const spec = { ...base, annotations } as LineSpec;
+  return buildCartesianModel(spec, resolveTheme('light'), { width: 400, height: 300 });
+}
+
+function modelFromSpec(extra: Partial<LineSpec>) {
+  const spec = { ...base, ...extra } as LineSpec;
   return buildCartesianModel(spec, resolveTheme('light'), { width: 400, height: 300 });
 }
 
@@ -160,6 +209,47 @@ describe('drawAnnotations — geometry', () => {
     drawAnnotations(surface, model);
     expect(rec.strokes).toBe(0);
     expect(rec.rects).toEqual([]);
+  });
+
+  it('draws a marker dot at the (x, y) of a point annotation', () => {
+    const model = modelWith([{ type: 'point', x: '2024-02', y: 30, label: 'Peak' }]);
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+
+    const px = model.x.pixel('2024-02')!;
+    const py = model.y.pixel(30);
+    // A halo arc (r + 1.6) and the dot arc (r), both centered on the point.
+    expect(rec.arcs.some(([x, y]) => x === px && y === py)).toBe(true);
+    expect(rec.fills).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('auto-insights (spec.insights)', () => {
+  it('expands insights:true into max and min point markers', () => {
+    const model = modelFromSpec({ insights: true });
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+
+    const yMax = model.y.pixel(30);
+    const yMin = model.y.pixel(10);
+    expect(rec.arcs.some(([, y]) => y === yMax)).toBe(true);
+    expect(rec.arcs.some(([, y]) => y === yMin)).toBe(true);
+  });
+
+  it('labels the auto markers with arrowed, formatted values', () => {
+    const model = modelFromSpec({ insights: true });
+    const { surface } = mockSurface();
+    drawAnnotationLabels(surface, model);
+    const text = surface.overlay.textContent ?? '';
+    expect(text).toContain('\u25B2 30');
+    expect(text).toContain('\u25BC 10');
+  });
+
+  it('adds no markers when insights is absent', () => {
+    const model = modelFromSpec({});
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+    expect(rec.arcs).toEqual([]);
   });
 });
 

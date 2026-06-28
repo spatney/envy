@@ -9,20 +9,23 @@
  */
 
 import type { Surface } from '../render/surface';
-import type { Annotation } from '../spec/types';
+import type { Annotation, ChartSpec } from '../spec/types';
 import type { CartesianModel } from '../runtime/cartesian';
 import { fontString } from '../render/text';
 import { overlayTextToCanvasCmd, paintCanvasText } from '../render/overlayText';
+import { autoInsightAnnotations } from '../analyze/autoInsights';
 import { crisp } from '../util/math';
 
 type Axis = 'x' | 'y';
-type Kind = 'line' | 'band';
+type Kind = 'line' | 'band' | 'point';
 
 const DEFAULT_DASH = [5, 4];
 const DEFAULT_FILL_OPACITY = 0.12;
+const DEFAULT_MARKER_RADIUS = 3.5;
 
-/** Resolve whether an annotation is a single line or a filled span. */
+/** Resolve whether an annotation is a single line, a filled span, or a point. */
 function kindOf(ann: Annotation): Kind {
+  if (ann.type === 'point') return 'point';
   if (ann.type === 'line') return 'line';
   if (ann.type === 'band' || ann.type === 'zone') return 'band';
   return ann.value !== undefined ? 'line' : 'band';
@@ -35,6 +38,13 @@ function toPixel(model: CartesianModel, axis: Axis, value: unknown): number | un
   return px != null && Number.isFinite(px) ? px : undefined;
 }
 
+/** Resolve a `point` annotation's (x, y) data coords to plot pixels. */
+function pointPixels(model: CartesianModel, ann: Annotation): { px: number; py: number } | undefined {
+  const px = toPixel(model, 'x', ann.x);
+  const py = toPixel(model, 'y', ann.y);
+  return px === undefined || py === undefined ? undefined : { px, py };
+}
+
 /** Anchor pixel for an annotation's label (line value, or band midpoint). */
 function anchorPixel(model: CartesianModel, ann: Annotation, axis: Axis, kind: Kind): number | undefined {
   if (kind === 'line') return toPixel(model, axis, ann.value);
@@ -44,9 +54,13 @@ function anchorPixel(model: CartesianModel, ann: Annotation, axis: Axis, kind: K
   return (a + b) / 2;
 }
 
+/** Explicit `spec.annotations` plus any auto-insight callouts (`spec.insights`). */
 function annotationsOf(model: CartesianModel): Annotation[] {
-  const list = (model.spec as { annotations?: Annotation[] }).annotations;
-  return Array.isArray(list) ? list : [];
+  const spec = model.spec as { annotations?: Annotation[]; insights?: unknown };
+  const explicit = Array.isArray(spec.annotations) ? spec.annotations : [];
+  if (!spec.insights) return explicit;
+  const auto = autoInsightAnnotations(model.spec as ChartSpec);
+  return auto.length ? [...explicit, ...auto] : explicit;
 }
 
 /**
@@ -68,6 +82,27 @@ export function drawAnnotations(surface: Surface, model: CartesianModel): void {
   ctx.clip();
 
   for (const ann of list) {
+    if (kindOf(ann) === 'point') {
+      const pt = pointPixels(model, ann);
+      if (!pt) continue;
+      const r = ann.markerRadius ?? DEFAULT_MARKER_RADIUS;
+      const dot = ann.color ?? tokens.color.text;
+      ctx.save();
+      // A background halo keeps the marker legible over data marks.
+      ctx.fillStyle = tokens.color.background;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, r + 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = dot;
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
     const axis: Axis = ann.axis === 'x' ? 'x' : 'y';
     const color = ann.color ?? tokens.color.textMuted;
 
@@ -179,11 +214,25 @@ export function drawAnnotationLabels(surface: Surface, model: CartesianModel): v
 
   for (const ann of list) {
     if (!ann.label) continue;
-    const axis: Axis = ann.axis === 'x' ? 'x' : 'y';
-    const p = anchorPixel(model, ann, axis, kindOf(ann));
-    if (p === undefined) continue;
 
-    const box = labelBox(model, axis, ann.labelPosition ?? 'end', p);
+    let box: LabelBox;
+    if (kindOf(ann) === 'point') {
+      const pt = pointPixels(model, ann);
+      if (!pt) continue;
+      const r = ann.markerRadius ?? DEFAULT_MARKER_RADIUS;
+      const gap = r + 4;
+      const textH = f.size.small;
+      // Sit above the marker; flip below when that would clip the plot top.
+      const aboveTop = pt.py - gap - textH;
+      const top = aboveTop < model.plot.y ? pt.py + gap : aboveTop;
+      box = { left: pt.px, top, align: 'center', transform: 'translateX(-50%)' };
+    } else {
+      const axis: Axis = ann.axis === 'x' ? 'x' : 'y';
+      const p = anchorPixel(model, ann, axis, kindOf(ann));
+      if (p === undefined) continue;
+      box = labelBox(model, axis, ann.labelPosition ?? 'end', p);
+    }
+
     const color = ann.color ?? tokens.color.text;
     const pill = { background: withAlpha(tokens.color.background, 0.72), radius: 3, padX: 3, padY: 1 };
 

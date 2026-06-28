@@ -158,12 +158,12 @@
     },
     "Annotation": {
       "type": "object",
-      "description": "A reference line, band, or threshold zone overlaid on a cartesian plot.",
+      "description": "A reference line, band, threshold zone, or labeled point overlaid on a cartesian plot.",
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["line", "band", "zone"],
-          "description": "Omit to infer: a line when value is set, a band when from/to are set. zone is a band alias."
+          "enum": ["line", "band", "zone", "point"],
+          "description": "Omit to infer: a line when value is set, a band when from/to are set. zone is a band alias; point marks a single (x, y) coordinate."
         },
         "axis": {
           "type": "string",
@@ -176,12 +176,25 @@
         },
         "from": { "oneOf": [{ "type": "number" }, { "type": "string" }], "description": "Start of a band/zone." },
         "to": { "oneOf": [{ "type": "number" }, { "type": "string" }], "description": "End of a band/zone." },
+        "x": { "oneOf": [{ "type": "number" }, { "type": "string" }], "description": "X data coordinate of a point callout." },
+        "y": { "oneOf": [{ "type": "number" }, { "type": "string" }], "description": "Y data coordinate of a point callout." },
+        "markerRadius": { "type": "number", "description": "Marker radius in pixels for a point (default 3.5)." },
         "label": { "type": "string" },
         "color": { "type": "string" },
         "strokeWidth": { "type": "number" },
         "strokeDash": { "type": "array", "items": { "type": "number" } },
         "fillOpacity": { "type": "number", "minimum": 0, "maximum": 1 },
         "labelPosition": { "type": "string", "enum": ["start", "middle", "end"] }
+      },
+      "additionalProperties": false
+    },
+    "InsightOptions": {
+      "type": "object",
+      "description": "Which automatic data insights to mark on a cartesian plot (see a chart's insights field).",
+      "properties": {
+        "max": { "type": "boolean", "description": "Mark the maximum point / top category (default true)." },
+        "min": { "type": "boolean", "description": "Mark the minimum point / bottom category (default true)." },
+        "outliers": { "type": "boolean", "description": "Mark points beyond the 1.5×IQR fences (default false)." }
       },
       "additionalProperties": false
     },
@@ -525,7 +538,8 @@
         "curve": { "$ref": "#/$defs/CurveType" },
         "points": { "type": "boolean" },
         "area": { "type": "boolean" },
-        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } }
+        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
       }
     },
     "AreaSpec": {
@@ -540,7 +554,8 @@
         },
         "curve": { "$ref": "#/$defs/CurveType" },
         "stack": { "type": "boolean" },
-        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } }
+        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
       }
     },
     "BarSpec": {
@@ -557,7 +572,8 @@
         "stack": { "type": "boolean" },
         "group": { "type": "boolean" },
         "cornerRadius": { "type": "number" },
-        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } }
+        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
       }
     },
     "ScatterSpec": {

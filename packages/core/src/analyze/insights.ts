@@ -27,6 +27,12 @@ export interface PointRef {
   value: number;
   /** Index of the originating row within its series. */
   index: number;
+  /**
+   * The raw x-axis domain value (a `Date`, string, or number) for this point,
+   * suitable for mapping back to a pixel via a chart's x-scale. Undefined when
+   * the analysis had no x channel (e.g. a raw distribution).
+   */
+  raw?: unknown;
 }
 
 /** Trend + spread facts for one ordered numeric series. */
@@ -147,11 +153,12 @@ export function computeSeriesInsights(
   values: readonly number[],
   labels: readonly string[],
   key = '',
+  raws?: readonly unknown[],
 ): SeriesInsights | null {
   const pts: PointRef[] = [];
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    if (Number.isFinite(v)) pts.push({ label: labels[i] ?? String(i), value: v, index: i });
+    if (Number.isFinite(v)) pts.push({ label: labels[i] ?? String(i), value: v, index: i, raw: raws?.[i] });
   }
   if (pts.length === 0) return null;
 
@@ -242,13 +249,13 @@ function analyzeCategory(
   }
   if (order.length === 0) return null;
   let total = 0;
-  let top: PointRef = { label: order[0], value: totals.get(order[0]) ?? 0, index: 0 };
+  let top: PointRef = { label: order[0], value: totals.get(order[0]) ?? 0, index: 0, raw: order[0] };
   let bottom: PointRef = { ...top };
   order.forEach((k, i) => {
     const value = totals.get(k) ?? 0;
     total += value;
-    if (value > top.value) top = { label: k, value, index: i };
-    if (value < bottom.value) bottom = { label: k, value, index: i };
+    if (value > top.value) top = { label: k, value, index: i, raw: k };
+    if (value < bottom.value) bottom = { label: k, value, index: i, raw: k };
   });
   return { count: order.length, total, top, bottom, topShare: total > 0 ? top.value / total : 0 };
 }
@@ -263,7 +270,7 @@ function analyzeSeriesFamily(
   const readX = accessor(xField);
   const readY = accessor(yField);
   const readS = seriesField ? accessor(seriesField) : null;
-  const groups = new Map<string, { values: number[]; labels: string[] }>();
+  const groups = new Map<string, { values: number[]; labels: string[]; raws: unknown[] }>();
   const order: string[] = [];
   for (const d of rows) {
     const y = num(readY(d));
@@ -271,17 +278,19 @@ function analyzeSeriesFamily(
     const key = readS ? toKey(readS(d)) : '';
     let g = groups.get(key);
     if (!g) {
-      g = { values: [], labels: [] };
+      g = { values: [], labels: [], raws: [] };
       groups.set(key, g);
       order.push(key);
     }
+    const x = readX(d);
     g.values.push(y);
-    g.labels.push(toKey(readX(d)));
+    g.labels.push(toKey(x));
+    g.raws.push(x);
   }
   const out: SeriesInsights[] = [];
   for (const key of order) {
     const g = groups.get(key)!;
-    const si = computeSeriesInsights(g.values, g.labels, key);
+    const si = computeSeriesInsights(g.values, g.labels, key, g.raws);
     if (si) out.push(si);
   }
   return out;

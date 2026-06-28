@@ -160,7 +160,26 @@ them outside onto leader lines.
 ```
 
 A bare `value` infers a `line`; `from`/`to` infers a `band` (`zone` is an alias). Default
-`axis` is `y`. Full field list: [spec-reference → Annotations](./spec-reference.md#annotations-reference-lines-bands-zones).
+`axis` is `y`. Full field list: [spec-reference → Annotations](./spec-reference.md#annotations-reference-lines-bands-zones-points).
+
+**Let the chart label itself** — add `insights: true` to a `line`, `area`, or `bar` and
+Graphein finds the peak and low and marks them with labeled dots — no need to compute or
+hardcode where they are:
+
+```jsonc
+{
+  "type": "line",
+  "data": [/* { month, users } rows */],
+  "encoding": { "x": { "field": "month", "type": "temporal" }, "y": { "field": "users" } },
+  "insights": true                       // marks max ▲ + min ▼; use { "outliers": true } too
+}
+```
+
+For prose, call `summarize(spec)` (also on `render(...).report().summary`) to get a
+deterministic one-liner — _"Users rose 46% from 4,200 to 6,150 between 2024-01 and
+2024-06, peaking at 6,400 in 2024-03."_ — that doubles as alt-text and the chart's
+`aria-description`. See [spec-reference → Self-explaining charts](./spec-reference.md#self-explaining-charts-summaries--auto-insights).
+
 
 **Combo / dual-axis (bar + line)** — two measures with different units over a shared x.
 Each layer plots its own `y`; add `axis:"right"` for a secondary scale:
@@ -599,12 +618,13 @@ if (!report.ok) {
 
 `report()` returns counts (`markCount`, `seriesCount`, `colorCount`) plus
 `diagnostics` — clipped axis labels, a truncated legend, near-invisible colors, a
-flat/degenerate axis, marks falling outside the plot. It's computed from the
-resolved model (no pixels read), so it works the same in the browser and headless.
-The full loop is **generate → `validateSpec` → `repairSpec` → render → `report()`**:
-if the report isn't `ok`, adjust the spec (widen the chart, move the legend, reduce
-categories) and re-render. See [Render report](./spec-reference.md#render-report)
-for every diagnostic code.
+flat/degenerate axis, marks falling outside the plot. It also carries `summary`, the
+deterministic NL one-liner from `summarize(spec)` — handy as alt-text or a caption when
+writing a report. It's computed from the resolved model (no pixels read), so it works the
+same in the browser and headless. The full loop is **generate → `validateSpec` →
+`repairSpec` → render → `report()`**: if the report isn't `ok`, adjust the spec (widen the
+chart, move the legend, reduce categories) and re-render. See [Render
+report](./spec-reference.md#render-report) for every diagnostic code.
 
 ### Running the loop server-side (no browser)
 

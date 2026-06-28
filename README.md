@@ -183,8 +183,11 @@ if (!report.ok) {
   field typed nominal, dual-axis misuse, too many colors) bake in expertise the agent lacks.
 - **Declarative transforms.** Shape data *inside* the validatable spec — `aggregate`,
   `bin`, `filter`, `fold`, `timeUnit`, and a safe `calculate` expression engine.
-- **Reference annotations.** Reusable `annotations` (lines, bands, threshold zones) on
-  every cartesian chart.
+- **Reference annotations.** Reusable `annotations` (lines, bands, threshold zones,
+  labeled points) on every cartesian chart.
+- **Self-explaining.** `summarize(spec)` returns a deterministic plain-English summary
+  (alt-text without an LLM, also on `report().summary` + the chart's `aria-description`);
+  `insights:true` auto-marks the peak and low on a `line`/`area`/`bar`.
 - **Render report.** `chart.report()` returns machine-readable diagnostics — clipped
   labels, legend overflow, contrast failures, mark counts — to verify a chart came out right.
 - **Headless rendering.** [`@graphein/node`](./packages/node) runs that whole loop
@@ -220,8 +223,9 @@ See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
 | `slope` | Before/after slope graph with direct end labels | [slope.json](./docs/examples/slope.json) |
 | `dumbbell` | Gap between two groups per category as connected dots | [dumbbell.json](./docs/examples/dumbbell.json) |
 
-Every cartesian chart also takes `transform`s (in-spec data shaping) and `annotations`
-(reference lines, bands, threshold zones).
+Every cartesian chart also takes `transform`s (in-spec data shaping), `annotations`
+(reference lines, bands, threshold zones, points), and `insights:true` (auto-mark the
+max/min).
 
 Add `"sketch": true` to **any** spec for a hand-drawn look — see
 [bar-sketch.json](./docs/examples/bar-sketch.json) and the

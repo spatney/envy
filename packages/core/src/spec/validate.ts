@@ -558,6 +558,7 @@ export function validateSpec(spec: unknown): ValidationResult {
   validateInteraction(spec, err, warn);
 
   if (spec.annotations !== undefined) validateAnnotations(spec.annotations, type, err, warn);
+  if (spec.insights !== undefined) validateInsights(spec.insights, type, err, warn);
 
   const sketch = spec.sketch;
   if (sketch !== undefined && typeof sketch !== 'boolean') {
@@ -849,10 +850,36 @@ function validateTransform(
   return outputs;
 }
 
-const ANNOTATION_TYPES = ['line', 'band', 'zone'];
+const ANNOTATION_TYPES = ['line', 'band', 'zone', 'point'];
 const LABEL_POSITIONS = ['start', 'middle', 'end'];
 /** Chart types that draw `annotations` (cartesian); others ignore them. */
 const ANNOTATABLE_TYPES = ['line', 'area', 'bar', 'scatter', 'box'];
+
+/** Chart types that honor auto-insight callouts (`insights`). */
+const INSIGHTABLE_TYPES = ['line', 'area', 'bar'];
+
+/**
+ * Validate `insights` — the auto-annotation opt-in. Accepts `true`/`false`, or an
+ * `{ max?, min?, outliers? }` object of booleans. Only line/area/bar draw insights,
+ * so any other host gets an advisory warning.
+ */
+function validateInsights(insights: unknown, chartType: ChartType, err: Reporter, warn: Reporter): void {
+  if (typeof insights !== 'boolean' && !isObject(insights)) {
+    err('insights', '"insights" must be a boolean or an { max?, min?, outliers? } object.');
+    return;
+  }
+  if (insights && !INSIGHTABLE_TYPES.includes(chartType)) {
+    warn('insights', `Auto-insights are only drawn on line/area/bar charts; ignored for "${chartType}".`);
+    return;
+  }
+  if (isObject(insights)) {
+    for (const key of ['max', 'min', 'outliers'] as const) {
+      if (insights[key] !== undefined && typeof insights[key] !== 'boolean') {
+        err(`insights.${key}`, `"${key}" must be a boolean.`);
+      }
+    }
+  }
+}
 
 /** A reference value usable on an axis: number, category string, or date. */
 function isScalarValue(v: unknown): boolean {
@@ -883,24 +910,33 @@ function validateAnnotations(annotations: unknown, chartType: ChartType, err: Re
       return;
     }
     if (ann.type !== undefined && !ANNOTATION_TYPES.includes(ann.type as string)) {
-      err(`${p}.type`, 'Expected "line", "band", or "zone".', enumRepair(`${p}.type`, ann.type, ANNOTATION_TYPES));
+      err(`${p}.type`, 'Expected "line", "band", "zone", or "point".', enumRepair(`${p}.type`, ann.type, ANNOTATION_TYPES));
     }
     if (ann.axis !== undefined && ann.axis !== 'x' && ann.axis !== 'y') {
       err(`${p}.axis`, 'Expected "x" or "y".', enumRepair(`${p}.axis`, ann.axis, ['x', 'y']));
     }
 
-    const isLine = ann.type === 'line' || (ann.type === undefined && ann.value !== undefined);
-    if (isLine) {
-      if (!isScalarValue(ann.value)) {
-        err(`${p}.value`, 'A reference line needs a "value" (number, category, or date).');
+    if (ann.type === 'point') {
+      if (!isScalarValue(ann.x) || !isScalarValue(ann.y)) {
+        err(p, 'A point annotation needs both "x" and "y" (number, category, or date).');
+      }
+      if (ann.markerRadius !== undefined && (typeof ann.markerRadius !== 'number' || !Number.isFinite(ann.markerRadius))) {
+        err(`${p}.markerRadius`, '"markerRadius" must be a finite number.');
       }
     } else {
-      if (!isScalarValue(ann.from) || !isScalarValue(ann.to)) {
-        err(p, 'A band/zone needs both "from" and "to" (number, category, or date).');
+      const isLine = ann.type === 'line' || (ann.type === undefined && ann.value !== undefined);
+      if (isLine) {
+        if (!isScalarValue(ann.value)) {
+          err(`${p}.value`, 'A reference line needs a "value" (number, category, or date).');
+        }
+      } else {
+        if (!isScalarValue(ann.from) || !isScalarValue(ann.to)) {
+          err(p, 'A band/zone needs both "from" and "to" (number, category, or date).');
+        }
       }
-    }
-    if (ann.value !== undefined && (ann.from !== undefined || ann.to !== undefined)) {
-      warn(p, 'Provide either "value" (a line) or "from"/"to" (a band) — not both.');
+      if (ann.value !== undefined && (ann.from !== undefined || ann.to !== undefined)) {
+        warn(p, 'Provide either "value" (a line) or "from"/"to" (a band) — not both.');
+      }
     }
 
     if (ann.label !== undefined && typeof ann.label !== 'string') err(`${p}.label`, '"label" must be a string.');

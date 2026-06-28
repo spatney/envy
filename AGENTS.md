@@ -130,6 +130,10 @@ spans, presets (`auto`, `kpi-first`, `sidebar`), and page chrome (`maxWidth`,
   draws an **outside callout with a leader line** for any slice too thin to hold an
   inside label, so many small shares stay readable.
 - Slicers + `dashboard` add cross-filter/cross-highlight; see "Interactivity" above.
+- **The chart can explain itself.** `summarize(spec)` returns a deterministic NL one-liner
+  (also on `render(...).report().summary` and the chart's `aria-description`) — alt-text
+  with no LLM. Add `insights:true` to a `line`/`area`/`bar` to auto-mark the max ▲ and
+  min ▼ (or `{ outliers:true }`) as labeled `point` annotations.
 - Full field-by-field docs: [`docs/spec-reference.md`](./docs/spec-reference.md);
   machine-readable [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json);
   runnable specs in [`docs/examples/`](./docs/examples).
