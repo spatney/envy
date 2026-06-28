@@ -8,6 +8,7 @@
 import type { Surface } from '../render/surface';
 import type { ChartSpec, ChartType } from '../spec/types';
 import { summarizeChart } from './describe';
+import { summarize } from '../analyze/summarize';
 import { buildDataTableFallback } from './table';
 
 /**
@@ -24,6 +25,13 @@ export function applyA11y(surface: Surface, spec: ChartSpec): void {
   // descendants (overlay text + the hidden data table) discoverable by AT.
   root.setAttribute('role', 'figure');
   root.setAttribute('aria-label', summarizeChart(spec).label);
+
+  // The concise aria-label names the chart; a deterministic NL summary of what
+  // the data *shows* serves as richer alt-text. Skip it when the author gave an
+  // explicit description (already used as the label) or nothing is summarizable.
+  const narrative = spec.description ? '' : summarize(spec);
+  if (narrative) root.setAttribute('aria-description', narrative);
+  else root.removeAttribute('aria-description');
 
   // Canvas layers are decorative — the data is conveyed via the overlay text
   // and/or the hidden data-table fallback.

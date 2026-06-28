@@ -59,6 +59,7 @@ describe('render().report() — end to end', () => {
     expect(report.markCount).toBe(3);
     expect(report.plot).toBeDefined();
     expect(report.ok).toBe(true);
+    expect(report.summary).toBe('C is the largest at 8 (50% of the 16 total), A the smallest at 3.');
     chart.destroy();
   });
 

@@ -18,6 +18,7 @@ import type { ThemeTokens } from '../theme';
 import { accessor, extentOf } from '../util/data';
 import { parseColor, contrastRatio } from '../color';
 import { measureText, fontString } from '../render/text';
+import { summarize } from '../analyze/summarize';
 import type { CartesianModel } from './cartesian';
 
 export type ReportSeverity = 'error' | 'warning' | 'info';
@@ -52,6 +53,11 @@ export interface RenderReport {
   ok: boolean;
   /** All findings, ordered most-severe first. */
   diagnostics: RenderDiagnostic[];
+  /**
+   * Deterministic plain-English summary of what the data shows (alt-text without
+   * an LLM). Absent for chart types that carry no summarizable trend.
+   */
+  summary?: string;
 }
 
 /** Inputs for {@link buildRenderReport}. */
@@ -198,7 +204,10 @@ export function buildRenderReport(input: ReportInput): RenderReport {
   diagnostics.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
   const ok = !diagnostics.some((d) => d.severity === 'error' || d.severity === 'warning');
 
-  return { type, size, plot, markCount, seriesCount, colorCount, ok, diagnostics };
+  // Narrate the *rendered* (post-transform) data, not the raw spec data.
+  const summary = summarize({ ...spec, data } as ChartSpec) || undefined;
+
+  return { type, size, plot, markCount, seriesCount, colorCount, ok, diagnostics, summary };
 }
 
 /** Distinct series count for non-cartesian charts, from the series/color field. */

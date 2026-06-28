@@ -14,6 +14,7 @@ export * from './rough';
 export * from './decimate';
 export * from './animation';
 export * from './a11y';
+export * from './analyze';
 export * from './pivot';
 export * from './render';
 export * from './theme';
