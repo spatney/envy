@@ -22,7 +22,7 @@ export default tseslint.config(
   {
     // Playwright-driven visual harness scripts run under Node (ESM) but also
     // contain page.evaluate() callbacks that reference browser globals.
-    files: ['tests/visual/**/*.mjs', 'apps/gallery/scripts/**/*.mjs', 'packages/core/scripts/**/*.mjs'],
+    files: ['tests/visual/**/*.mjs', 'apps/gallery/scripts/**/*.mjs', 'packages/core/scripts/**/*.mjs', 'packages/mcp/scripts/**/*.mjs'],
     languageOptions: {
       globals: {
         process: 'readonly',

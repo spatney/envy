@@ -1,0 +1,69 @@
+{
+  "name": "graphein-mcp",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Model Context Protocol server for Graphein — wraps generate → validate → repair → render → critique into one tool call, and serves Graphein's schema + agent guide as resources so a model that never saw the API can still build correct charts.",
+  "license": "MIT",
+  "author": "Sachin Patney <sachin.patney@gmail.com>",
+  "homepage": "https://github.com/spatney/graphein/tree/main/packages/mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spatney/graphein.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/spatney/graphein/issues"
+  },
+  "keywords": [
+    "visualization",
+    "charts",
+    "dataviz",
+    "graphein",
+    "agent",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "tool"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "graphein-mcp": "./dist/server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "resources",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/server.js",
+    "sync:resources": "node scripts/sync-resources.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepack": "tsup"
+  },
+  "dependencies": {
+    "@graphein/node": "^0.3.0",
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "graphein": "^0.3.0",
+    "zod": "^3.23.0"
+  }
+}

@@ -158,7 +158,8 @@ highlight) you can copy.
 
 - Monorepo via npm workspaces: `graphein` (engine, zero deps), `@graphein/react`
   (wrapper), `@graphein/node` (headless PNG rendering via `@napi-rs/canvas`),
-  `apps/gallery` (Vite harness), `tests/visual` (Playwright shots).
+  `graphein-mcp` (Model Context Protocol server — the loop + the API knowledge as
+  one tool surface), `apps/gallery` (Vite harness), `tests/visual` (Playwright shots).
 - `npm install` · `npm run build` · `npm test` · `npm run typecheck` · `npm run lint`.
 - The core engine is **dependency-free** — do not add runtime dependencies to
   `graphein`. Keep exports explicit and tree-shakeable. (Native/runtime deps live in
@@ -168,4 +169,9 @@ highlight) you can copy.
   `npm run gen:schema`. After changing any spec type, run it and commit the result;
   a test (`schema-gen.test.ts`) fails CI if the committed schema drifts from the types.
   Edit the types' JSDoc, never the schema by hand.
+- **The MCP server serves the docs as resources.** `graphein-mcp` ships committed
+  copies of `docs/{chart-spec.schema.json,agent-guide.md,spec-reference.md}` under
+  `packages/mcp/resources/` (a published package can't reach `../../docs`). After
+  editing any of those docs, run `npm run sync:resources --workspace graphein-mcp`
+  and commit; `resources-sync.test.ts` fails if a bundled copy drifts.
 - Validate visual changes against the gallery/screenshot harness, not by assumption.

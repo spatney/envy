@@ -106,6 +106,19 @@ import { renderChart } from '@graphein/node';
 const { png, report } = renderChart(spec, { width: 900, height: 480, dpr: 2 });
 ```
 
+Wiring it into an agent? Run the whole loop as a Model Context Protocol tool — no
+install, point your MCP client at it:
+
+```jsonc
+// e.g. claude_desktop_config.json / your client's mcp config
+{ "mcpServers": { "graphein": { "command": "npx", "args": ["-y", "graphein-mcp"] } } }
+```
+
+It exposes `render_chart` (validate → repair → render → PNG + vision-free critique),
+`validate_chart`, `repair_chart`, and `summarize_chart`, and serves Graphein's schema
+and guides as resources — so a model that never saw the API can still build correct
+charts. See [`graphein-mcp`](./packages/mcp).
+
 ## Quick start
 
 ```ts
@@ -275,6 +288,7 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
 | `graphein` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
 | `@graphein/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
 | `@graphein/node` | Headless rendering: `ChartSpec` → PNG + `RenderReport`, no browser. | ✅ |
+| `graphein-mcp` | MCP server: the validate → repair → render → critique loop as one tool, plus the schema + guides as resources. | ✅ |
 | `apps/gallery` | Vite gallery + screenshot harness for visual iteration. | ✅ (dev) |
 
 ## Development
