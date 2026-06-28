@@ -181,6 +181,23 @@ deterministic one-liner — _"Users rose 46% from 4,200 to 6,150 between 2024-01
 `aria-description`. See [spec-reference → Self-explaining charts](./spec-reference.md#self-explaining-charts-summaries--auto-insights).
 
 
+**Add a trendline (line of best fit)** — set `trendline: true` on a `scatter`, `line`, or
+`area` and Graphein fits the linear regression for you — no hand-computed slope/intercept.
+With a `color`/`series` channel it fits one line per group, colored to match:
+
+```jsonc
+{
+  "type": "scatter",
+  "data": [/* { spend, revenue } rows */],
+  "encoding": { "x": { "field": "spend", "type": "quantitative" }, "y": { "field": "revenue" } },
+  "trendline": { "label": true }          // a fitted line + an R²=… readout
+}
+```
+
+Needs a continuous/temporal x (it's a no-op warning on a categorical `bar`). See
+[spec-reference → Trendlines](./spec-reference.md#trendlines-regression-overlays).
+
+
 **Combo / dual-axis (bar + line)** — two measures with different units over a shared x.
 Each layer plots its own `y`; add `axis:"right"` for a secondary scale:
 

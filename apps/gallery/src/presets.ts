@@ -288,6 +288,35 @@ export const presets: Preset[] = [
       insights: true,
     }),
   },
+  {
+    id: 'trendline-fit',
+    label: 'Trendline · line of best fit',
+    group: 'Annotations',
+    note: 'trendline:{label:true} fits a regression + R²',
+    build: () => ({
+      type: 'scatter',
+      title: 'Ad spend vs. revenue',
+      data: [
+        { spend: 5, revenue: 22 },
+        { spend: 8, revenue: 30 },
+        { spend: 12, revenue: 34 },
+        { spend: 15, revenue: 51 },
+        { spend: 18, revenue: 49 },
+        { spend: 22, revenue: 66 },
+        { spend: 25, revenue: 61 },
+        { spend: 28, revenue: 80 },
+        { spend: 32, revenue: 78 },
+        { spend: 36, revenue: 96 },
+        { spend: 40, revenue: 92 },
+        { spend: 44, revenue: 110 },
+      ],
+      encoding: {
+        x: { field: 'spend', type: 'quantitative', title: 'Spend ($k)' },
+        y: { field: 'revenue', title: 'Revenue ($k)' },
+      },
+      trendline: { label: true },
+    }),
+  },
   // --- Scatter ---
   {
     id: 'scatter-md',

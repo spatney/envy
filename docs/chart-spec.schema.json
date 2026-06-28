@@ -198,6 +198,19 @@
       },
       "additionalProperties": false
     },
+    "TrendlineConfig": {
+      "type": "object",
+      "description": "A derived linear line of best fit overlaid on a cartesian plot (see a chart's trendline field). Requires a continuous or temporal x-axis.",
+      "properties": {
+        "method": { "type": "string", "enum": ["linear"], "description": "Fit method (currently ordinary-least-squares linear)." },
+        "groupBy": { "type": "boolean", "description": "Fit a separate line per color/series group (default true when the chart splits into series)." },
+        "label": { "type": "boolean", "description": "Draw an R²=… label at the end of each fitted line (default false)." },
+        "color": { "type": "string", "description": "Line color (defaults to the series color, or a muted ink)." },
+        "strokeWidth": { "type": "number", "description": "Line width in px (default 2)." },
+        "strokeDash": { "type": "array", "items": { "type": "number" }, "description": "Dash pattern; [] is solid (the default)." }
+      },
+      "additionalProperties": false
+    },
     "Datum": {
       "type": "object",
       "additionalProperties": true
@@ -539,7 +552,8 @@
         "points": { "type": "boolean" },
         "area": { "type": "boolean" },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
-        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] },
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
       }
     },
     "AreaSpec": {
@@ -555,7 +569,8 @@
         "curve": { "$ref": "#/$defs/CurveType" },
         "stack": { "type": "boolean" },
         "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
-        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] }
+        "insights": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/InsightOptions" }] },
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
       }
     },
     "BarSpec": {
@@ -586,7 +601,8 @@
           "allOf": [{ "$ref": "#/$defs/Encoding" }],
           "required": ["x", "y"]
         },
-        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } }
+        "annotations": { "type": "array", "items": { "$ref": "#/$defs/Annotation" } },
+        "trendline": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/TrendlineConfig" }] }
       }
     },
     "ComboMark": { "enum": ["line", "bar", "area", "scatter"] },

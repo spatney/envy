@@ -25,6 +25,8 @@ import {
   customRenderers,
   drawAnnotations,
   drawAnnotationLabels,
+  drawTrendlines,
+  drawTrendlineLabels,
   type CartesianRenderer,
 } from '../charts';
 import { InteractionController, buildCartesianInteraction } from '../interaction';
@@ -267,10 +269,12 @@ export function render(
       if (!anim.enabled) {
         drawAxesUnderlay(surface, model);
         if (renderer) renderer(surface, model);
+        drawTrendlines(surface, model);
         drawAnnotations(surface, model);
       }
       drawOverlay(surface, model);
       drawAnnotationLabels(surface, model);
+      drawTrendlineLabels(surface, model);
       const overrideInteraction = cartesianInteractionBuilders[type];
       interactionModel = overrideInteraction
         ? (overrideInteraction(model) ?? null)
@@ -542,6 +546,7 @@ function runCartesianEntrance(
     ctx.clip();
     renderer(surface, model);
     ctx.restore();
+    drawTrendlines(surface, model);
     drawAnnotations(surface, model);
   };
 

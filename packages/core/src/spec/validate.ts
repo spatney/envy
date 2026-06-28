@@ -559,6 +559,7 @@ export function validateSpec(spec: unknown): ValidationResult {
 
   if (spec.annotations !== undefined) validateAnnotations(spec.annotations, type, err, warn);
   if (spec.insights !== undefined) validateInsights(spec.insights, type, err, warn);
+  if (spec.trendline !== undefined) validateTrendline(spec.trendline, type, err, warn);
 
   const sketch = spec.sketch;
   if (sketch !== undefined && typeof sketch !== 'boolean') {
@@ -858,6 +859,12 @@ const ANNOTATABLE_TYPES = ['line', 'area', 'bar', 'scatter', 'box'];
 /** Chart types that honor auto-insight callouts (`insights`). */
 const INSIGHTABLE_TYPES = ['line', 'area', 'bar'];
 
+/** Chart types that draw a `trendline` — they have a continuous/temporal x. */
+const TRENDABLE_TYPES = ['scatter', 'line', 'area'];
+
+/** Fit methods accepted by `trendline.method`. */
+const TRENDLINE_METHODS = ['linear'];
+
 /**
  * Validate `insights` — the auto-annotation opt-in. Accepts `true`/`false`, or an
  * `{ max?, min?, outliers? }` object of booleans. Only line/area/bar draw insights,
@@ -877,6 +884,48 @@ function validateInsights(insights: unknown, chartType: ChartType, err: Reporter
       if (insights[key] !== undefined && typeof insights[key] !== 'boolean') {
         err(`insights.${key}`, `"${key}" must be a boolean.`);
       }
+    }
+  }
+}
+
+/**
+ * Validate `trendline` — the derived line-of-best-fit overlay. Accepts
+ * `true`/`false`, or a `{ method?, groupBy?, label?, color?, strokeWidth?,
+ * strokeDash? }` object. A regression needs a continuous/temporal x, so any
+ * other host (e.g. a band-axis bar) gets an advisory warning.
+ */
+function validateTrendline(trendline: unknown, chartType: ChartType, err: Reporter, warn: Reporter): void {
+  if (typeof trendline !== 'boolean' && !isObject(trendline)) {
+    err('trendline', '"trendline" must be a boolean or a { method?, groupBy?, label?, color?, strokeWidth?, strokeDash? } object.');
+    return;
+  }
+  if (trendline && !TRENDABLE_TYPES.includes(chartType)) {
+    warn('trendline', `A trendline needs a continuous or temporal x-axis (scatter/line/area); ignored for "${chartType}".`);
+    return;
+  }
+  if (isObject(trendline)) {
+    if (trendline.method !== undefined && !TRENDLINE_METHODS.includes(trendline.method as string)) {
+      err('trendline.method', 'Expected "linear".', enumRepair('trendline.method', trendline.method, TRENDLINE_METHODS));
+    }
+    for (const key of ['groupBy', 'label'] as const) {
+      if (trendline[key] !== undefined && typeof trendline[key] !== 'boolean') {
+        err(`trendline.${key}`, `"${key}" must be a boolean.`);
+      }
+    }
+    if (trendline.color !== undefined && typeof trendline.color !== 'string') {
+      err('trendline.color', '"color" must be a CSS color string.');
+    }
+    if (
+      trendline.strokeWidth !== undefined &&
+      (typeof trendline.strokeWidth !== 'number' || !Number.isFinite(trendline.strokeWidth) || trendline.strokeWidth < 0)
+    ) {
+      err('trendline.strokeWidth', '"strokeWidth" must be a non-negative number.');
+    }
+    if (
+      trendline.strokeDash !== undefined &&
+      (!Array.isArray(trendline.strokeDash) || trendline.strokeDash.some((n) => typeof n !== 'number'))
+    ) {
+      err('trendline.strokeDash', '"strokeDash" must be an array of numbers.');
     }
   }
 }

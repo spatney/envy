@@ -134,6 +134,10 @@ spans, presets (`auto`, `kpi-first`, `sidebar`), and page chrome (`maxWidth`,
   (also on `render(...).report().summary` and the chart's `aria-description`) — alt-text
   with no LLM. Add `insights:true` to a `line`/`area`/`bar` to auto-mark the max ▲ and
   min ▼ (or `{ outliers:true }`) as labeled `point` annotations.
+- **Trendlines are derived, not hand-computed.** Set `trendline:true` on a `scatter`,
+  `line`, or `area` for a linear line of best fit (one per `series`/`color` group; add
+  `{ label:true }` for an R² readout). Needs a continuous/temporal x — a no-op warning on
+  a categorical `bar`.
 - Full field-by-field docs: [`docs/spec-reference.md`](./docs/spec-reference.md);
   machine-readable [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json);
   runnable specs in [`docs/examples/`](./docs/examples).

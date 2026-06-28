@@ -35,6 +35,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
 - [Transforms](#transforms)
 - [Annotations (reference lines, bands, zones, points)](#annotations-reference-lines-bands-zones-points)
 - [Self-explaining charts (summaries & auto-insights)](#self-explaining-charts-summaries--auto-insights)
+- [Trendlines (regression overlays)](#trendlines-regression-overlays)
 - [Chart types](#chart-types)
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [combo](#combo) · [histogram](#histogram) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
@@ -377,6 +378,39 @@ series. Auto-insight annotations merge with any explicit `annotations` you provi
 
 ---
 
+## Trendlines (regression overlays)
+
+`trendline: boolean | TrendlineConfig` — overlay a **linear line of best fit** on a
+`scatter`, `line`, or `area` chart. The library computes the ordinary-least-squares
+regression from the plotted rows, so an agent never derives slope/intercept coordinates by
+hand — it just declares intent. A trendline needs a **continuous or temporal x-axis**;
+asking for one on a categorical/band chart (e.g. `bar`) is a no-op warning.
+
+```ts
+{ type: 'scatter', data: rows, encoding: { /* … */ }, trendline: true }            // one fit
+{ type: 'scatter', data: rows, encoding: { /* … */, color: { field: 'group' } },
+  trendline: { label: true } }                                                      // a fit per group + R²
+```
+
+When the chart splits into multiple series (a `color`/`series` channel), Graphein fits one
+line **per group**, colored to match that group's points; otherwise it fits a single
+overall line. The fit is stroked across each group's observed x-extent and clipped to the
+plot.
+
+| `TrendlineConfig` | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `method` | `'linear'` | `'linear'` | Fit method (ordinary least squares). |
+| `groupBy` | `boolean` | auto | Fit per series group. Defaults `true` when the chart has multiple series, else one overall fit. |
+| `label` | `boolean` | `false` | Draw an `R²=…` label at the end of each line. |
+| `color` | `string` | series color | Override the line color. |
+| `strokeWidth` | `number` | `2` | Line width in px. |
+| `strokeDash` | `number[]` | `[]` (solid) | Dash pattern. |
+
+`trendline: true` is shorthand for `{ method: 'linear' }`. The overlay is purely derived —
+no rows are added to your data, keeping the spec declarative and validatable.
+
+---
+
 ## Chart types
 
 ### line
@@ -390,6 +424,7 @@ Large series are automatically [decimated (LTTB)](#performance) for fast redraws
 | `curve` | `CurveType` | `linear \| monotone \| step \| stepBefore \| stepAfter \| catmullRom`. |
 | `points` | `boolean` | Draw point markers. |
 | `area` | `boolean` | Fill under the line. |
+| `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays). |
 
 → [`examples/line.json`](./examples/line.json)
 
@@ -402,6 +437,7 @@ Filled series; stack multiple series into a band chart.
 | `encoding` | requires `x`, `y`; optional `series` | — |
 | `curve` | `CurveType` | Same options as `line`. |
 | `stack` | `boolean` | Stack series (totals). Non‑stacked areas overlap with translucency. |
+| `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays). |
 
 → [`examples/area-stacked.json`](./examples/area-stacked.json)
 
@@ -426,6 +462,7 @@ Points/bubbles with optional size and color grouping. Hover focuses the nearest 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `encoding` | requires `x`, `y`; optional `size`, `series` | `size` drives bubble radius; `series` colors groups. |
+| `trendline` | `boolean \| TrendlineConfig` | Overlay a linear [line of best fit](#trendlines-regression-overlays) (per group when `series`/`color` is set). |
 
 → [`examples/scatter.json`](./examples/scatter.json)
 

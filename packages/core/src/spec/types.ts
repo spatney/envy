@@ -275,6 +275,32 @@ export interface InsightOptions {
   outliers?: boolean;
 }
 
+/**
+ * A derived **trendline** (line of best fit) overlaid on a cartesian plot.
+ * Enable via a chart's `trendline` field — `true` fits a single linear
+ * regression; an object configures the fit and its styling. The library
+ * computes the regression from the plotted rows, so an agent never has to
+ * derive slope/intercept coordinates by hand. Requires a continuous or temporal
+ * x-axis (scatter, line, area) — it is meaningless on a categorical/band axis.
+ */
+export interface TrendlineConfig {
+  /** Fit method. Currently `'linear'` (ordinary least squares). */
+  method?: 'linear';
+  /**
+   * Fit a separate line per color/series group. Defaults to `true` when the
+   * chart splits into multiple series, `false` (one overall fit) otherwise.
+   */
+  groupBy?: boolean;
+  /** Draw an `R²=…` label at the end of each fitted line (default false). */
+  label?: boolean;
+  /** Line color. Defaults to the series color (grouped) or a muted ink. */
+  color?: string;
+  /** Line width in px (default 2). */
+  strokeWidth?: number;
+  /** Dash pattern; `[]` is solid (the default). */
+  strokeDash?: number[];
+}
+
 export interface LineSpec extends BaseSpec {
   type: 'line';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
@@ -287,6 +313,8 @@ export interface LineSpec extends BaseSpec {
   annotations?: Annotation[];
   /** Auto-mark notable data points (`true` = max + min). See {@link InsightOptions}. */
   insights?: boolean | InsightOptions;
+  /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
+  trendline?: boolean | TrendlineConfig;
 }
 
 export interface AreaSpec extends BaseSpec {
@@ -299,6 +327,8 @@ export interface AreaSpec extends BaseSpec {
   annotations?: Annotation[];
   /** Auto-mark notable data points (`true` = max + min). See {@link InsightOptions}. */
   insights?: boolean | InsightOptions;
+  /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
+  trendline?: boolean | TrendlineConfig;
 }
 
 export interface BarSpec extends BaseSpec {
@@ -321,6 +351,8 @@ export interface ScatterSpec extends BaseSpec {
   encoding: Encoding & { x: FieldDef; y: FieldDef };
   /** Reference lines, bands, and threshold zones overlaid on the plot. */
   annotations?: Annotation[];
+  /** Overlay a linear line of best fit. See {@link TrendlineConfig}. */
+  trendline?: boolean | TrendlineConfig;
 }
 
 /** The mark a single combo layer draws. */

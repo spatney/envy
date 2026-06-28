@@ -188,6 +188,9 @@ if (!report.ok) {
 - **Self-explaining.** `summarize(spec)` returns a deterministic plain-English summary
   (alt-text without an LLM, also on `report().summary` + the chart's `aria-description`);
   `insights:true` auto-marks the peak and low on a `line`/`area`/`bar`.
+- **Derived trendlines.** `trendline:true` overlays a linear line of best fit on a
+  `scatter`/`line`/`area` (one per series group; `{ label:true }` adds an R² readout) —
+  the library fits the regression, the agent never computes coordinates.
 - **Render report.** `chart.report()` returns machine-readable diagnostics — clipped
   labels, legend overflow, contrast failures, mark counts — to verify a chart came out right.
 - **Headless rendering.** [`@graphein/node`](./packages/node) runs that whole loop
@@ -224,8 +227,8 @@ See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
 | `dumbbell` | Gap between two groups per category as connected dots | [dumbbell.json](./docs/examples/dumbbell.json) |
 
 Every cartesian chart also takes `transform`s (in-spec data shaping), `annotations`
-(reference lines, bands, threshold zones, points), and `insights:true` (auto-mark the
-max/min).
+(reference lines, bands, threshold zones, points), `insights:true` (auto-mark the
+max/min), and `trendline:true` (a linear line of best fit on `scatter`/`line`/`area`).
 
 Add `"sketch": true` to **any** spec for a hand-drawn look — see
 [bar-sketch.json](./docs/examples/bar-sketch.json) and the

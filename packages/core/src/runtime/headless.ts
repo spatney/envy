@@ -28,6 +28,8 @@ import {
   customRenderers,
   drawAnnotations,
   drawAnnotationLabels,
+  drawTrendlines,
+  drawTrendlineLabels,
   type RenderContext,
 } from '../charts';
 import { createSelectionStore } from '../interaction/store';
@@ -117,9 +119,11 @@ export function renderToContext(target: HeadlessTarget, spec: ChartSpec): Render
     reportModel = model;
     drawAxesUnderlay(surface, model);
     if (renderer) renderer(surface, model);
+    drawTrendlines(surface, model);
     drawAnnotations(surface, model);
     drawOverlay(surface, model);
     drawAnnotationLabels(surface, model);
+    drawTrendlineLabels(surface, model);
   } else {
     const renderer = customRenderers[type];
     if (!renderer) {

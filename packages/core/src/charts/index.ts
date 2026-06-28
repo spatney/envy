@@ -39,6 +39,7 @@ import { drawSlope } from './slope';
 import { drawDumbbell } from './dumbbell';
 
 export { drawAnnotations, drawAnnotationLabels } from './annotations';
+export { drawTrendlines, drawTrendlineLabels } from './trendline';
 
 export type CartesianRenderer = (surface: Surface, model: CartesianModel) => void;
 export type CartesianInteractionBuilder = (model: CartesianModel) => InteractionModel | void;
