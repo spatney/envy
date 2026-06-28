@@ -76,6 +76,10 @@ const REQUIRED_CHANNELS: Record<ChartType, string[]> = {
   box: ['x', 'y'],
   sankey: ['source', 'target', 'value'],
   choropleth: ['key', 'color'],
+  treemap: ['category', 'value'],
+  calendarHeatmap: ['date', 'color'],
+  gauge: [],
+  bullet: [],
   kpi: [],
   table: [],
   matrix: [],
@@ -136,10 +140,10 @@ export function validateSpec(spec: unknown): ValidationResult {
     return { valid: false, errors, warnings };
   }
 
-  // Data presence (KPI may use a literal value instead).
+  // Data presence (KPI/gauge/bullet may use a literal value instead).
   const data = spec.data as unknown;
   const hasData = Array.isArray(data) && data.length > 0;
-  if (type !== 'kpi') {
+  if (type !== 'kpi' && type !== 'gauge' && type !== 'bullet') {
     if (data === undefined) {
       err('data', `"${type}" requires a "data" array of records.`);
     } else if (!Array.isArray(data)) {
@@ -171,6 +175,19 @@ export function validateSpec(spec: unknown): ValidationResult {
     }
   };
 
+  // A ValueRef is a literal number or { field, aggregate? } (kpi/gauge/bullet).
+  const checkValueRef = (path: string, ref: unknown, label: string, required: boolean) => {
+    if (ref === undefined) {
+      if (required) err(path, `"${label}" requires a "${path}" (a number or { field, aggregate? }).`);
+      return;
+    }
+    if (isObject(ref)) {
+      checkField(`${path}.field`, ref.field);
+    } else if (typeof ref !== 'number') {
+      err(path, `"${path}" must be a number or an object with a "field".`);
+    }
+  };
+
   // Encoding-based charts (those with required channels).
   if (REQUIRED_CHANNELS[type].length > 0) {
     const encoding = spec.encoding;
@@ -196,6 +213,56 @@ export function validateSpec(spec: unknown): ValidationResult {
       checkField('value.field', value.field);
     } else if (typeof value !== 'number') {
       err('value', '"value" must be a number or an object with a "field".');
+    }
+  }
+
+  if (type === 'gauge') {
+    checkValueRef('value', spec.value, 'gauge', true);
+    checkValueRef('target', spec.target, 'target', false);
+    const max = spec.max;
+    if (max === undefined) {
+      err('max', '"gauge" requires a numeric "max" (the scale\'s full-scale value).');
+    } else if (typeof max !== 'number' || !Number.isFinite(max)) {
+      err('max', '"max" must be a finite number.');
+    }
+    if (spec.min !== undefined && (typeof spec.min !== 'number' || !Number.isFinite(spec.min))) {
+      err('min', '"min" must be a finite number.');
+    }
+    if (typeof spec.min === 'number' && typeof max === 'number' && spec.min >= max) {
+      err('max', '"max" must be greater than "min".');
+    }
+    if (spec.bands !== undefined) {
+      if (!Array.isArray(spec.bands)) {
+        err('bands', '"bands" must be an array of { to, color? }.');
+      } else {
+        spec.bands.forEach((b, i) => {
+          if (!isObject(b) || typeof b.to !== 'number' || !Number.isFinite(b.to)) {
+            err(`bands[${i}].to`, 'Each band needs a finite numeric "to".');
+          }
+        });
+      }
+    }
+  }
+
+  if (type === 'bullet') {
+    checkValueRef('value', spec.value, 'bullet', true);
+    checkValueRef('target', spec.target, 'target', false);
+    if (spec.min !== undefined && (typeof spec.min !== 'number' || !Number.isFinite(spec.min))) {
+      err('min', '"min" must be a finite number.');
+    }
+    if (spec.max !== undefined && (typeof spec.max !== 'number' || !Number.isFinite(spec.max))) {
+      err('max', '"max" must be a finite number.');
+    }
+    if (spec.ranges !== undefined) {
+      if (!Array.isArray(spec.ranges)) {
+        err('ranges', '"ranges" must be an array of numbers (ascending range boundaries).');
+      } else {
+        spec.ranges.forEach((r, i) => {
+          if (typeof r !== 'number' || !Number.isFinite(r)) {
+            err(`ranges[${i}]`, 'Each range boundary must be a finite number.');
+          }
+        });
+      }
     }
   }
 

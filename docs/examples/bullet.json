@@ -1,0 +1,9 @@
+{
+  "type": "bullet",
+  "title": "Quarterly revenue",
+  "label": "Revenue",
+  "value": 820000,
+  "target": 900000,
+  "ranges": [600000, 800000, 1000000],
+  "format": "$,.0f"
+}

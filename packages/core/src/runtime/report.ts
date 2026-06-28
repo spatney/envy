@@ -75,6 +75,15 @@ const MAX_DISTINGUISHABLE_SERIES = 8;
 
 const SEVERITY_RANK: Record<ReportSeverity, number> = { error: 0, warning: 1, info: 2 };
 
+/** Charts that show a single value (literal or aggregate) rather than a data series. */
+const VALUE_CHART_TYPES: ReadonlySet<ChartType> = new Set<ChartType>(['kpi', 'gauge', 'bullet']);
+/** Charts that color marks through a continuous (sequential) ramp, not discrete series. */
+const CONTINUOUS_COLOR_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
+  'heatmap',
+  'choropleth',
+  'calendarHeatmap',
+]);
+
 function rgba(input: string | undefined): RGBA | null {
   return input ? parseColor(input) : null;
 }
@@ -107,7 +116,11 @@ export function buildRenderReport(input: ReportInput): RenderReport {
   const plot = model?.plot;
 
   // --- Empty data / empty plot ---
-  if (data.length === 0) {
+  // A value chart (kpi/gauge/bullet) with a literal numeric `value` needs no
+  // data array, so an empty `data` is expected — don't flag it.
+  const hasLiteralValue =
+    VALUE_CHART_TYPES.has(type) && typeof (spec as { value?: unknown }).value === 'number';
+  if (data.length === 0 && !hasLiteralValue) {
     add({
       code: 'empty-data',
       severity: 'warning',
@@ -171,7 +184,9 @@ export function buildRenderReport(input: ReportInput): RenderReport {
   }
 
   // --- Too many series to tell apart by color ---
-  if (colorCount > MAX_DISTINGUISHABLE_SERIES) {
+  // Continuous-color charts (heatmap/choropleth/calendar) map values through a
+  // sequential ramp, so a high distinct-value count is expected, not a problem.
+  if (!CONTINUOUS_COLOR_TYPES.has(type) && colorCount > MAX_DISTINGUISHABLE_SERIES) {
     add({
       code: 'too-many-colors',
       severity: 'info',

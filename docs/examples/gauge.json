@@ -1,0 +1,16 @@
+{
+  "type": "gauge",
+  "title": "Service health",
+  "data": [{ "uptime": 99.2 }, { "uptime": 98.7 }, { "uptime": 99.6 }],
+  "value": { "field": "uptime", "aggregate": "mean" },
+  "min": 0,
+  "max": 100,
+  "target": 99,
+  "label": "Avg uptime",
+  "format": ",.1f",
+  "bands": [
+    { "to": 90, "color": "#ef4444" },
+    { "to": 98, "color": "#f59e0b" },
+    { "to": 100, "color": "#10b981" }
+  ]
+}

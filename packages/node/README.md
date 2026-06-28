@@ -86,8 +86,9 @@ renderChart(spec, {
 ## Supported charts
 
 Every canvas-backed type: **line, area, bar, scatter, box, pie, heatmap, sankey,
-choropleth, combo, histogram, funnel**. DOM-only visuals (`kpi`, `table`, `matrix`,
-slicers, `dashboard`) are HTML — they have no canvas form and throw a clear error.
+choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap**.
+DOM-only visuals (`kpi`, `table`, `matrix`, slicers, `dashboard`) are HTML — they have
+no canvas form and throw a clear error.
 
 ## License
 

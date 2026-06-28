@@ -16,6 +16,10 @@
     { "$ref": "#/$defs/FunnelSpec" },
     { "$ref": "#/$defs/HeatmapSpec" },
     { "$ref": "#/$defs/KpiSpec" },
+    { "$ref": "#/$defs/TreemapSpec" },
+    { "$ref": "#/$defs/GaugeSpec" },
+    { "$ref": "#/$defs/BulletSpec" },
+    { "$ref": "#/$defs/CalendarHeatmapSpec" },
     { "$ref": "#/$defs/TableSpec" },
     { "$ref": "#/$defs/MatrixSpec" },
     { "$ref": "#/$defs/BoxSpec" },
@@ -708,6 +712,80 @@
         }
       }
     },
+    "TreemapSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "treemap" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["category", "value"],
+          "description": "`category` labels each leaf tile, `value` sizes its area; optional `group` nests leaves under parent tiles and `color` overrides the fill."
+        },
+        "scheme": { "type": "string", "description": "Sequential color scheme when `color` is numeric (default 'teal')." },
+        "labels": { "type": "boolean", "description": "Show the value beneath the label inside each tile (default true)." }
+      }
+    },
+    "GaugeSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "value", "max"],
+      "properties": {
+        "type": { "const": "gauge" },
+        "value": { "$ref": "#/$defs/ValueRef" },
+        "min": { "type": "number", "description": "Scale start (default 0)." },
+        "max": { "type": "number", "description": "Scale end — the gauge's full-scale." },
+        "target": { "$ref": "#/$defs/ValueRef" },
+        "label": { "type": "string" },
+        "format": { "type": "string" },
+        "bands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["to"],
+            "properties": {
+              "to": { "type": "number", "description": "Upper bound of this qualitative band on the scale." },
+              "color": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "BulletSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "bullet" },
+        "value": { "$ref": "#/$defs/ValueRef" },
+        "target": { "$ref": "#/$defs/ValueRef" },
+        "min": { "type": "number", "description": "Scale start (default 0)." },
+        "max": { "type": "number", "description": "Scale end (default derived from value/target/ranges)." },
+        "ranges": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Ascending qualitative range boundaries (e.g. [50, 75, 100])."
+        },
+        "label": { "type": "string" },
+        "format": { "type": "string" }
+      }
+    },
+    "CalendarHeatmapSpec": {
+      "allOf": [{ "$ref": "#/$defs/BaseProps" }],
+      "type": "object",
+      "required": ["type", "encoding"],
+      "properties": {
+        "type": { "const": "calendarHeatmap" },
+        "encoding": {
+          "allOf": [{ "$ref": "#/$defs/Encoding" }],
+          "required": ["date", "color"],
+          "description": "`date` is the day (Date or ISO string), `color` the numeric value coloring each cell."
+        },
+        "scheme": { "type": "string", "description": "Sequential color scheme for the value scale (default 'teal')." }
+      }
+    },
     "TableSpec": {
       "allOf": [{ "$ref": "#/$defs/BaseProps" }],
       "type": "object",
@@ -1032,6 +1110,10 @@
         { "$ref": "#/$defs/FunnelSpec" },
         { "$ref": "#/$defs/HeatmapSpec" },
         { "$ref": "#/$defs/KpiSpec" },
+        { "$ref": "#/$defs/TreemapSpec" },
+        { "$ref": "#/$defs/GaugeSpec" },
+        { "$ref": "#/$defs/BulletSpec" },
+        { "$ref": "#/$defs/CalendarHeatmapSpec" },
         { "$ref": "#/$defs/TableSpec" },
         { "$ref": "#/$defs/MatrixSpec" },
         { "$ref": "#/$defs/BoxSpec" },

@@ -38,6 +38,7 @@ Runnable JSON for every chart type lives in [`docs/examples/`](./examples).
   - [line](#line) · [area](#area) · [bar](#bar) · [scatter](#scatter) · [combo](#combo) · [histogram](#histogram) · [pie](#pie)
   - [heatmap](#heatmap) · [kpi](#kpi) · [table](#table) · [matrix](#matrix)
   - [box](#box) · [funnel](#funnel) · [sankey](#sankey) · [choropleth](#choropleth)
+  - [treemap](#treemap) · [gauge](#gauge) · [bullet](#bullet) · [calendarHeatmap](#calendarheatmap)
 - [Slicers](#slicers)
   - [dropdown](#dropdown) · [search](#search) · [list](#list) · [range](#range) · [dateRange](#daterange)
 - [Interactivity (selection · highlight · filter)](#interactivity-selection--highlight--filter)
@@ -614,6 +615,72 @@ gap. For composite layouts like Alaska/Hawaii insets, pre‑project the geometry
 planar coordinates and use `projection: 'identity'`.
 
 → [`examples/choropleth.json`](./examples/choropleth.json)
+
+### treemap
+
+Part‑to‑whole as nested rectangles sized by a measure. A **squarified** layout keeps
+tiles close to square so areas stay visually comparable; input order is preserved for
+deterministic output. An optional `group` field nests leaves under one level of parent
+tiles, each with a header label.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `category`, `value` | `category` labels/identifies each leaf tile; `value` is the numeric field sizing its area (summed per leaf). |
+| `encoding.group` | `FieldDef` | Optional parent grouping → nested parent tiles (one level deep), each with a header label. |
+| `encoding.color` | `FieldDef` | Optional field driving tile color — numeric ⇒ sequential `scheme`, otherwise the categorical palette. Without it, tiles color by group (else category). |
+| `scheme` | `string` | Sequential ramp name when `color` is numeric (default `teal`). |
+| `labels` | `boolean` | Show the value beneath each tile label (default `true`). |
+
+→ [`examples/treemap.json`](./examples/treemap.json)
+
+### gauge
+
+A radial dial showing one value against a `[min, max]` scale, with an optional `target`
+tick and qualitative background `bands`. Like [`kpi`](#kpi), the value is a literal
+**or** a field (optionally aggregated over `data`). Renders to canvas (headless‑safe).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `value` | `ValueRef` | The measured value: a literal number, or `{ field, aggregate? }` summarized over `data`. |
+| `max` | `number` | **Required.** Scale end (full‑scale). |
+| `min` | `number` | Scale start (default `0`). |
+| `target` | `ValueRef` | Optional threshold drawn as a needle/tick. |
+| `bands` | `{ to: number, color? }[]` | Qualitative arc bands, each filling the scale up to `to`. |
+| `label` | `string` | Caption under the value (defaults to the title or value field). |
+| `format` | `string` | Number format for the value + scale ticks (e.g. `,.0f`, `.0%`). |
+
+→ [`examples/gauge.json`](./examples/gauge.json)
+
+### bullet
+
+A compact linear KPI‑vs‑target: a measure bar over qualitative `ranges` (poor/ok/good
+background bands) with a `target` comparative tick. Value and target are literals or
+fields (optionally aggregated) — ideal as a dashboard tile. Renders to canvas
+(headless‑safe).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `value` | `ValueRef` | The featured measure (literal or `{ field, aggregate? }`). |
+| `target` | `ValueRef` | Comparative marker drawn as a vertical tick. |
+| `ranges` | `number[]` | Qualitative range boundaries on the scale (e.g. `[600000, 800000, 1000000]`). |
+| `min` / `max` | `number` | Scale bounds (`min` default `0`; `max` derived from value/target/ranges when omitted). |
+| `label` | `string` | Caption to the left of the bar (defaults to the title or value field). |
+| `format` | `string` | Number format for the value + axis ticks. |
+
+→ [`examples/bullet.json`](./examples/bullet.json)
+
+### calendarHeatmap
+
+A GitHub‑contributions‑style grid: one cell per day colored by a value on a sequential
+scale, with weekday rows and month labels. Pass tidy `{ date, value }` rows — dates may
+be `Date` objects or ISO strings (both coerce for the `temporal` field).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `encoding` | requires `date`, `color` | `date` → one cell per day; `color` is the numeric value driving the cell fill. |
+| `scheme` | `string` | Sequential ramp name for the value scale (default `teal`). |
+
+→ [`examples/calendar-heatmap.json`](./examples/calendar-heatmap.json)
 
 ---
 

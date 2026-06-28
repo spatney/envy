@@ -397,6 +397,100 @@ export const presets: Preset[] = [
       };
     },
   },
+  // --- Treemap ---
+  {
+    id: 'treemap-grouped',
+    label: 'Treemap · grouped tiles',
+    group: 'Treemap',
+    note: 'revenue by product area, nested by group',
+    build: () => ({
+      type: 'treemap',
+      title: 'Revenue by product area',
+      data: [
+        { group: 'Core', category: 'Platform', revenue: 420 },
+        { group: 'Core', category: 'Analytics', revenue: 310 },
+        { group: 'Core', category: 'Automation', revenue: 180 },
+        { group: 'Growth', category: 'Marketing', revenue: 260 },
+        { group: 'Growth', category: 'Sales', revenue: 230 },
+        { group: 'Support', category: 'Success', revenue: 140 },
+        { group: 'Support', category: 'Training', revenue: 90 },
+      ],
+      encoding: {
+        group: { field: 'group' },
+        category: { field: 'category' },
+        value: { field: 'revenue', format: '$,.0f' },
+      },
+    }),
+  },
+  // --- Gauge ---
+  {
+    id: 'gauge-health',
+    label: 'Gauge · value vs. scale',
+    group: 'Gauge',
+    note: 'aggregated value, qualitative bands + target',
+    build: () => ({
+      type: 'gauge',
+      title: 'Service health',
+      data: [{ uptime: 99.2 }, { uptime: 98.7 }, { uptime: 99.6 }],
+      value: { field: 'uptime', aggregate: 'mean' },
+      min: 0,
+      max: 100,
+      target: 99,
+      label: 'Avg uptime',
+      format: ',.1f',
+      bands: [
+        { to: 90, color: '#ef4444' },
+        { to: 98, color: '#f59e0b' },
+        { to: 100, color: '#10b981' },
+      ],
+    }),
+  },
+  // --- Bullet ---
+  {
+    id: 'bullet-revenue',
+    label: 'Bullet · KPI vs. target',
+    group: 'Bullet',
+    note: 'measure bar over qualitative ranges + target',
+    build: () => ({
+      type: 'bullet',
+      title: 'Quarterly revenue',
+      label: 'Revenue',
+      value: 820000,
+      target: 900000,
+      ranges: [600000, 800000, 1000000],
+      format: '$,.0f',
+    }),
+  },
+  // --- Calendar heatmap ---
+  {
+    id: 'calendar-activity',
+    label: 'Calendar · daily activity',
+    group: 'Calendar',
+    note: '~26 weeks of generated daily commits',
+    build: () => {
+      const r = rng(99);
+      const data: Datum[] = [];
+      const start = new Date('2024-01-01');
+      for (let i = 0; i < 182; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const weekend = d.getDay() === 0 || d.getDay() === 6;
+        const base = weekend ? 1.5 : 7;
+        const v = Math.max(0, Math.round(base + 4 * Math.sin(i / 6) + (r() * 5 - 2)));
+        data.push({ date: d.toISOString().slice(0, 10), commits: v });
+      }
+      return {
+        type: 'calendarHeatmap',
+        title: 'Daily commit activity',
+        scheme: 'teal',
+        data,
+        encoding: {
+          date: { field: 'date', type: 'temporal' },
+          color: { field: 'commits', type: 'quantitative', title: 'Commits' },
+        },
+      };
+    },
+  },
   // --- Pie ---
   {
     id: 'pie',

@@ -212,6 +212,10 @@ See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
 | `box` | Distributions by category; Tukey/min-max whiskers + outliers | [box.json](./docs/examples/box.json) |
 | `sankey` | Flows between nodes from `source → target` link rows | [sankey.json](./docs/examples/sankey.json) |
 | `choropleth` | Values shaded over GeoJSON regions; sequential color scale | [choropleth.json](./docs/examples/choropleth.json) |
+| `treemap` | Hierarchical part-to-whole as squarified nested tiles | [treemap.json](./docs/examples/treemap.json) |
+| `gauge` | A single value against a scale, with bands + target | [gauge.json](./docs/examples/gauge.json) |
+| `bullet` | Compact KPI-vs-target bar over qualitative ranges | [bullet.json](./docs/examples/bullet.json) |
+| `calendarHeatmap` | Daily values as a GitHub-style year grid | [calendar-heatmap.json](./docs/examples/calendar-heatmap.json) |
 
 Every cartesian chart also takes `transform`s (in-spec data shaping) and `annotations`
 (reference lines, bands, threshold zones).

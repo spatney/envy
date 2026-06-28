@@ -104,6 +104,10 @@ reference: [spec-reference → Transforms](./spec-reference.md#transforms).
 | Flow between nodes / stages | `sankey` | `source`, `target`, `value` |
 | Conversion through stages | `funnel` | `stage`, `value` |
 | Values across a geography | `choropleth` | `geo`, `key`, `color` |
+| Hierarchical part‑to‑whole | `treemap` | `category`, `value` (+ `group?`, `color?`) |
+| Single value vs. a scale | `gauge` | `value`, `max` (+ `target?`, `bands?`) |
+| KPI vs. target (compact tile) | `bullet` | `value` (+ `target?`, `ranges?`) |
+| Daily values over weeks/months | `calendarHeatmap` | `date`, `color` |
 | Headline metric | `kpi` | `value`, `delta`, `sparkline` |
 | Raw/detail records | `table` | `columns` (+ optional totals, groups, bars/icons/rules) |
 | Aggregated cross‑tab | `matrix` | `rows`, `columns`, `values` (+ `showAs` percentages) |
@@ -189,6 +193,59 @@ there (the linter warns with `combo-dual-axis`).
 
 Don't pre-bin or pre-count — feed one row per observation and let `bin` do the work.
 `x` must be quantitative (the linter warns otherwise).
+
+**Treemap (hierarchical part‑to‑whole)** — squarified nested tiles sized by a measure:
+
+```jsonc
+{
+  "type": "treemap",
+  "data": [/* { group, category, revenue } rows */],
+  "encoding": {
+    "group": { "field": "group" },        // optional — one level of parent tiles
+    "category": { "field": "category" },   // leaf label/identity
+    "value": { "field": "revenue", "format": "$,.0f" }  // tile area (summed per leaf)
+  }
+}
+```
+
+**Gauge (value vs. a scale)** — a literal or aggregated value, with bands + target:
+
+```jsonc
+{
+  "type": "gauge",
+  "data": [/* rows with an `uptime` column */],
+  "value": { "field": "uptime", "aggregate": "mean" },
+  "min": 0, "max": 100, "target": 99, "format": ",.1f",
+  "bands": [{ "to": 90, "color": "#ef4444" }, { "to": 98, "color": "#f59e0b" }, { "to": 100, "color": "#10b981" }]
+}
+```
+
+**Bullet (KPI vs. target)** — a compact dashboard tile; value/target are literals or fields:
+
+```jsonc
+{
+  "type": "bullet",
+  "label": "Revenue",
+  "value": 820000,                       // or { "field": "...", "aggregate": "sum" }
+  "target": 900000,
+  "ranges": [600000, 800000, 1000000],   // qualitative poor/ok/good bands
+  "format": "$,.0f"
+}
+```
+
+**Calendar heatmap (daily values)** — one cell per day; pass tidy `{ date, value }` rows:
+
+```jsonc
+{
+  "type": "calendarHeatmap",
+  "data": [/* { date, commits } — one row per day */],
+  "scheme": "teal",
+  "encoding": {
+    "date": { "field": "date", "type": "temporal" },
+    "color": { "field": "commits", "type": "quantitative", "title": "Commits" }
+  }
+}
+```
 
 **KPI with delta + sparkline**
 
@@ -515,9 +572,10 @@ await fs.writeFile('chart.png', png);
 ```
 
 It supports every canvas-backed chart (line, area, bar, scatter, box, pie, heatmap,
-sankey, choropleth, combo, histogram, funnel). DOM-only visuals (kpi/table/matrix/
-slicers/dashboard) throw. Core's dependency-free `renderToContext(target, spec)` paints
-onto any 2D context if you bring your own canvas (`OffscreenCanvas`, `node-canvas`, …).
+sankey, choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap).
+DOM-only visuals (kpi/table/matrix/slicers/dashboard) throw. Core's dependency-free
+`renderToContext(target, spec)` paints onto any 2D context if you bring your own canvas
+(`OffscreenCanvas`, `node-canvas`, …).
 
 ## Lifecycle
 

@@ -30,6 +30,10 @@ import { drawMatrix } from './matrix';
 import { drawDropdown, drawSearch, drawList, drawRange, drawDateRange } from './slicers';
 import { drawCombo } from './combo';
 import { drawHistogram } from './histogram';
+import { drawTreemap } from './treemap';
+import { drawGauge } from './gauge';
+import { drawBullet } from './bullet';
+import { drawCalendarHeatmap } from './calendarHeatmap';
 
 export { drawAnnotations, drawAnnotationLabels } from './annotations';
 
@@ -106,6 +110,10 @@ export const customRenderers: Partial<Record<ChartType, CustomRenderer>> = {
   pie: drawPie,
   funnel: drawFunnel,
   kpi: drawKpi,
+  treemap: drawTreemap,
+  gauge: drawGauge,
+  bullet: drawBullet,
+  calendarHeatmap: drawCalendarHeatmap,
   combo: drawCombo,
   histogram: drawHistogram,
   sankey: drawSankey,

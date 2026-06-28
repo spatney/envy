@@ -445,6 +445,95 @@ export interface KpiSpec extends BaseSpec {
   sparkline?: boolean | { field: string };
 }
 
+/**
+ * Treemap — part-to-whole as nested rectangles sized by a measure. Pass tidy
+ * rows (one per leaf); the area of each tile is proportional to `value`. An
+ * optional `group` field nests leaves under parent tiles (one level), and
+ * `color` overrides the default per-group/leaf fill (numeric → sequential scale,
+ * categorical → palette).
+ */
+export interface TreemapSpec extends BaseSpec {
+  type: 'treemap';
+  encoding: Encoding & {
+    /** Leaf tile label + identity. */
+    category: FieldDef;
+    /** Numeric field sizing each tile's area (summed per leaf). */
+    value: FieldDef;
+    /** Optional parent grouping → nested parent tiles (one level deep). */
+    group?: FieldDef;
+    /** Optional field driving tile color (numeric → sequential, else palette). */
+    color?: FieldDef;
+  };
+  /** Sequential color scheme name when `color` is numeric (default 'teal'). */
+  scheme?: string;
+  /** Show the value beneath the label inside each tile (default true). */
+  labels?: boolean;
+}
+
+/**
+ * Gauge — a radial dial showing a single value against a `[min, max]` scale,
+ * with an optional `target` needle and qualitative background `bands`. The
+ * value is a literal or a field (optionally aggregated, like {@link KpiSpec}).
+ */
+export interface GaugeSpec extends BaseSpec {
+  type: 'gauge';
+  /** The measured value (literal or a field, optionally aggregated over data). */
+  value: ValueRef;
+  /** Scale start (default 0). */
+  min?: number;
+  /** Scale end — the gauge's full-scale (required). */
+  max: number;
+  /** Optional target/threshold marker drawn as a needle/tick. */
+  target?: ValueRef;
+  /** Caption under the value (defaults to the spec title or value field). */
+  label?: string;
+  /** Number format for the value + scale ticks (e.g. ',.0f', '.0%'). */
+  format?: string;
+  /** Qualitative arc bands, each filling the scale up to `to`. */
+  bands?: { to: number; color?: string }[];
+}
+
+/**
+ * Bullet graph — a compact linear KPI-vs-target: a measure bar over qualitative
+ * `ranges` (poor/ok/good background bands) with a `target` comparative marker.
+ * The featured value/target are literals or fields (optionally aggregated).
+ */
+export interface BulletSpec extends BaseSpec {
+  type: 'bullet';
+  /** The featured measure (literal or a field, optionally aggregated). */
+  value: ValueRef;
+  /** Target/comparative marker (literal or field) drawn as a vertical tick. */
+  target?: ValueRef;
+  /** Scale start (default 0). */
+  min?: number;
+  /** Scale end (default: derived from value/target/ranges). */
+  max?: number;
+  /** Qualitative range boundaries on the scale (e.g. [50, 75, 100]). */
+  ranges?: number[];
+  /** Caption to the left of the bar (defaults to the spec title or value field). */
+  label?: string;
+  /** Number format for the value + axis ticks. */
+  format?: string;
+}
+
+/**
+ * Calendar heatmap — a GitHub-contributions-style grid of one cell per day,
+ * colored by a value via a sequential scale, with weekday rows and month
+ * labels. Pass tidy rows of `{ date, value }`; dates may be `Date` objects or
+ * ISO strings.
+ */
+export interface CalendarHeatmapSpec extends BaseSpec {
+  type: 'calendarHeatmap';
+  encoding: Encoding & {
+    /** Date field (Date or ISO string) → one cell per day. */
+    date: FieldDef;
+    /** Numeric value field → cell color via a sequential scale. */
+    color: FieldDef;
+  };
+  /** Sequential color scheme name for the value scale (default 'teal'). */
+  scheme?: string;
+}
+
 export type ConditionalFormat =
   | {
       type: 'colorScale';
@@ -739,6 +828,10 @@ export type ChartSpec =
   | HeatmapSpec
   | FunnelSpec
   | KpiSpec
+  | TreemapSpec
+  | GaugeSpec
+  | BulletSpec
+  | CalendarHeatmapSpec
   | TableSpec
   | MatrixSpec
   | BoxSpec
@@ -763,6 +856,10 @@ export const CHART_TYPES: readonly ChartType[] = [
   'heatmap',
   'funnel',
   'kpi',
+  'treemap',
+  'gauge',
+  'bullet',
+  'calendarHeatmap',
   'table',
   'matrix',
   'box',

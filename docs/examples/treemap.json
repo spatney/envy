@@ -1,0 +1,18 @@
+{
+  "type": "treemap",
+  "title": "Revenue by product area",
+  "data": [
+    { "group": "Core", "category": "Platform", "revenue": 420 },
+    { "group": "Core", "category": "Analytics", "revenue": 310 },
+    { "group": "Core", "category": "Automation", "revenue": 180 },
+    { "group": "Growth", "category": "Marketing", "revenue": 260 },
+    { "group": "Growth", "category": "Sales", "revenue": 230 },
+    { "group": "Support", "category": "Success", "revenue": 140 },
+    { "group": "Support", "category": "Training", "revenue": 90 }
+  ],
+  "encoding": {
+    "group": { "field": "group" },
+    "category": { "field": "category" },
+    "value": { "field": "revenue", "format": "$,.0f" }
+  }
+}

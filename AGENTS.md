@@ -60,6 +60,10 @@ const chart = render('#app', spec);
 | Conversion through stages | `funnel` | `stage`, `value` |
 | Flows between nodes | `sankey` | `source`, `target`, `value` |
 | Values over map regions | `choropleth` | `key`, `color` (+ top-level `geo`) |
+| Hierarchical part-to-whole | `treemap` | `category`, `value` (+ `group?`, `color?`) |
+| Single value vs. a scale | `gauge` | `value`, `max` (+ `target?`, `bands?`) |
+| KPI vs. target (compact) | `bullet` | `value` (+ `target?`, `ranges?`) |
+| Daily values over a year | `calendarHeatmap` | `date`, `color` |
 | Headline metric | `kpi` | `value` (+ `delta`, `sparkline`) |
 | Tabular detail | `table` | `columns` (+ optional totals, groups, conditional bars/icons/rules) |
 | Pivot / cross-tab | `matrix` | `rows`, `columns`, `values` (+ optional `showAs` percentages) |

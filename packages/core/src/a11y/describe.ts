@@ -19,6 +19,10 @@ const TYPE_LABELS: Record<string, string> = {
   pie: 'Pie chart',
   heatmap: 'Heatmap',
   kpi: 'KPI card',
+  treemap: 'Treemap',
+  gauge: 'Gauge',
+  bullet: 'Bullet graph',
+  calendarHeatmap: 'Calendar heatmap',
   table: 'Data table',
   matrix: 'Pivot matrix',
 };
