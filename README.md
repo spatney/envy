@@ -245,7 +245,8 @@ Add `"sketch": true` to **any** spec for a hand-drawn look — see
 - **[Spec Reference](./docs/spec-reference.md)** — every field of every chart type,
   encoding channels, scales, themes, and the format mini-language.
 - **[JSON Schema](./docs/chart-spec.schema.json)** — machine-readable `ChartSpec` schema
-  for validation and editor autocomplete.
+  for validation and editor autocomplete, generated from the TypeScript types
+  (`npm run gen:schema`).
 - **[Examples](./docs/examples)** — a runnable JSON spec for every chart type.
 
 ## How it works

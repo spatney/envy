@@ -143,3 +143,10 @@ export interface DashboardSpec {
    */
   interactions?: 'auto' | 'none' | InteractionLink[];
 }
+
+/**
+ * Any top-level Graphein spec: a chart, a slicer, or a dashboard. This is the
+ * root type the JSON Schema (`docs/chart-spec.schema.json`) is generated from,
+ * and the broadest type `validateSpec` accepts.
+ */
+export type AnySpec = ChartSpec | DashboardSpec;

@@ -50,6 +50,7 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
+    "gen:schema": "node packages/core/scripts/gen-schema.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "gallery": "npm run dev --workspace @graphein/gallery",
     "prepare": "npm run build"
@@ -59,6 +60,7 @@
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
+    "ts-json-schema-generator": "^2.9.0",
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.0.0",

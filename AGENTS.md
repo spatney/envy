@@ -143,8 +143,9 @@ spans, presets (`auto`, `kpi-first`, `sidebar`), and page chrome (`maxWidth`,
   (one shared y-domain, x categories, colors, legend). Don't pre-split the data or emit one
   chart per group — `facet:{field, columns?, sort?}` does it and stays comparable.
 - Full field-by-field docs: [`docs/spec-reference.md`](./docs/spec-reference.md);
-  machine-readable [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json);
-  runnable specs in [`docs/examples/`](./docs/examples).
+  machine-readable [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json)
+  (generated from the TypeScript types — see Contributing); runnable specs in
+  [`docs/examples/`](./docs/examples).
 
 ### Explore interactively
 
@@ -162,4 +163,9 @@ highlight) you can copy.
 - The core engine is **dependency-free** — do not add runtime dependencies to
   `graphein`. Keep exports explicit and tree-shakeable. (Native/runtime deps live in
   leaf packages like `@graphein/node`, never in core.)
+- **The JSON Schema is generated, not hand-written.** `docs/chart-spec.schema.json`
+  is projected from the TypeScript spec types (the single source of truth) by
+  `npm run gen:schema`. After changing any spec type, run it and commit the result;
+  a test (`schema-gen.test.ts`) fails CI if the committed schema drifts from the types.
+  Edit the types' JSDoc, never the schema by hand.
 - Validate visual changes against the gallery/screenshot harness, not by assumption.

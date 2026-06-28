@@ -36,4 +36,5 @@ renderDashboard('#app', dashboard);
 | [dashboard.json](./dashboard.json) | dashboard (auto cross-filter + highlight) |
 | [dashboard-sections.json](./dashboard-sections.json) | dashboard (sections + cards + responsive) |
 
-All examples are validated against [`../chart-spec.schema.json`](../chart-spec.schema.json).
+All examples are validated against [`../chart-spec.schema.json`](../chart-spec.schema.json),
+which is generated from the TypeScript spec types via `npm run gen:schema`.
