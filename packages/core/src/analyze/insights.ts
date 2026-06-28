@@ -17,6 +17,7 @@
 import type { ChartSpec, ChartType, Encoding, FieldDef, ValueRef } from '../spec/types';
 import type { Datum, FieldType } from '../types';
 import { accessor, toNumber, toKey, inferType } from '../util/data';
+import { prettyDate } from '../format';
 import { aggregateValues } from '../pivot';
 
 /** A single salient point in a series: its value, its x-label, and row index. */
@@ -260,6 +261,13 @@ function analyzeCategory(
   return { count: order.length, total, top, bottom, topShare: total > 0 ? top.value / total : 0 };
 }
 
+/** A human-facing x label for a series point. `Date`s become a readable date
+ *  (not the raw epoch `toKey` would yield); strings/numbers pass through `toKey`
+ *  so categorical and string-temporal (`"2024-01"`) axes are unchanged. */
+function xLabel(x: unknown): string {
+  return x instanceof Date ? prettyDate(x) : toKey(x);
+}
+
 /** Group rows into ordered numeric series for the `series` families. */
 function analyzeSeriesFamily(
   rows: readonly Datum[],
@@ -284,7 +292,7 @@ function analyzeSeriesFamily(
     }
     const x = readX(d);
     g.values.push(y);
-    g.labels.push(toKey(x));
+    g.labels.push(xLabel(x));
     g.raws.push(x);
   }
   const out: SeriesInsights[] = [];
