@@ -55,3 +55,24 @@ export function fontString(
 ): string {
   return `${style} ${weight} ${size}px ${family}`;
 }
+
+/**
+ * Truncate `text` with a trailing ellipsis so it fits within `maxWidth` px when
+ * drawn in the given CSS `font`. Returns the original string if it already fits,
+ * or an empty string if not even the ellipsis fits.
+ */
+export function ellipsize(text: string, maxWidth: number, font: string): string {
+  if (maxWidth <= 0 || text.length === 0) return '';
+  if (measureText(text, font).width <= maxWidth) return text;
+  const ellipsis = '…';
+  const ellipsisW = measureText(ellipsis, font).width;
+  if (ellipsisW > maxWidth) return '';
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (measureText(text.slice(0, mid) + ellipsis, font).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo) + ellipsis;
+}

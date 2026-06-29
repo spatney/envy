@@ -1,5 +1,6 @@
-import { ordinalColorScale, sequentialColorScale, sequential, rgbaToCss, readableTextColor, parseColor } from '../color';
+import { ordinalColorScale, sequentialColorScale, sequential, rgbaToCss, parseColor } from '../color';
 import { formatValue } from '../format';
+import { fontString, measureText, ellipsize } from '../render/text';
 import { accessor, toNumber, toKey } from '../util/data';
 import { RoughPen } from '../rough';
 import { resolveSketch } from '../spec/sketch';
@@ -261,30 +262,48 @@ function drawRect(ctx: CanvasRenderingContext2D, pen: RoughPen | null, rect: Rec
 function addTileLabels(surface: Surface, tokens: ThemeTokens, tile: Tile, valueFormat?: string): void {
   if (tile.rect.width < MIN_LABEL_WIDTH || tile.rect.height < MIN_LABEL_HEIGHT) return;
   const pad = 5;
-  const textColor = readableTextColor(tile.fill);
-  const textCss = rgbaToCss(textColor);
-  const valueCss = rgbaToCss({ ...textColor, a: 0.72 });
+  const padX = 6;
+  const padY = 2;
   const labelSize = tokens.font.size.small;
   const valueSize = tokens.font.size.tiny;
-  const maxWidth = Math.max(0, tile.rect.width - pad * 2);
+  const labelFont = fontString(labelSize, tokens.font.family, tokens.font.weight.bold);
+  const valueFont = fontString(valueSize, tokens.font.family);
+  // Text budget inside the tile padding and the pill's own padding + 1px border
+  // on each side, so the rounded badge never spills past the tile edge.
+  const maxTextWidth = tile.rect.width - pad * 2 - padX * 2 - 2;
+  const labelText = ellipsize(tile.categoryLabel, maxTextWidth, labelFont);
+  if (labelText === '' || labelText === '…') return;
+
+  // A themed pill (solid fill + hairline border) keeps every label legible on
+  // any tile colour, so labels read identically across fills — like the funnel.
+  const pill = { background: tokens.color.surface, border: tokens.color.border, padX, padY } as const;
 
   addOverlayText(surface, tokens, {
     left: tile.rect.x + pad,
     top: tile.rect.y + pad,
-    width: maxWidth,
-    text: tile.categoryLabel,
-    color: textCss,
+    text: labelText,
+    color: tokens.color.text,
     size: labelSize,
     weight: tokens.font.weight.bold,
+    pill,
   });
-  if (tile.rect.height >= 38) {
+
+  const labelPillH = labelSize + padY * 2 + 2;
+  const valuePillH = valueSize + padY * 2 + 2;
+  const valueText = formatValue(tile.value, valueFormat);
+  // Stack the value in its own pill only when the whole number fits (a truncated
+  // number would mislead) and the tile is tall enough for a second row.
+  if (
+    tile.rect.height >= pad * 2 + labelPillH + 2 + valuePillH &&
+    measureText(valueText, valueFont).width <= maxTextWidth
+  ) {
     addOverlayText(surface, tokens, {
       left: tile.rect.x + pad,
-      top: tile.rect.y + pad + labelSize + 2,
-      width: maxWidth,
-      text: formatValue(tile.value, valueFormat),
-      color: valueCss,
+      top: tile.rect.y + pad + labelPillH + 2,
+      text: valueText,
+      color: tokens.color.textMuted,
       size: valueSize,
+      pill,
     });
   }
 }

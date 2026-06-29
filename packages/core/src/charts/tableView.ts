@@ -12,7 +12,7 @@ import {
 } from '../color';
 import { formatValue } from '../format';
 import { paintCanvasText } from '../render/overlayText';
-import { fontString, measureText } from '../render/text';
+import { fontString, measureText, ellipsize } from '../render/text';
 import { roundedRect } from '../shape';
 import { evalRules, iconForValue, toneColor } from './condFormat';
 
@@ -879,22 +879,6 @@ function paintRawCellText(
     align,
     baseline: 'middle',
   });
-}
-
-function ellipsize(text: string, maxWidth: number, font: string): string {
-  if (maxWidth <= 0 || text.length === 0) return '';
-  if (measureText(text, font).width <= maxWidth) return text;
-  const ellipsis = '…';
-  const ellipsisW = measureText(ellipsis, font).width;
-  if (ellipsisW > maxWidth) return '';
-  let lo = 0;
-  let hi = text.length;
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (measureText(text.slice(0, mid) + ellipsis, font).width <= maxWidth) lo = mid;
-    else hi = mid - 1;
-  }
-  return text.slice(0, lo) + ellipsis;
 }
 
 interface CanvasConditional {
