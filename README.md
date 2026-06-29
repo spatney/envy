@@ -17,7 +17,9 @@ The core package includes the chart model, scales, ticks, colors, transforms, la
 
 ## Gallery
 
-Each image below is produced from a declarative `ChartSpec`. Run `npm run gallery` to open the local gallery and edit specs in the Playground.
+**[Live gallery → spatney.github.io/graphein](https://spatney.github.io/graphein/)** · or run `npm run gallery` locally to edit specs in the Playground.
+
+Each image below is produced from a declarative `ChartSpec`.
 
 <table>
   <tr>
