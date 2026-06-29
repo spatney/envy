@@ -10,6 +10,9 @@ const coreSrc = fileURLToPath(new URL('../../packages/core/src/index.ts', import
 const reactSrc = fileURLToPath(new URL('../../packages/react/src/index.ts', import.meta.url));
 
 export default defineConfig({
+  // Default to root for dev/preview/visual-tests; the Pages build sets
+  // GALLERY_BASE=/graphein/ so assets resolve under the project subpath.
+  base: process.env.GALLERY_BASE ?? '/',
   plugins: [react(), tailwindcss(), grapheinBackend()],
   resolve: {
     alias: {
