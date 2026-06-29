@@ -17,47 +17,13 @@ The core package includes the chart model, scales, ticks, colors, transforms, la
 
 ## Gallery
 
-**[Live gallery → spatney.github.io/graphein](https://spatney.github.io/graphein/)** · or run `npm run gallery` locally to edit specs in the Playground.
+**[Live gallery → spatney.github.io/graphein](https://spatney.github.io/graphein/)** — every chart family, plus a Playground to edit a spec live (validate → repair → render → report). Run `npm run gallery` to open it locally.
 
-Each image below is produced from a declarative `ChartSpec`.
+Twelve types below, each from a single JSON `ChartSpec`, shown across light, dark, and hand-drawn sketch — one image, the whole library.
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/images/line-multi.png" alt="Multi-series line chart"><br><sub><b>line</b> — multi-series with legend</sub></td>
-    <td width="50%"><img src="docs/images/bar-grouped.png" alt="Grouped bar chart"><br><sub><b>bar</b> — grouped categories</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/area-stacked.png" alt="Stacked area chart"><br><sub><b>area</b> — stacked over time</sub></td>
-    <td><img src="docs/images/scatter-groups.png" alt="Bubble scatter chart"><br><sub><b>scatter</b> — bubble size + color groups</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/donut.png" alt="Donut chart"><br><sub><b>pie</b> — donut with labels</sub></td>
-    <td><img src="docs/images/heatmap.png" alt="Heatmap"><br><sub><b>heatmap</b> — week × hour density</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/box.png" alt="Box-and-whisker plot"><br><sub><b>box</b> — distribution by group</sub></td>
-    <td><img src="docs/images/kpi.png" alt="KPI card with sparkline"><br><sub><b>kpi</b> — metric, delta + sparkline</sub></td>
-  </tr>
-</table>
+![Graphein chart gallery — line, bar, area, scatter, donut, heatmap, histogram, gauge, waterfall, treemap, slope, and box in light, dark, and sketch modes](docs/images/showcase.png)
 
-<table>
-  <tr><td><img src="docs/images/sankey.png" alt="Sankey flow diagram"><br><sub><b>sankey</b> — weighted flows from <code>source → target</code></sub></td></tr>
-  <tr><td><img src="docs/images/choropleth.png" alt="US choropleth map"><br><sub><b>choropleth</b> — values shaded over GeoJSON regions</sub></td></tr>
-  <tr><td><img src="docs/images/table.png" alt="Data table with conditional formatting"><br><sub><b>table</b> — virtualized, sortable, with bar + color-scale conditional formatting</sub></td></tr>
-  <tr><td><img src="docs/images/line-dense.png" alt="50,000-point line chart"><br><sub><b>line</b> — 50,000 points with LTTB downsampling</sub></td></tr>
-</table>
-
-### One spec, three looks
-
-The same `box` chart in light, dark, and hand-drawn modes. Set `"sketch": true` to use sketch rendering.
-
-<table>
-  <tr>
-    <td width="33%"><img src="docs/images/modes-light.png" alt="Light theme"><br><sub>Light</sub></td>
-    <td width="33%"><img src="docs/images/modes-dark.png" alt="Dark theme"><br><sub>Dark</sub></td>
-    <td width="33%"><img src="docs/images/modes-sketch.png" alt="Hand-drawn sketch mode"><br><sub>Sketch</sub></td>
-  </tr>
-</table>
+Same spec, three looks: set `"theme": "dark"` or `"sketch": true` to switch.
 
 ## Install
 
@@ -292,7 +258,7 @@ npm run lint
 npm run gallery
 ```
 
-The core package is intended to remain dependency-free at runtime. After changing TypeScript spec types, run `npm run gen:schema` and commit the generated `docs/chart-spec.schema.json`. After changing docs that are bundled into the MCP package, run `npm run sync:resources --workspace graphein-mcp`.
+The core package is intended to remain dependency-free at runtime. After changing TypeScript spec types, run `npm run gen:schema` and commit the generated `docs/chart-spec.schema.json`. After changing docs that are bundled into the MCP package, run `npm run sync:resources --workspace graphein-mcp`. Regenerate the README montage with `node tests/visual/readme-montage.mjs`.
 
 ## License
 
