@@ -453,7 +453,7 @@ export const guideContent: Record<string, ReactNode> = {
           items={[
             <><C>layout.sections</C> groups cards into labeled bands.</>,
             <><C>w</C> and <C>h</C> set grid spans; <C>responsive</C> can override them.</>,
-            <><C>interactions:'auto'</C> lets slicers filter matching views and clicks cross-highlight shared fields.</>,
+            <><C>interactions:'auto'</C> lets slicers filter matching views and chart clicks cross-filter the page.</>,
           ]}
         />
       </Section>

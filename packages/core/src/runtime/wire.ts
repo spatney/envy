@@ -5,12 +5,12 @@
  * store) so it unit-tests in node and the runtime stays a thin shell.
  *
  * Rules (interactions: 'auto'):
- * - A **slicer** publishes a value on its field/param; every chart that *uses*
- *   that field gets a `filter` clause for it (cross-filter).
- * - A **chart** click publishes a point selection on its key field(s); every
- *   chart that uses *all* those fields (including itself) gets that param added
- *   to its `highlight` union (cross-highlight). Matching on shared fields means
- *   emphasis is always well-defined — a chart never dims itself to nothing.
+ * - A **slicer** publishes a value on its field/param; every other non-slicer
+ *   view gets a `filter` clause for it (page-level cross-filter).
+ * - A **chart** click publishes a point selection on its key field(s). The
+ *   source emphasizes itself (`highlight` on its own param, so it dims the
+ *   unpicked marks rather than hiding them), and **every other view** gets a
+ *   `filter` clause for that param (Power BI–style cross-filter of the page).
  */
 
 import type {
@@ -123,12 +123,6 @@ function addFilterParam(spec: ChartSpec, paramName: string): ChartSpec {
   return { ...spec, filter } as ChartSpec;
 }
 
-function usesAll(spec: ChartSpec, fields: readonly string[]): boolean {
-  if (fields.length === 0) return false;
-  const have = specFields(spec);
-  return fields.every((f) => have.has(f));
-}
-
 interface WiredSource {
   /** The view index this source belongs to. */
   view: number;
@@ -185,28 +179,24 @@ export function wireViews(
   const byId = new Map(out.map((v, i) => [v.id, i]));
 
   if (!explicit) {
-    // 2a) AUTO: filters fan out to the whole page (Power-BI-style — filtering
-    // just subsets rows, so it's meaningful even for views that don't encode the
-    // field, e.g. a KPI or table). Highlights are narrow: a chart click only
-    // emphasizes views that use *all* its key fields, so per-mark emphasis is
-    // well-defined (a chart always self-highlights).
+    // 2a) AUTO (Power BI–style): every source cross-filters the whole page
+    // (filtering just subsets rows, so it's meaningful for every view, e.g. a
+    // KPI or table). A chart source additionally self-highlights so it dims its
+    // unpicked marks instead of hiding them; a source never filters itself.
     for (const src of sources) {
-      // Pickable chart sources need a param injected so clicks publish.
+      // Pickable chart sources need a param injected so clicks publish, plus a
+      // highlight on themselves so the unpicked marks dim (e.g. pie slices).
       if (!src.slicer) {
         out[src.view].spec = addParam(out[src.view].spec, {
           name: src.param,
           select: { type: 'point', on: 'click', fields: src.fields },
         });
+        out[src.view].spec = addHighlight(out[src.view].spec, src.param);
       }
       out.forEach((v, j) => {
         if (isSlicerType(v.spec.type)) return; // slicers aren't highlight/filter targets
-        if (src.as === 'filter') {
-          if (j === src.view) return; // a source doesn't filter itself
-          out[j].spec = addFilterParam(out[j].spec, src.param);
-        } else {
-          if (!usesAll(v.spec, src.fields)) return;
-          out[j].spec = addHighlight(out[j].spec, src.param);
-        }
+        if (j === src.view) return; // a source filters the rest of the page, not itself
+        out[j].spec = addFilterParam(out[j].spec, src.param);
       });
     }
     return out;

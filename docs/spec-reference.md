@@ -1048,8 +1048,8 @@ per‑type defaults).
   field is subset by the slicer (a KPI, a table, a chart that inherits the dashboard
   data). A filter on a column a view's data doesn't contain is **ignored for that view**,
   not blanked — so a pre‑aggregated view only reacts to the dimensions it carries.
-- **Chart clicks cross‑highlight** — clicking a mark emphasizes the matching subset in
-  views that encode the same field, and always self‑highlights.
+- **Chart clicks cross‑filter** — clicking a mark subsets rows in every other view
+  (like a slicer); the clicked chart dims its own unpicked marks instead of hiding them.
 
 **Explicit links** replace auto‑wiring with an array of `InteractionLink`:
 

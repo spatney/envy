@@ -540,9 +540,9 @@ const d = renderDashboard('#app', dash);
   a column that view's data lacks is **ignored for that view** (it is *not* blanked). So
   if you want a pre‑aggregated chart to react to a slicer, include that field in its
   rows (e.g. aggregate by `region × product`, not `region` alone).
-- **Chart clicks cross‑highlight** — clicking a mark emphasizes the matching subset in
-  views that encode the same field (and always self‑highlights). Highlight is per‑mark,
-  so it only applies where the field is plotted.
+- **Chart clicks cross‑filter** — clicking a mark subsets rows in every other view
+  (like a slicer), while the clicked chart dims its own unpicked marks instead of
+  hiding them. The source self‑highlights; peers are filtered.
 
 Opt out with `interactions:'none'`, or replace auto‑wiring with explicit links:
 

@@ -190,6 +190,18 @@ describe('renderDashboard', () => {
     d.destroy();
   });
 
+  it('never filters the source on its own click (it self-dims, keeps all marks)', () => {
+    const d = renderDashboard(mount(), dashboard());
+    const bar = d.views.find((v) => v.report().type === 'bar')!;
+    expect(bar.report().markCount).toBe(4);
+    // Simulate a click on the bar: its auto param keys on the x field (month).
+    d.setSelection('__sel__trend', { kind: 'point', fields: ['month'], tuples: [['Jan']] });
+    // Source keeps all four marks (dimmed, not hidden) — it does not filter itself.
+    expect(bar.report().markCount).toBe(4);
+    d.clearSelection('__sel__trend');
+    d.destroy();
+  });
+
   it('updates, resizes, and ignores updates after destroy', () => {
     const d = renderDashboard(mount(), dashboard());
     d.update(

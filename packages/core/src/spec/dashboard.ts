@@ -4,8 +4,9 @@
  *
  * A dashboard owns a shared dataset and a shared selection store, lays its views
  * out on a responsive grid, and *auto-wires* cross-interaction: slicers filter
- * the charts, and clicking a chart cross-highlights the other charts that share
- * the selected field. Everything is plain JSON — no callbacks — so a dashboard
+ * the charts, and clicking a chart cross-filters the other views while the
+ * source dims its own unpicked marks (Power BI–style).
+ * Everything is plain JSON — no callbacks — so a dashboard
  * round-trips through `JSON.stringify` just like a chart.
  */
 
@@ -136,8 +137,9 @@ export interface DashboardSpec {
   views: DashboardView[];
   /**
    * Cross-interaction policy:
-   * - 'auto' (default): slicers filter charts; chart clicks cross-highlight
-   *   charts sharing the selected field.
+   * - 'auto' (default): every source cross-filters the page — slicers and chart
+   *   clicks both subset rows in the other views; the clicked chart dims its own
+   *   unpicked marks instead of hiding them.
    * - 'none': views are laid out but not linked.
    * - an array of {@link InteractionLink}: explicit wiring (replaces auto).
    */

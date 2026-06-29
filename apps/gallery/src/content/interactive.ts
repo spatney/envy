@@ -1,7 +1,7 @@
 /**
  * Interactive demos for the gallery — the five slicer visuals and a fully
  * auto-wired dashboard (slicer cross-filters every chart; clicking a bar
- * cross-highlights). Data is generated deterministically and baked inline so the
+ * cross-filters the page, dimming the source). Data is generated deterministically and baked inline so the
  * specs stay self-contained and copy-pasteable.
  */
 
@@ -78,7 +78,7 @@ export function slicerSpecs(): { id: string; title: string; spec: () => ChartSpe
 /**
  * A complete, BI-grade interactive dashboard: a navigator strip of slicers that
  * cross-filter the whole page, a KPI band, and a coordinated set of charts
- * (clicking a mark cross-highlights the others). `interactions: 'auto'` wires it
+ * (clicking a mark cross-filters the others). `interactions: 'auto'` wires it
  * all with no manual links.
  */
 export function dashboardDemo(): DashboardSpec {
@@ -86,7 +86,7 @@ export function dashboardDemo(): DashboardSpec {
   return {
     type: 'dashboard',
     title: 'Regional revenue cockpit',
-    subtitle: 'Banded BI layout · filter from the top, click a mark to cross-highlight',
+    subtitle: 'Banded BI layout · filter from the top, click a mark to cross-filter',
     data,
     layout: {
       cols: 12,
@@ -229,7 +229,7 @@ export function dashboardDemo(): DashboardSpec {
       {
         id: 'trend',
         title: 'Monthly trend by region',
-        subtitle: 'Cross-highlight by region',
+        subtitle: 'Cross-filter by region',
         accent: '#14b8a6',
         spec: {
           type: 'line',

@@ -2319,7 +2319,7 @@
               }
             }
           ],
-          "description": "Cross-interaction policy:\n- 'auto' (default): slicers filter charts; chart clicks cross-highlight charts sharing the selected field.\n- 'none': views are laid out but not linked.\n- an array of InteractionLink: explicit wiring (replaces auto)."
+          "description": "Cross-interaction policy:\n- 'auto' (default): every source cross-filters the page — slicers and chart clicks both subset rows in the other views; the clicked chart dims its own unpicked marks instead of hiding them.\n- 'none': views are laid out but not linked.\n- an array of InteractionLink: explicit wiring (replaces auto)."
         }
       },
       "required": [

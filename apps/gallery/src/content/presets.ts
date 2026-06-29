@@ -953,7 +953,7 @@ export const presets: Preset[] = [
     id: 'dashboard',
     label: 'Dashboard · auto-wired',
     group: 'Interactive',
-    note: 'cross-filter + cross-highlight',
+    note: 'cross-filter from slicers + chart clicks',
     build: () => dashboardDemo(),
   },
 ];

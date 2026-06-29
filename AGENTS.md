@@ -90,7 +90,7 @@ so a chart's `filter:[{param:'region'}]` auto-connects to a `field:'region'` sli
 **Dashboards** compose it all in one JSON: a `dashboard` spec lays `views` out on a
 grid, shares one dataset + selection store, and `interactions:'auto'` cross-wires the
 page — a slicer filters every view whose data carries its field; clicking a chart
-cross-highlights charts that share the field. Render with `renderDashboard(container, spec)`.
+cross-filters the page while the clicked chart dims its own marks. Render with `renderDashboard(container, spec)`.
 
 ```ts
 import { renderDashboard, validateSpec } from 'graphein';

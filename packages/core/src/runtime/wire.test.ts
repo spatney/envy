@@ -74,26 +74,27 @@ describe('wireViews — auto', () => {
     expect(slicer.highlight).toBeUndefined();
     // Every non-slicer view gets the slicer's filter (page-level filtering),
     // even the scatter that doesn't encode "region".
-    expect(bar.filter).toEqual([{ param: 'region' }]);
-    expect(scatter.filter).toEqual([{ param: 'region' }]);
+    expect(bar.filter).toContainEqual({ param: 'region' });
+    expect(scatter.filter).toContainEqual({ param: 'region' });
   });
 
-  it('injects a publish param on a pickable chart and cross-highlights views sharing its key field', () => {
+  it('injects a publish param, self-highlights, and cross-filters every other view', () => {
     const wired = wireViews(views(barByRegion, lineByRegion, scatterByCategory), 'auto');
     const [bar, line, scatter] = wired.map((v) => v.spec);
     // Bar source param injected.
     expect(bar.params?.[0].name).toBe('__sel__v0');
     expect(bar.params?.[0].select).toMatchObject({ type: 'point', on: 'click', fields: ['region'] });
-    // Bar highlights itself and the line (both use "region").
-    expect(bar.highlight).toContainEqual({ param: '__sel__v0' });
-    expect(line.highlight).toContainEqual({ param: '__sel__v0' });
-    // Line also publishes its own param, which highlights bar + line.
-    expect(line.params?.[0].name).toBe('__sel__v1');
-    expect(bar.highlight).toContainEqual({ param: '__sel__v1' });
-    // Scatter keys on "category"; it self-highlights but neither bar nor line
-    // uses "category", so they don't cross-link to it (and it not to them).
+    // Source emphasizes itself (dims unpicked marks) — never filters itself.
+    expect(bar.highlight).toEqual([{ param: '__sel__v0' }]);
+    expect(bar.filter ?? []).not.toContainEqual({ param: '__sel__v0' });
+    // Every other view subsets rows by the bar's param (whole-page cross-filter).
+    expect(line.filter).toContainEqual({ param: '__sel__v0' });
+    expect(scatter.filter).toContainEqual({ param: '__sel__v0' });
+    // Each chart self-highlights and filters peers, regardless of shared fields.
+    expect(line.highlight).toEqual([{ param: '__sel__v1' }]);
     expect(scatter.highlight).toEqual([{ param: '__sel__v2' }]);
-    expect(scatter.highlight).not.toContainEqual({ param: '__sel__v0' });
+    expect(bar.filter).toContainEqual({ param: '__sel__v1' });
+    expect(bar.filter).toContainEqual({ param: '__sel__v2' });
   });
 
   it('does not mutate the input specs', () => {
