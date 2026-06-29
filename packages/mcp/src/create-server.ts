@@ -25,7 +25,7 @@ Workflow:
 2. Shape your data as a tidy array — one row per observation, one column per variable.
 3. Emit a ChartSpec and call render_chart: it validates, auto-repairs safe mistakes, renders a PNG, and returns a vision-free critique (the render report + lint warnings). Read the critique to verify the chart looks right.
 4. If a spec is invalid, render_chart (and validate_chart) return structured errors each with a JSON-Patch 'fix' — apply it (or call repair_chart) and retry instead of regenerating.
-Use summarize_chart for deterministic alt-text. DOM-only visuals (kpi, table, matrix, slicers, dashboard) validate but produce no headless image.`;
+Use summarize_chart for deterministic alt-text. Every type rasterizes headlessly, including kpi, table, matrix, slicers and dashboard (static canvas snapshots).`;
 
 /** A permissive object schema for a Graphein spec — validateSpec does the real checking. */
 const specSchema = z
@@ -51,7 +51,7 @@ export function createServer(): McpServer {
     {
       title: 'Render a Graphein chart',
       description:
-        'The one-call loop: validate a ChartSpec, auto-repair safe mistakes, render it to a PNG, and return the image plus a vision-free critique (render report, lint warnings, repairs applied). If the spec cannot be made valid, returns structured errors with JSON-Patch fixes instead of an image. DOM-only types (kpi, table, matrix, slicers, dashboard) validate but return no image.',
+        'The one-call loop: validate a ChartSpec, auto-repair safe mistakes, render it to a PNG, and return the image plus a vision-free critique (render report, lint warnings, repairs applied). If the spec cannot be made valid, returns structured errors with JSON-Patch fixes instead of an image. Every type rasterizes headlessly — kpi, table, matrix, slicers and dashboard render static canvas snapshots.',
       inputSchema: {
         spec: specSchema,
         width: z.number().int().positive().optional().describe('Logical width in CSS px (default 800).'),

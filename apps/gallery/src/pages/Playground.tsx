@@ -1,8 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { json } from '@codemirror/lang-json';
-import { Compartment, EditorState, type Extension } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import { basicSetup } from 'codemirror';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dashboard } from '@graphein/react';
 import {
   repairSpec,
@@ -15,12 +11,12 @@ import {
 } from 'graphein';
 import { ChartCanvas } from '../components/chart/ChartCanvas';
 import { ReportPanel } from '../components/chart/ReportPanel';
-import { Page, PageHeader } from '../components/ui/Page';
-import { Callout, Card, Chip, Kbd, Kicker } from '../components/ui/primitives';
+import { CodeMirrorEditor } from '../components/editor/CodeMirrorEditor';
+import { Page } from '../components/ui/Page';
+import { Button, Callout, Card, Chip, Kbd, Kicker, Stat } from '../components/ui/primitives';
 import { presetGroups, presets, type Preset } from '../content/presets';
 import { fullSpecJson } from '../lib/chart';
 import { takePlaygroundHandoff } from '../lib/playground';
-import { useTheme } from '../state/theme';
 
 type AnySpec = ChartSpec | DashboardSpec;
 
@@ -70,54 +66,6 @@ function updateUrlSpec(text: string) {
 
 function pretty(spec: unknown): string {
   return JSON.stringify(spec, null, 2);
-}
-
-function cmTheme(mode: 'light' | 'dark'): Extension {
-  return EditorView.theme(
-    {
-      '&': {
-        height: '100%',
-        color: 'var(--text)',
-        backgroundColor: 'var(--surface)',
-        fontFamily: 'var(--font-mono)',
-        fontSize: '13px',
-      },
-      '.cm-scroller': {
-        fontFamily: 'var(--font-mono)',
-        lineHeight: '1.65',
-      },
-      '.cm-content': {
-        padding: '18px 0',
-        caretColor: 'var(--accent)',
-      },
-      '.cm-line': {
-        padding: '0 18px',
-      },
-      '.cm-gutters': {
-        backgroundColor: 'var(--surface-2)',
-        color: 'var(--faint)',
-        borderRight: '1px solid var(--border)',
-      },
-      '.cm-activeLine': {
-        backgroundColor: 'var(--accent-soft)',
-      },
-      '.cm-activeLineGutter': {
-        backgroundColor: 'var(--accent-soft)',
-        color: 'var(--accent)',
-      },
-      '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
-        backgroundColor: 'var(--accent-soft)',
-      },
-      '&.cm-focused': {
-        outline: '2px solid var(--accent)',
-        outlineOffset: '-2px',
-      },
-      '.cm-foldGutter span': {
-        color: 'var(--faint)',
-      },
-    },
-    { dark: mode === 'dark' },
-  );
 }
 
 function initialText(): string {
@@ -198,12 +146,7 @@ function PresetPicker({
 }
 
 export function Playground() {
-  const { theme } = useTheme();
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const themeRef = useRef(new Compartment());
   const [source, setSource] = useState(initialText);
-  const initialSourceRef = useRef(source);
   const [selectedPreset, setSelectedPreset] = useState(DEFAULT_PRESET.id);
   const [parsed, setParsed] = useState<ParsedState>({ spec: null, parseError: null, validation: null });
   const [repair, setRepair] = useState<RepairState | null>(null);
@@ -215,38 +158,7 @@ export function Playground() {
     setSource(next);
     setRepair(null);
     setReport(null);
-    const view = viewRef.current;
-    if (view && view.state.doc.toString() !== next) {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
-    }
   }, []);
-
-  useEffect(() => {
-    if (!hostRef.current || viewRef.current) return;
-    const listener = EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        setRepair(null);
-        setReport(null);
-        setSource(update.state.doc.toString());
-      }
-    });
-    const view = new EditorView({
-      parent: hostRef.current,
-      state: EditorState.create({
-        doc: initialSourceRef.current,
-        extensions: [basicSetup, json(), EditorView.lineWrapping, listener, themeRef.current.of(cmTheme(theme))],
-      }),
-    });
-    viewRef.current = view;
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    viewRef.current?.dispatch({ effects: themeRef.current.reconfigure(cmTheme(theme)) });
-  }, [theme]);
 
   useEffect(() => {
     const handoff = takePlaygroundHandoff();
@@ -308,47 +220,55 @@ export function Playground() {
   const validation = parsed.validation;
   const valid = Boolean(validation?.valid && parsed.spec);
   const canRepair = Boolean(parsed.spec && validation && (validation.errors.length > 0 || validation.warnings.some((w) => w.fix)));
+  const diagnosticsCount = (validation?.errors.length ?? 0) + (validation?.warnings.length ?? 0);
+  const lineCount = source.split('\n').length;
 
   return (
     <Page wide>
-      <PageHeader
-        kicker="Playground"
-        title="Live spec workbench"
-        blurb="Write one JSON-serializable Graphein spec, validate it, repair safe mistakes, render it live, and read the chart’s own diagnostics without leaving the page."
-      />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-xl">
+          <Kicker>Playground</Kicker>
+          <h1 className="mt-1.5 font-display text-3xl font-semibold tracking-tight text-text sm:text-4xl">
+            Spec in, report out
+          </h1>
+          <p className="mt-2 text-muted">
+            Edit one ChartSpec, validate, repair safe fixes, render, and read the RenderReport — the
+            same loop SSR and MCP run.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Stat value={valid ? 'valid' : diagnosticsCount} label={valid ? 'schema' : 'findings'} gradient={valid} />
+          <Stat value={lineCount} label="lines" />
+          <Stat value={report?.markCount ?? '—'} label="marks" />
+        </div>
+      </div>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <Card className="overflow-hidden">
-          <div className="border-b border-border bg-surface-2 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <Kicker>JSON editor</Kicker>
-                <h2 className="mt-1 font-display text-xl font-semibold text-text">Author, validate, repair</h2>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <PresetPicker selected={selectedPreset} onPick={loadPreset} />
-                <button
-                  type="button"
-                  onClick={repairCurrent}
-                  disabled={!canRepair}
-                  className="h-10 rounded-lg border border-border-strong bg-surface px-4 text-sm font-semibold text-text shadow-sm transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Repair
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-faint">
-              <Chip tone={valid ? 'ok' : parsed.parseError ? 'err' : 'warn'}>
-                {valid ? 'valid spec' : parsed.parseError ? 'invalid JSON' : 'needs attention'}
-              </Chip>
-              <span>
-                <Kbd>Ctrl</Kbd> <Kbd>F</Kbd> search · soft-wrapped · shareable URL
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2 p-3">
+            <Chip tone={valid ? 'ok' : parsed.parseError ? 'err' : 'warn'}>
+              {valid ? 'valid spec' : parsed.parseError ? 'invalid JSON' : 'needs attention'}
+            </Chip>
+            <PresetPicker selected={selectedPreset} onPick={loadPreset} />
+            <Button type="button" onClick={repairCurrent} disabled={!canRepair} variant="outline" className="h-10 rounded-lg">
+              Repair
+            </Button>
+            <span className="ml-auto hidden text-xs text-faint sm:inline">
+              <Kbd>Ctrl</Kbd> <Kbd>F</Kbd> search · shareable URL
+            </span>
           </div>
 
           <div className="h-[620px] border-b border-border bg-surface">
-            <div ref={hostRef} className="h-full" />
+            <CodeMirrorEditor
+              value={source}
+              onChange={(next) => {
+                setRepair(null);
+                setReport(null);
+                setSource(next);
+              }}
+              className="h-full"
+              ariaLabel="Graphein chart spec JSON"
+            />
           </div>
 
           <div className="space-y-4 p-4">
@@ -387,7 +307,7 @@ export function Playground() {
             <div className="flex flex-col gap-3 border-b border-border bg-surface-2 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <Kicker>Live preview</Kicker>
-                <h2 className="mt-1 font-display text-xl font-semibold text-text">Rendered output</h2>
+                <h2 className="mt-1 font-display text-xl font-semibold text-text">Rendered Output</h2>
               </div>
               <label className="flex min-w-52 items-center gap-3 text-sm text-muted">
                 Width
@@ -422,7 +342,7 @@ export function Playground() {
                   <div className="max-w-md">
                     <Chip tone="warn">waiting for a valid spec</Chip>
                     <p className="mt-4 text-sm leading-relaxed text-muted">
-                      Fix JSON syntax or validation errors and Graphein will render the chart here automatically.
+                      Fix JSON syntax or validation errors. Graphein renders the chart here when the ChartSpec is valid.
                     </p>
                   </div>
                 </div>
@@ -433,7 +353,7 @@ export function Playground() {
           <Card className="space-y-4 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone={summary ? 'accent' : 'neutral'}>summarize()</Chip>
-              <span className="text-sm text-faint">Deterministic plain-English chart readout</span>
+              <span className="text-sm text-faint">Deterministic chart summary</span>
             </div>
             <p className="text-sm leading-relaxed text-muted">{summary || 'A summary appears after the spec validates and renders.'}</p>
           </Card>

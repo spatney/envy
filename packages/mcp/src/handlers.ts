@@ -44,24 +44,6 @@ export interface RenderArgs {
   repair?: boolean;
 }
 
-/**
- * Visuals that have no canvas form (they render as DOM in the browser) and so
- * cannot be rasterized headless. Mirrors `DOM_ONLY_TYPES` in core's
- * `runtime/headless.ts`; kept local so a friendly message is returned *before*
- * attempting a render. A try/catch around `renderChart` is the backstop.
- */
-const NO_HEADLESS_IMAGE: ReadonlySet<string> = new Set([
-  'kpi',
-  'table',
-  'matrix',
-  'dropdown',
-  'list',
-  'search',
-  'range',
-  'dateRange',
-  'dashboard',
-]);
-
 function text(value: string): McpContent {
   return { type: 'text', text: value };
 }
@@ -128,23 +110,6 @@ export function renderChartHandler(args: RenderArgs): ToolResult {
   }
 
   const type = specType(working);
-
-  if (NO_HEADLESS_IMAGE.has(type)) {
-    return {
-      isError: false,
-      content: [
-        json({
-          ok: true,
-          rendered: false,
-          type,
-          reason: `'${type}' is a DOM-only visual with no headless image. The spec is valid; use it in a browser, or call summarize_chart for its text description.`,
-          summary: summarize(working as ChartSpec) || undefined,
-          lint: validation.warnings.map(tidyError),
-          repairsApplied: repairs,
-        }),
-      ],
-    };
-  }
 
   try {
     const { png, report, width: pxW, height: pxH } = renderChart(working as ChartSpec, {

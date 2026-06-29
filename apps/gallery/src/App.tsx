@@ -11,15 +11,18 @@ function page<T extends Record<string, ComponentType<unknown>>>(
 }
 
 const Home = page(() => import('./pages/Home'), 'Home');
-const Foundations = page(() => import('./pages/Foundations'), 'Foundations');
-const Formatting = page(() => import('./pages/Formatting'), 'Formatting');
-const Interactivity = page(() => import('./pages/Interactivity'), 'Interactivity');
+const Learn = page(() => import('./pages/Learn'), 'Learn');
+const LearnChapter = page(() => import('./pages/LearnChapter'), 'LearnChapter');
+const Charts = page(() => import('./pages/Charts'), 'Charts');
+const StoryRoute = page(() => import('./pages/StoryRoute'), 'StoryRoute');
+const GuideRoute = page(() => import('./pages/GuideRoute'), 'GuideRoute');
 const Ssr = page(() => import('./pages/Ssr'), 'Ssr');
 const Mcp = page(() => import('./pages/Mcp'), 'Mcp');
 const Packages = page(() => import('./pages/Packages'), 'Packages');
 const ReactUsage = page(() => import('./pages/ReactUsage'), 'ReactUsage');
+const Reference = page(() => import('./pages/Reference'), 'Reference');
 const Playground = page(() => import('./pages/Playground'), 'Playground');
-const StoryRoute = page(() => import('./pages/StoryRoute'), 'StoryRoute');
+const NotFound = page(() => import('./pages/NotFound'), 'NotFound');
 
 export function App() {
   return (
@@ -27,16 +30,18 @@ export function App() {
       <Routes>
         <Route element={<Shell />}>
           <Route index element={<Home />} />
-          <Route path="foundations" element={<Foundations />} />
+          <Route path="learn" element={<Learn />} />
+          <Route path="learn/:chapter" element={<LearnChapter />} />
+          <Route path="charts" element={<Charts />} />
           <Route path="charts/:id" element={<StoryRoute />} />
-          <Route path="formatting" element={<Formatting />} />
-          <Route path="interactivity" element={<Interactivity />} />
+          <Route path="guides/:topic" element={<GuideRoute />} />
           <Route path="ssr" element={<Ssr />} />
           <Route path="mcp" element={<Mcp />} />
           <Route path="packages" element={<Packages />} />
           <Route path="react" element={<ReactUsage />} />
+          <Route path="reference" element={<Reference />} />
           <Route path="playground" element={<Playground />} />
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </HashRouter>

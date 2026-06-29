@@ -60,7 +60,7 @@ const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.m
 type ResolvedLayout = Required<Pick<DashboardLayout, 'cols' | 'rowHeight' | 'gap'>> &
   Pick<DashboardLayout, 'breakpoints' | 'navigators' | 'sections' | 'preset' | 'maxWidth' | 'density' | 'padding'>;
 type WiredView = DashboardView & { spec: ChartSpec };
-type Cell = {
+export type DashboardCell = {
   el: HTMLElement;
   view: WiredView;
   x?: number;
@@ -69,6 +69,8 @@ type Cell = {
   h: number;
   baseCols: number;
 };
+type Cell = DashboardCell;
+export type { WiredView };
 type SectionPlan = {
   section?: DashboardSection;
   views: WiredView[];
@@ -79,7 +81,7 @@ type SectionPlan = {
 };
 
 /** Default column/row span for a view, by type (at full column count). */
-function defaultSpan(spec: ChartSpec, cols: number): { w: number; h: number } {
+export function defaultSpan(spec: ChartSpec, cols: number): { w: number; h: number } {
   const t = spec.type;
   if (isSlicerType(t)) return { w: Math.min(3, cols), h: 2 };
   if (t === 'kpi') return { w: Math.min(3, cols), h: 2 };
@@ -115,7 +117,7 @@ function resolveContainer(target: HTMLElement | string): HTMLElement {
 }
 
 /** Inherit the dashboard's data/theme/background onto a (wired) view spec. */
-function inheritInto(spec: ChartSpec, dash: DashboardSpec, tokens: ThemeTokens, suppressTitle = false): ChartSpec {
+export function inheritInto(spec: ChartSpec, dash: DashboardSpec, tokens: ThemeTokens, suppressTitle = false): ChartSpec {
   const next = { ...spec } as ChartSpec & { data?: unknown; theme?: unknown; background?: string; title?: unknown };
   if (next.data == null && dash.data) next.data = dash.data;
   next.theme = spec.theme ?? dash.theme;
@@ -128,7 +130,7 @@ function hasExplicitPlacement(view: DashboardView): boolean {
   return view.x != null || view.y != null || view.w != null || view.h != null;
 }
 
-function placeViews(views: WiredView[], cols: number, preset: DashboardLayout['preset']): Cell[] {
+export function placeViews(views: WiredView[], cols: number, preset: DashboardLayout['preset']): Cell[] {
   if (!preset || preset === 'auto') {
     return views.map((view) => {
       const span = defaultSpan(view.spec, cols);

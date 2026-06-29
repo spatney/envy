@@ -1,6 +1,6 @@
 {
   "name": "@graphein/node",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "Headless Graphein rendering for Node — render any ChartSpec to a PNG buffer with a RenderReport, no browser required.",
   "license": "MIT",
@@ -56,6 +56,6 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.1",
-    "graphein": "^0.6.0"
+    "graphein": "^0.7.0"
   }
 }

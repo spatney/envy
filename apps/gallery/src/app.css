@@ -4,65 +4,90 @@
 @custom-variant dark (&:where(.theme-dark, .theme-dark *));
 
 /* =========================================================================
-   Design tokens — flat, modern, playful. Solid fills, hairline borders,
-   a teal accent from the Graphein logo. Space Grotesk display + Inter UI.
-   Ported & elevated from the original gallery design system.
+   Graphein gallery — "Spectrum" design system.
+
+   A bold, gradient-forward identity built on the logo's four-node ramp:
+   indigo -> blue -> cyan -> emerald. The chrome (hero, rails, learn track,
+   CTAs) carries the spectrum energy; chart *stages* stay on clean solid
+   surfaces so data marks keep their contrast. Light + dark + sketch supported.
    ========================================================================= */
 :root {
-  --bg: #fbfcfe;
+  /* The four spectrum stops — the single source of brand color. */
+  --spec-1: #4f46e5; /* indigo  */
+  --spec-2: #1e88e5; /* blue    */
+  --spec-3: #06b6d4; /* cyan    */
+  --spec-4: #10b981; /* emerald */
+
+  --bg: #fbfbfe;
   --surface: #ffffff;
-  --surface-2: #f3f5f9;
-  --surface-3: #eaeef4;
-  --border: #e4e9f0;
-  --border-strong: #cfd8e3;
-  --text: #0f1729;
-  --muted: #5a6679;
-  --faint: #8a96a8;
-  --accent: #0d9488;
-  --accent-strong: #0b7d72;
+  --surface-2: #f4f5fb;
+  --surface-3: #eaecf7;
+  --border: #e6e7f4;
+  --border-strong: #d2d5ea;
+  --text: #0d1023;
+  --muted: #535873;
+  --faint: #868bab;
+
+  --accent: #5347e6;
+  --accent-strong: #4035c4;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(13, 148, 136, 0.1);
-  --accent-line: rgba(13, 148, 136, 0.32);
-  --scrim: rgba(15, 23, 42, 0.46);
-  --ok: #0d9488;
+  --accent-soft: rgba(83, 71, 230, 0.1);
+  --accent-line: rgba(83, 71, 230, 0.3);
+
+  --scrim: rgba(13, 16, 35, 0.5);
+  --ok: #0e9f6e;
   --warn: #b45309;
   --err: #dc2626;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.07);
-  --shadow-pop: 0 12px 34px rgba(15, 23, 42, 0.14);
+
+  /* The brand gradient, reused everywhere. */
+  --grad-brand: linear-gradient(110deg, var(--spec-1), var(--spec-2) 36%, var(--spec-3) 68%, var(--spec-4));
+
+  --shadow-sm: 0 1px 2px rgba(13, 16, 35, 0.05);
+  --shadow-md: 0 8px 24px rgba(13, 16, 35, 0.08);
+  --shadow-pop: 0 18px 48px rgba(13, 16, 35, 0.16);
+  --shadow-glow: 0 10px 40px -12px color-mix(in oklab, var(--spec-1) 50%, transparent);
 
   color-scheme: light;
 }
 
 .theme-dark {
-  --bg: #090d15;
-  --surface: #111826;
-  --surface-2: #0d1320;
-  --surface-3: #161f30;
-  --border: #1d2740;
-  --border-strong: #2b3a58;
-  --text: #e8edf6;
-  --muted: #95a2b8;
-  --faint: #6a7689;
-  --accent: #2dd4bf;
-  --accent-strong: #5eead4;
-  --accent-contrast: #042522;
-  --accent-soft: rgba(45, 212, 191, 0.13);
-  --accent-line: rgba(45, 212, 191, 0.36);
-  --scrim: rgba(0, 0, 0, 0.58);
-  --ok: #2dd4bf;
+  --spec-1: #6366f1;
+  --spec-2: #38bdf8;
+  --spec-3: #22d3ee;
+  --spec-4: #34d399;
+
+  --bg: #070912;
+  --surface: #0f1322;
+  --surface-2: #0b0f1c;
+  --surface-3: #171d31;
+  --border: #1b2238;
+  --border-strong: #2b3556;
+  --text: #e9ecf9;
+  --muted: #9aa1bf;
+  --faint: #6c7395;
+
+  --accent: #8b8cff;
+  --accent-strong: #a5a6ff;
+  --accent-contrast: #080a16;
+  --accent-soft: rgba(139, 140, 255, 0.14);
+  --accent-line: rgba(139, 140, 255, 0.38);
+
+  --scrim: rgba(0, 0, 0, 0.6);
+  --ok: #34d399;
   --warn: #fbbf24;
   --err: #f87171;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 26px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 22px 50px rgba(0, 0, 0, 0.62);
+  --shadow-glow: 0 12px 48px -10px color-mix(in oklab, var(--spec-2) 55%, transparent);
 
   color-scheme: dark;
 }
 
-/* Map tokens to Tailwind theme so `bg-surface`, `text-muted`, `border-border`,
-   `text-accent`, `font-display`, etc. all work and react to the active theme.
-   `inline` keeps the var() references live (theme-switch with no rebuild). */
+/* Map tokens into the Tailwind theme so `bg-surface`, `text-muted`,
+   `border-border`, `text-accent`, `font-display`, the spectrum stops, etc.
+   all work and react live to the active theme (no rebuild on toggle). */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -81,11 +106,16 @@
   --color-warn: var(--warn);
   --color-err: var(--err);
 
+  --color-spec-1: var(--spec-1);
+  --color-spec-2: var(--spec-2);
+  --color-spec-3: var(--spec-3);
+  --color-spec-4: var(--spec-4);
+
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, Menlo, Consolas, monospace;
 
-  --radius-card: 14px;
+  --radius-card: 16px;
 }
 
 @layer base {
@@ -118,10 +148,10 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
   ::selection {
-    background: var(--accent-soft);
+    background: color-mix(in oklab, var(--spec-3) 28%, transparent);
   }
   :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex='-1']), [role='button'], [role='tab']):focus {
     outline: none;
@@ -130,6 +160,7 @@
     outline: 2px solid var(--accent);
     outline-offset: 3px;
     box-shadow: 0 0 0 4px var(--accent-soft);
+    border-radius: 6px;
   }
   pre,
   .gx-code,
@@ -151,18 +182,17 @@
   .gx-code code {
     white-space: pre;
   }
-  /* Thin, themed scrollbars. */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border-strong) transparent;
   }
   *::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
   }
   *::-webkit-scrollbar-thumb {
     background: var(--border-strong);
-    border-radius: 9px;
+    border-radius: 10px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
@@ -179,7 +209,7 @@
   }
 }
 
-/* ---- Reusable component classes (used across the storybook) ---------------- */
+/* ---- Reusable component classes ------------------------------------------- */
 @layer components {
   .gx-card {
     background: var(--surface);
@@ -187,11 +217,76 @@
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-sm);
   }
+
+  /* Spectrum gradient text — the brand headline treatment. */
+  .spectrum-text {
+    background: var(--grad-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* A thin spectrum rule / divider. */
+  .spectrum-rule {
+    background: var(--grad-brand);
+    height: 3px;
+    border-radius: 999px;
+  }
+
+  /* A solid spectrum-filled surface (buttons, accents). */
+  .spectrum-fill {
+    background: var(--grad-brand);
+    color: #fff;
+  }
+
+  /* Gradient hairline border via mask — glows on hover for feature cards. */
+  .spectrum-border {
+    position: relative;
+  }
+  .spectrum-border::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--grad-brand);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .spectrum-border:hover::after {
+    opacity: 1;
+  }
+
+  /* Ambient aurora glow behind heroes / section heads. */
+  .aurora {
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 460px;
+    background:
+      radial-gradient(40% 60% at 12% 20%, color-mix(in oklab, var(--spec-1) 40%, transparent), transparent 70%),
+      radial-gradient(36% 56% at 52% 8%, color-mix(in oklab, var(--spec-3) 36%, transparent), transparent 70%),
+      radial-gradient(40% 60% at 88% 24%, color-mix(in oklab, var(--spec-4) 34%, transparent), transparent 70%);
+    filter: blur(46px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .theme-dark .aurora {
+    opacity: 0.42;
+  }
+
   .gx-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.15rem 0.55rem;
+    padding: 0.15rem 0.6rem;
     border-radius: 999px;
     font-size: 0.72rem;
     font-weight: 600;
@@ -199,18 +294,16 @@
     color: var(--muted);
     border: 1px solid var(--border);
   }
-  .gx-focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-  /* The storybook "canvas" — a subtle dotted backdrop behind a live chart. */
+
+  /* The chart "stage" backdrop — a faint dotted grid behind a live chart. */
   .gx-stage {
     background-color: var(--surface);
-    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-image: radial-gradient(color-mix(in oklab, var(--border-strong) 70%, transparent) 1px, transparent 1px);
     background-size: 18px 18px;
     background-position: -9px -9px;
   }
-  /* Shiki output: kill its inline background, supply our own padding + mono font. */
+
+  /* Shiki output: kill its inline background, supply our own padding + font. */
   .gx-code pre.shiki {
     margin: 0;
     padding: 1rem;
@@ -227,13 +320,36 @@
   .gx-code pre.shiki code {
     font-family: inherit;
   }
+
+  /* CodeMirror theming hooks for the editor surfaces. */
+  .cm-editor {
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .cm-editor .cm-gutters {
+    background: transparent;
+    border: none;
+    color: var(--faint);
+  }
+  .cm-editor .cm-activeLine,
+  .cm-editor .cm-activeLineGutter {
+    background: var(--accent-soft);
+  }
+  .cm-editor .cm-selectionBackground,
+  .cm-editor.cm-focused .cm-selectionBackground {
+    background: color-mix(in oklab, var(--spec-2) 26%, transparent) !important;
+  }
+  .cm-editor .cm-cursor {
+    border-left-color: var(--accent);
+  }
 }
 
-/* ---- Entrance animation (respects reduced-motion via the query above) ------ */
+/* ---- Motion (respects reduced-motion via the query above) ----------------- */
 @keyframes gx-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -241,6 +357,29 @@
   }
 }
 .gx-rise {
-  animation: gx-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gx-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--d, 0ms);
+}
+
+@keyframes gx-pan {
+  to {
+    background-position: 200% center;
+  }
+}
+/* An animated spectrum sweep for the hero headline / accents. */
+.spectrum-pan {
+  background: linear-gradient(
+    110deg,
+    var(--spec-1),
+    var(--spec-2) 25%,
+    var(--spec-3) 50%,
+    var(--spec-4) 75%,
+    var(--spec-1)
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gx-pan 8s linear infinite;
 }

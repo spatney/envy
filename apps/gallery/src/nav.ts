@@ -1,4 +1,6 @@
 import { allStories, storyGroups } from './stories/registry';
+import { learnChapters } from './learn/registry';
+import { guides } from './guides/registry';
 
 export interface NavLink {
   label: string;
@@ -16,33 +18,31 @@ export const NAV: NavSection[] = [
     title: 'Get started',
     items: [
       { label: 'Overview', to: '/' },
-      { label: 'Foundations', to: '/foundations' },
+      { label: 'Learn Track', to: '/learn' },
       { label: 'Playground', to: '/playground' },
     ],
   },
-  { id: 'charts', title: 'Charts', kind: 'charts' },
+  { id: 'charts', title: 'Chart Catalog', kind: 'charts' },
   {
-    id: 'capabilities',
-    title: 'Capabilities',
+    id: 'guides',
+    title: 'Guides',
+    items: guides.map((g) => ({ label: g.title, to: `/guides/${g.id}` })),
+  },
+  {
+    id: 'tools',
+    title: 'Live Tools',
     items: [
-      { label: 'Formatting & styling', to: '/formatting' },
-      { label: 'Interactivity', to: '/interactivity' },
+      { label: 'Server Rendering', to: '/ssr', badge: 'live' },
+      { label: 'MCP Console', to: '/mcp', badge: 'live' },
     ],
   },
   {
-    id: 'agents',
-    title: 'Server & agents',
+    id: 'reference',
+    title: 'Reference',
     items: [
-      { label: 'Server-side rendering', to: '/ssr', badge: 'live' },
-      { label: 'MCP server', to: '/mcp', badge: 'live' },
-    ],
-  },
-  {
-    id: 'packages',
-    title: 'Packages',
-    items: [
-      { label: 'The packages', to: '/packages' },
-      { label: 'Using React', to: '/react' },
+      { label: 'Packages', to: '/packages' },
+      { label: 'React', to: '/react' },
+      { label: 'Spec Reference', to: '/reference' },
     ],
   },
 ];
@@ -62,6 +62,12 @@ export function searchIndex(): SearchEntry[] {
     for (const item of section.items) {
       out.push({ label: item.label, to: item.to, group: section.title, keywords: item.label });
     }
+  }
+  for (const ch of learnChapters) {
+    out.push({ label: ch.title, to: `/learn/${ch.id}`, group: 'Learn', keywords: `${ch.title} ${ch.group} ${ch.summary}` });
+  }
+  for (const g of guides) {
+    out.push({ label: g.title, to: `/guides/${g.id}`, group: 'Guides', keywords: `${g.title} ${g.summary}` });
   }
   for (const g of storyGroups()) {
     for (const s of g.stories) {

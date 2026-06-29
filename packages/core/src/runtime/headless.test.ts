@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import type { LineSpec, PieSpec, KpiSpec } from '../spec/types';
+import type { ChartSpec } from '../spec/types';
 import { renderToContext } from './headless';
 
 /** A 2D-context stand-in that tallies draw ops and records text (node env, no DOM). */
@@ -105,10 +106,41 @@ describe('renderToContext — headless custom (pie)', () => {
   });
 });
 
-describe('renderToContext — unsupported', () => {
-  it('throws a clear error for DOM-only kinds', () => {
+describe('renderToContext — formerly DOM-only', () => {
+  it('renders a kpi to canvas + ok report (no throw)', () => {
+    const { ctx, texts } = recordingCtx();
+    const kpi: KpiSpec = { type: 'kpi', label: 'ARR', data: [{ v: 42 }], value: { field: 'v', aggregate: 'sum' } };
+    const report = renderToContext({ marks: ctx, width: 300, height: 200 }, kpi);
+    expect(report.type).toBe('kpi');
+    expect(report.ok).toBe(true);
+    expect(texts).toContain('ARR');
+  });
+
+  it('renders table/matrix/slicer headlessly without touching the DOM', () => {
+    const rows = [
+      { region: 'East', sales: 120 },
+      { region: 'West', sales: 90 },
+    ];
+    for (const spec of [
+      { type: 'table', data: rows, title: 'T' },
+      { type: 'matrix', data: rows, rows: ['region'], values: [{ field: 'sales', op: 'sum' }] },
+      { type: 'dropdown', data: rows, field: 'region', title: 'Region' },
+    ] as unknown as ChartSpec[]) {
+      const { ctx } = recordingCtx();
+      const report = renderToContext({ marks: ctx, width: 400, height: 240 }, spec);
+      expect(report.type).toBe(spec.type);
+    }
+  });
+
+  it('composes a dashboard onto one canvas', () => {
     const { ctx } = recordingCtx();
-    const kpi: KpiSpec = { type: 'kpi', data: [{ v: 42 }], value: { field: 'v', aggregate: 'sum' } };
-    expect(() => renderToContext({ marks: ctx, width: 300, height: 200 }, kpi)).toThrow(/DOM-only/);
+    const dash = {
+      type: 'dashboard',
+      data: [{ region: 'East', v: 1 }, { region: 'West', v: 2 }],
+      views: [{ id: 'k', spec: { type: 'kpi', value: { field: 'v', aggregate: 'sum' } } }],
+    } as unknown as ChartSpec;
+    const report = renderToContext({ marks: ctx, width: 600, height: 320 }, dash);
+    expect(report.type).toBe('dashboard');
+    expect(report.seriesCount).toBe(1);
   });
 });

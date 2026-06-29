@@ -41,8 +41,8 @@ npm install -g graphein-mcp   # then: graphein-mcp
 | **`summarize_chart`** | Deterministic, plain-English description of what the data shows (doubles as alt-text; no LLM). |
 
 `render_chart` accepts `spec` plus optional `width`, `height`, `dpr`, and `repair`
-(default `true`). DOM-only visuals (`kpi`, `table`, `matrix`, slicers, `dashboard`)
-validate but have no headless image — the tool says so rather than failing.
+(default `true`). Every type rasterizes — kpi, table, matrix, slicers and dashboard render
+a static canvas snapshot, so the whole catalog returns an image + report.
 
 ### Example result
 

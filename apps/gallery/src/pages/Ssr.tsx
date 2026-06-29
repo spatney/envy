@@ -4,11 +4,22 @@ import { ChartCanvas } from '../components/chart/ChartCanvas';
 import { ReportPanel } from '../components/chart/ReportPanel';
 import { CodeBlock } from '../components/ui/CodeBlock';
 import { Page, PageHeader } from '../components/ui/Page';
-import { Callout, Card, Chip, Kicker, Spinner } from '../components/ui/primitives';
+import {
+  Button,
+  Callout,
+  Card,
+  Chip,
+  GradientText,
+  Kicker,
+  SectionHeader,
+  SpectrumBar,
+  Spinner,
+  Stat,
+} from '../components/ui/primitives';
 import { backendAvailable, ssrRender } from '../lib/api';
 import { applyChartTheme } from '../lib/chart';
 import { scenarioById } from '../content/scenarios';
-import { useTheme } from '../state/theme';
+import { useTheme, type ThemeName } from '../state/theme';
 
 const EXAMPLES = [
   {
@@ -24,12 +35,12 @@ const EXAMPLES = [
   {
     id: 'scatter-groups',
     label: 'Spend vs. return bubbles',
-    copy: 'A grouped scatterplot with color and size channels for high-fidelity PNG export.',
+    copy: 'A grouped scatterplot with color and size channels in the exported PNG.',
   },
   {
     id: 'heatmap-week',
     label: 'Traffic density heatmap',
-    copy: 'A dense categorical grid that proves labels, legends, and cells survive headless rendering.',
+    copy: 'A categorical grid with labels, legend, and colored cells rendered headlessly.',
   },
 ] as const;
 
@@ -42,7 +53,16 @@ const SIZE_PRESETS = [
 const NODE_SNIPPET = `import { renderChart } from '@graphein/node';
 import { writeFileSync } from 'node:fs';
 
-const { png, report } = renderChart(spec, { width: 900, height: 480, dpr: 2 });
+const { png, report } = renderChart(spec, {
+  width: 900,
+  height: 480,
+  dpr: 2,
+});
+
+if (!report.ok) {
+  console.warn(report.diagnostics);
+}
+
 writeFileSync('chart.png', png);`;
 
 interface SsrState {
@@ -107,7 +127,7 @@ function Field({
 }
 
 export function Ssr() {
-  const { theme, sketch } = useTheme();
+  const { theme, sketch, setTheme, setSketch } = useTheme();
   const [selectedId, setSelectedId] = useState<(typeof EXAMPLES)[number]['id']>('line-multi');
   const [width, setWidth] = useState(900);
   const [height, setHeight] = useState(480);
@@ -125,6 +145,7 @@ export function Ssr() {
   const spec = useMemo(() => getExampleSpec(selectedId), [selectedId]);
   const themedSpec = useMemo(() => applyChartTheme(spec, theme, sketch), [sketch, spec, theme]);
   const imageSrc = state.pngBase64 ? `data:image/png;base64,${state.pngBase64}` : null;
+  const outputPixels = `${Math.round(width * dpr)}×${Math.round(height * dpr)}`;
 
   useEffect(() => {
     let alive = true;
@@ -202,9 +223,30 @@ export function Ssr() {
     <Page wide>
       <PageHeader
         kicker="Server-side rendering"
-        title="Headless PNGs with @graphein/node"
-        blurb="Ship the same agent-authored ChartSpec to browsers, docs, CI, notebooks, and reports. @graphein/node renders it headlessly through @napi-rs/canvas, returns the exact RenderReport, and leaves the core Graphein engine zero-dependency."
+        title="Headless PNGs With @graphein/node"
+        blurb="Send the same agent-authored ChartSpec to browsers, docs, CI, notebooks, and reports. @graphein/node renders through @napi-rs/canvas, returns PNG bytes plus RenderReport, and keeps the core engine zero-dependency."
       />
+
+      <Card className="relative mb-5 overflow-hidden p-5">
+        <div className="aurora" aria-hidden="true" />
+        <div className="relative grid gap-5 lg:grid-cols-[1fr_460px] lg:items-end">
+          <SectionHeader
+            eyebrow="PNG pipeline"
+            title={
+              <>
+                Browser Spec. <GradientText>Server PNG.</GradientText>
+              </>
+            }
+            lead="This page posts a themed ChartSpec to /api/ssr, receives a real PNG from @graphein/node, and shows the latency plus the RenderReport returned by the same call."
+          />
+          <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border bg-surface/80 p-4 backdrop-blur">
+            <Stat value={state.ms === null ? '—' : `${state.ms}ms`} label="backend latency" gradient={state.ms !== null} />
+            <Stat value={outputPixels} label="PNG pixels" />
+            <Stat value={state.report?.markCount ?? '—'} label="marks checked" />
+          </div>
+        </div>
+        <SpectrumBar className="relative mt-5" />
+      </Card>
 
       <div className="grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
         <Card className="overflow-hidden">
@@ -281,6 +323,33 @@ export function Ssr() {
                 <Field label="Height" value={height} min={280} max={900} onChange={setHeight} />
                 <Field label="DPR" value={dpr} min={1} max={3} step={0.5} onChange={setDpr} />
               </div>
+
+              <div className="rounded-2xl border border-border bg-surface-2 p-3">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">Theme controls</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['light', 'dark'] as ThemeName[]).map((name) => (
+                    <Button
+                      key={name}
+                      type="button"
+                      variant={theme === name ? 'spectrum' : 'outline'}
+                      size="sm"
+                      className="rounded-lg"
+                      onClick={() => setTheme(name)}
+                    >
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+                <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-muted">
+                  Sketch rendering
+                  <input
+                    type="checkbox"
+                    checked={sketch}
+                    onChange={(event) => setSketch(event.target.checked)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -318,16 +387,17 @@ export function Ssr() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  className="rounded-lg border border-accent bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-2 disabled:text-faint"
+                <Button
                   type="button"
+                  variant="outline"
+                  className="rounded-lg border-accent text-accent"
                   disabled={!state.pngBase64}
                   onClick={downloadPng}
                 >
                   Download PNG
-                </button>
+                </Button>
                 <span className="text-xs text-faint">
-                  Output: {width}×{height} CSS pixels · {dpr}× pixel density
+                  Output: {width}×{height} CSS pixels · {dpr}× pixel density · {theme} theme
                 </span>
               </div>
             </div>
@@ -339,7 +409,7 @@ export function Ssr() {
             <div>
               <Kicker>RenderReport</Kicker>
               <h2 className="mt-1 font-display text-2xl font-semibold text-text">
-                Server-side self critique
+                Server-Side RenderReport
               </h2>
             </div>
             {state.report?.ok && <Chip tone="ok">clean</Chip>}
@@ -353,7 +423,7 @@ export function Ssr() {
           <div>
             <Kicker>Parity view</Kicker>
             <h2 className="mt-1 font-display text-2xl font-semibold text-text">
-              One spec, two runtimes
+              One ChartSpec, Two Runtimes
             </h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted">
               The browser canvas below uses the React wrapper; the PNG beside it came from Node.
@@ -400,7 +470,7 @@ export function Ssr() {
         <Card className="p-5">
           <Kicker>Why it matters</Kicker>
           <h2 className="mt-1 font-display text-2xl font-semibold text-text">
-            Production exports without a browser farm
+            PNG Exports Without a Browser Farm
           </h2>
           <div className="mt-4 grid gap-3 text-sm leading-relaxed text-muted">
             <p>
@@ -409,9 +479,7 @@ export function Ssr() {
               engine remains dependency-free and tree-shakeable.
             </p>
             <p>
-              The response is not just pixels. It includes the same RenderReport agents use in the
-              gallery: mark counts, diagnostics, clipping checks, contrast checks, and a clean/needs
-              attention verdict.
+              The response includes PNG bytes plus the same RenderReport agents use in the gallery: mark counts, clipping checks, contrast checks, and ok/needs-attention status.
             </p>
           </div>
         </Card>

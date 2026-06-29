@@ -1,6 +1,7 @@
 import { drawTitleBlock } from './chrome';
 import {
   buildTable,
+  paintTableCanvas,
   resolveConditionalDomain,
   type HeaderCell,
   type ViewColumn,
@@ -16,11 +17,90 @@ const PATH_SEPARATOR = '\u0000';
 
 export function drawMatrix(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
   if (spec.type !== 'matrix') return;
+  if (surface.headless) {
+    drawMatrixCanvas(surface, spec, tokens, size);
+    return;
+  }
   renderMatrix(surface, spec, tokens, size);
+}
+
+function drawMatrixCanvas(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, size: Size): void {
+  const rect = drawTitleBlock(surface, tokens, size, spec.title);
+  const prepared = prepareMatrix(spec);
+  paintTableCanvas({
+    ctx: surface.marks.ctx,
+    tokens,
+    rect,
+    columns: prepared.columns,
+    rowCount: prepared.rows.length,
+    getCell(rowIndex, colIndex) {
+      const row = prepared.rows[rowIndex];
+      if (colIndex === 0) return { value: rowLabel(row), raw: null };
+      const { leaf, valueIndex } = prepared.leafValueColumns[colIndex - 1];
+      const value = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR))?.values[valueIndex] ?? null;
+      const display = displayMatrixValue(value, rowIndex, colIndex - 1, prepared.denominators, spec);
+      return { value: display, raw: display };
+    },
+    rowClass(rowIndex) {
+      const row = prepared.rows[rowIndex];
+      return row.isGrandTotal === true ? 'grandtotal' : row.isSubtotal === true ? 'subtotal' : 'normal';
+    },
+    cellIndent(rowIndex, colIndex) {
+      return colIndex === 0 ? prepared.rows[rowIndex].depth * 16 : 0;
+    },
+    rowHeaderSpan: 1,
+    striped: false,
+    conditionalDomains: prepared.bodyDomains,
+    headerRows: prepared.headerRows,
+    density: spec.density,
+    sketch: resolveSketch(spec) != null,
+  });
 }
 
 function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, size: Size): void {
   const rect = drawTitleBlock(surface, tokens, size, spec.title);
+  const prepared = prepareMatrix(spec);
+  const host = document.createElement('div');
+  surface.overlay.appendChild(host);
+  buildTable({
+    container: host,
+    tokens,
+    rect,
+    columns: prepared.columns,
+    rowCount: prepared.rows.length,
+    getCell(rowIndex, colIndex) {
+      const row = prepared.rows[rowIndex];
+      if (colIndex === 0) return { value: rowLabel(row), raw: null };
+      const { leaf, valueIndex } = prepared.leafValueColumns[colIndex - 1];
+      const value = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR))?.values[valueIndex] ?? null;
+      const display = displayMatrixValue(value, rowIndex, colIndex - 1, prepared.denominators, spec);
+      return { value: display, raw: display };
+    },
+    rowClass(rowIndex) {
+      const row = prepared.rows[rowIndex];
+      return row.isGrandTotal === true ? 'grandtotal' : row.isSubtotal === true ? 'subtotal' : 'normal';
+    },
+    cellIndent(rowIndex, colIndex) {
+      return colIndex === 0 ? prepared.rows[rowIndex].depth * 16 : 0;
+    },
+    rowHeaderSpan: 1,
+    stickyHeader: true,
+    striped: false,
+    conditionalDomains: prepared.bodyDomains,
+    headerRows: prepared.headerRows,
+    density: spec.density,
+    sketch: resolveSketch(spec) != null,
+  });
+}
+
+function prepareMatrix(spec: MatrixSpec): {
+  rows: PivotFlatRow[];
+  columns: ViewColumn[];
+  leafValueColumns: Array<{ leaf: PivotHeaderNode; valueIndex: number }>;
+  denominators: ShowAsDenominators;
+  bodyDomains: Array<[number, number] | null>;
+  headerRows: HeaderCell[][];
+} {
   const data = spec.data ?? [];
   const result = pivot(data, {
     rows: spec.rows,
@@ -76,38 +156,14 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
         ),
     );
   });
-
-  const host = document.createElement('div');
-  surface.overlay.appendChild(host);
-  buildTable({
-    container: host,
-    tokens,
-    rect,
+  return {
+    rows: result.rows,
     columns,
-    rowCount: result.rows.length,
-    getCell(rowIndex, colIndex) {
-      const row = result.rows[rowIndex];
-      if (colIndex === 0) return { value: rowLabel(row), raw: null };
-      const { leaf, valueIndex } = leafValueColumns[colIndex - 1];
-      const value = row.cellsByColumnKey.get(leaf.path.join(PATH_SEPARATOR))?.values[valueIndex] ?? null;
-      const display = displayMatrixValue(value, rowIndex, colIndex - 1, denominators, spec);
-      return { value: display, raw: display };
-    },
-    rowClass(rowIndex) {
-      const row = result.rows[rowIndex];
-      return row.isGrandTotal === true ? 'grandtotal' : row.isSubtotal === true ? 'subtotal' : 'normal';
-    },
-    cellIndent(rowIndex, colIndex) {
-      return colIndex === 0 ? result.rows[rowIndex].depth * 16 : 0;
-    },
-    rowHeaderSpan: 1,
-    stickyHeader: true,
-    striped: false,
-    conditionalDomains: bodyDomains,
+    leafValueColumns,
+    denominators,
+    bodyDomains,
     headerRows: buildMatrixHeaderRows(result.columnTree, sortedLeaves, spec, sortedLeaves !== result.columnLeaves),
-    density: spec.density,
-    sketch: resolveSketch(spec) != null,
-  });
+  };
 }
 
 function rowLabel(row: PivotFlatRow): string {

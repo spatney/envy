@@ -13,6 +13,9 @@
  * if (!report.ok) console.warn(report.diagnostics);
  * await fs.writeFile('chart.png', png);
  * ```
+ *
+ * Every chart type rasterizes — kpi/table/matrix/slicers/dashboard render a
+ * static canvas snapshot, so the whole catalog can be validated server-side.
  */
 
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
@@ -78,9 +81,9 @@ function registerFonts(fonts: FontFace[] | undefined): void {
 /**
  * Render `spec` to a PNG buffer and its {@link RenderReport}, entirely in Node.
  *
- * Supports every canvas-backed chart (line, area, bar, scatter, box, pie,
- * heatmap, sankey, choropleth, combo, histogram, funnel). DOM-only kinds
- * (`kpi`, `table`, `matrix`, slicers, `dashboard`) have no canvas form and throw.
+ * Supports the entire catalog: line, area, bar, scatter, box, pie, heatmap,
+ * sankey, choropleth, combo, histogram, funnel, and the formerly DOM-only kpi,
+ * table, matrix, slicers and dashboard (painted as a static canvas snapshot).
  */
 export function renderChart(spec: ChartSpec, options: RenderImageOptions = {}): NodeRenderResult {
   const width = options.width ?? DEFAULT_WIDTH;
@@ -135,4 +138,4 @@ export function renderToPNG(spec: ChartSpec, options?: RenderImageOptions): Buff
 export { GlobalFonts };
 export type { ChartSpec, RenderReport } from 'graphein';
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.7.0';

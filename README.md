@@ -5,36 +5,19 @@
   </picture>
 </p>
 
-<p align="center">A beautiful, high-performance, <strong>agent-first</strong> data visualization library.</p>
+<p align="center"><strong>Agent-first</strong> data visualization from JSON-serializable chart specs.</p>
 
 # Graphein
 
-Graphein is a from-scratch (zero runtime dependency) visualization toolkit designed so that
-**coding agents** can assemble stunning dashboards and reports from declarative,
-JSON-serializable chart specs. Think Tableau-class visuals with a tiny, fast, hybrid
-Canvas2D + DOM rendering core.
+Graphein is a zero-runtime-dependency TypeScript visualization engine. The one rule is: emit one JSON-serializable `ChartSpec` with a `type`, a flat `data` array, and, for cartesian charts, an `encoding` that maps fields to channels.
 
-- **One chart = one JSON object.** No callbacks, no DOM wrangling — just a `ChartSpec`.
-- **Stunning by default.** Flat, modern light/dark themes, an accessible palette, and
-  perceptual (OKLab) color scales.
-- **Hand-drawn mode.** Flip on `sketch: true` for a rough.js-style sketched look —
-  wobbly strokes, hachure fills, and a handwriting font — on any chart type.
-- **Fast at scale.** LTTB decimation, layered redraw, and virtualized tables keep things
-  smooth from a handful of points to 50k+.
-- **From scratch.** Scales, ticks, color, shapes, the pivot engine, the sketch
-  renderer, and the core renderer are all hand-written — no D3/charting dependencies.
-- **Self-correcting.** `validateSpec` returns structured, path-pointed errors *with
-  JSON-patch fixes* and best-practice lint warnings; after render, `chart.report()` flags
-  clipping, overflow, and contrast issues — so an agent can validate, repair, and critique
-  a chart **without a vision model**. Run the whole loop server-side with
-  [`@graphein/node`](./packages/node).
-- **Declarative data shaping.** In-spec `transform`s (aggregate, bin, filter, fold,
-  timeUnit, calculate) mean you never pre-pivot the `data` array by hand.
+That shape is meant for generated code and ordinary application code alike. Specs contain data, marks, encodings, transforms, selections, layout, and formatting, but not callbacks. You can validate a spec before rendering with `validateSpec(spec)`, apply safe JSON Patch repairs with `repairSpec(spec)`, render it with `render(container, spec)`, and inspect the result with `chart.report()`.
+
+The core package includes the chart model, scales, ticks, colors, transforms, layout, Canvas2D mark rendering, DOM/SVG overlays, tables, matrix pivots, slicers, and dashboards. It ships without runtime dependencies. Native rendering lives in `@graphein/node`; React support lives in `@graphein/react`; MCP integration lives in `graphein-mcp`.
 
 ## Gallery
 
-A quick tour of what Graphein renders — **every image below is a single declarative `ChartSpec`.**
-Explore them live, resize them, and tweak the JSON in the Playground with `npm run gallery`.
+Each image below is produced from a declarative `ChartSpec`. Run `npm run gallery` to open the local gallery and edit specs in the Playground.
 
 <table>
   <tr>
@@ -59,12 +42,12 @@ Explore them live, resize them, and tweak the JSON in the Playground with `npm r
   <tr><td><img src="docs/images/sankey.png" alt="Sankey flow diagram"><br><sub><b>sankey</b> — weighted flows from <code>source → target</code></sub></td></tr>
   <tr><td><img src="docs/images/choropleth.png" alt="US choropleth map"><br><sub><b>choropleth</b> — values shaded over GeoJSON regions</sub></td></tr>
   <tr><td><img src="docs/images/table.png" alt="Data table with conditional formatting"><br><sub><b>table</b> — virtualized, sortable, with bar + color-scale conditional formatting</sub></td></tr>
-  <tr><td><img src="docs/images/line-dense.png" alt="50,000-point line chart"><br><sub><b>line</b> — 50,000 points, LTTB-downsampled, still smooth</sub></td></tr>
+  <tr><td><img src="docs/images/line-dense.png" alt="50,000-point line chart"><br><sub><b>line</b> — 50,000 points with LTTB downsampling</sub></td></tr>
 </table>
 
 ### One spec, three looks
 
-The same `box` chart in light, dark, and hand-drawn (`"sketch": true`) modes — just flip a field:
+The same `box` chart in light, dark, and hand-drawn modes. Set `"sketch": true` to use sketch rendering.
 
 <table>
   <tr>
@@ -77,7 +60,6 @@ The same `box` chart in light, dark, and hand-drawn (`"sketch": true`) modes —
 ## Install
 
 ```bash
-# the zero-dependency core engine
 npm install graphein
 ```
 
@@ -85,7 +67,7 @@ npm install graphein
 import { render, validateSpec } from 'graphein';
 ```
 
-Using React? Install the wrapper alongside `react`:
+For React, install the wrapper alongside React:
 
 ```bash
 npm install @graphein/react react
@@ -95,7 +77,7 @@ npm install @graphein/react react
 import { Chart } from '@graphein/react';
 ```
 
-Rendering on a server (CI, agents, report jobs)? Render straight to a PNG — no browser:
+For headless PNG output in Node:
 
 ```bash
 npm install @graphein/node graphein
@@ -103,28 +85,29 @@ npm install @graphein/node graphein
 
 ```ts
 import { renderChart } from '@graphein/node';
+
 const { png, report } = renderChart(spec, { width: 900, height: 480, dpr: 2 });
 ```
 
-Wiring it into an agent? Run the whole loop as a Model Context Protocol tool — no
-install, point your MCP client at it:
+For MCP clients:
 
 ```jsonc
-// e.g. claude_desktop_config.json / your client's mcp config
-{ "mcpServers": { "graphein": { "command": "npx", "args": ["-y", "graphein-mcp"] } } }
+{
+  "mcpServers": {
+    "graphein": { "command": "npx", "args": ["-y", "graphein-mcp"] }
+  }
+}
 ```
 
-It exposes `render_chart` (validate → repair → render → PNG + vision-free critique),
-`validate_chart`, `repair_chart`, and `summarize_chart`, and serves Graphein's schema
-and guides as resources — so a model that never saw the API can still build correct
-charts. See [`graphein-mcp`](./packages/mcp).
+`graphein-mcp` exposes four tools: `render_chart`, `validate_chart`, `repair_chart`, and `summarize_chart`. It also serves the agent guide, JSON Schema, and spec reference as MCP resources.
 
 ## Quick start
 
 ```ts
-import { render } from 'graphein';
+import { render, validateSpec } from 'graphein';
+import type { ChartSpec } from 'graphein';
 
-const chart = render('#app', {
+const spec: ChartSpec = {
   type: 'line',
   title: 'Monthly active users',
   data: [
@@ -139,12 +122,16 @@ const chart = render('#app', {
     x: { field: 'month', type: 'temporal' },
     y: { field: 'users', type: 'quantitative', format: ',d' },
   },
-});
+};
 
-// later…
-chart.update(nextSpec);  // new data/config
-chart.resize();          // re-measure after a layout change
-chart.destroy();         // tear down
+const result = validateSpec(spec);
+if (result.valid === false) throw new Error(result.errors[0]?.message ?? 'Invalid chart spec');
+
+const chart = render('#app', spec);
+
+chart.update({ ...spec, title: 'Monthly active users, H1' });
+chart.resize();
+chart.destroy();
 ```
 
 ### React
@@ -152,7 +139,7 @@ chart.destroy();         // tear down
 ```tsx
 import { Chart } from '@graphein/react';
 
-function Dashboard({ spec }) {
+export function UsageChart({ spec }) {
   return (
     <div style={{ height: 360 }}>
       <Chart spec={spec} />
@@ -161,175 +148,152 @@ function Dashboard({ spec }) {
 }
 ```
 
-`<Chart spec={…} />` renders into a fill-by-default container; pass a new `spec`
-to update in place, and it tears down on unmount. For headless control over your
-own element, use the `useChart(spec)` hook (returns a ref to attach). `react` is a
-peer dependency (React 18+).
+`<Chart spec={...} />` fills its container, updates when `spec` changes, and tears down on unmount. `useChart(spec)` is available when you want to attach Graphein to your own element. React is a peer dependency.
 
-## The agent feedback loop
+## The spec loop
 
-Graphein's real edge isn't the charts — it's that a model never trained on its API can
-still get them right, because the library is **self-validating, self-repairing, and
-self-critiquing** at runtime.
+A generated spec should go through the same path as a handwritten one:
+
+1. Build tidy row-oriented data.
+2. Pick a `type` and map fields through `encoding`, or use the fields required by the non-cartesian spec.
+3. Call `validateSpec(spec)`. If errors include safe fixes, call `repairSpec(spec)` and validate again.
+4. Render with `render(container, spec)` or `<Chart spec={spec} />`.
+5. Use `chart.report()` to check mark counts, clipped labels, legend overflow, contrast diagnostics, and the generated summary.
 
 ```ts
-import { validateSpec, repairSpec, render } from 'graphein';
+import { repairSpec, render, validateSpec } from 'graphein';
 
-// 1. Validate — structured, path-pointed errors plus best-practice lint warnings.
-const { valid, errors, warnings } = validateSpec(spec);
+const firstPass = validateSpec(spec);
+const fixed = firstPass.valid ? spec : repairSpec(spec).spec;
+const secondPass = validateSpec(fixed);
 
-// 2. Repair — apply the safe JSON-patch fixes Graphein suggests, instead of regenerating.
-const { spec: fixed, applied, remaining } = repairSpec(spec);
+if (secondPass.valid === false) {
+  throw new Error(secondPass.errors.map((error) => error.message).join('\n'));
+}
 
-// 3. Render, then critique — no vision model needed.
 const chart = render('#app', fixed);
 const report = chart.report();
-if (!report.ok) {
-  // report.diagnostics → 'axis-label-overlap', 'legend-overflow', 'low-contrast-mark', …
-}
 ```
 
-- **Self-repairing validation.** Each `validateSpec` error can carry a `fix` (RFC-6902
-  JSON Patch) and a "did you mean" `suggestion`, turning a mistake into a one-step
-  correction; `repairSpec` applies the safe ones for you.
-- **Built-in dataviz linter.** Best-practice warnings (too many pie slices, a temporal
-  field typed nominal, dual-axis misuse, too many colors) bake in expertise the agent lacks.
-- **Declarative transforms.** Shape data *inside* the validatable spec — `aggregate`,
-  `bin`, `filter`, `fold`, `timeUnit`, and a safe `calculate` expression engine.
-- **Reference annotations.** Reusable `annotations` (lines, bands, threshold zones,
-  labeled points) on every cartesian chart.
-- **Self-explaining.** `summarize(spec)` returns a deterministic plain-English summary
-  (alt-text without an LLM, also on `report().summary` + the chart's `aria-description`);
-  `insights:true` auto-marks the peak and low on a `line`/`area`/`bar`.
-- **Derived trendlines.** `trendline:true` overlays a linear line of best fit on a
-  `scatter`/`line`/`area` (one per series group; `{ label:true }` adds an R² readout) —
-  the library fits the regression, the agent never computes coordinates.
-- **Faceting / small multiples.** `facet:{field}` splits a `line`/`area`/`bar`/`scatter`
-  into a trellis grid of panels sharing one set of scales — a single field reference yields
-  a whole comparison grid.
-- **Render report.** `chart.report()` returns machine-readable diagnostics — clipped
-  labels, legend overflow, contrast failures, mark counts — to verify a chart came out right.
-- **Headless rendering.** [`@graphein/node`](./packages/node) runs that whole loop
-  server-side to a PNG (no browser, no JSDOM), so an agent can generate → validate →
-  repair → render → critique entirely in CI or a report job.
+`validateSpec` reports structural errors with paths and, when the correction is unambiguous, RFC 6902 JSON Patch fixes. `repairSpec` applies the safe fixes. `chart.report()` is computed from the resolved render model, so agents and tests can detect common render issues without image inspection.
 
-See the **[Agent Guide](./docs/agent-guide.md)** for the full playbook.
+`summarize(spec)` returns a deterministic natural-language description and is also surfaced through `chart.report().summary` and the chart `aria-description`. Set `insights: true` on `line`, `area`, or `bar` to label the max and min. Set `trendline: true` on `scatter`, `line`, or `area` to derive a linear fit; `{ label: true }` adds an R² label. Set `facet: { field }` on `line`, `area`, `bar`, or `scatter` for small multiples with shared scales.
 
-## Chart catalog
+## Chart types
 
-| Type | What it's for | Example |
+| Type | Use | Key fields |
 | --- | --- | --- |
-| `line` | Trends over time; multi-series, curves, markers, area fill | [line.json](./docs/examples/line.json) |
-| `area` | Volume/part-to-whole over time; stacking | [area-stacked.json](./docs/examples/area-stacked.json) |
-| `bar` | Compare categories; grouped or stacked series | [bar-grouped.json](./docs/examples/bar-grouped.json) |
-| `combo` | Two measures / different units: bar + line on a shared `x`, dual axes | [combo-dual-axis.json](./docs/examples/combo-dual-axis.json) |
-| `scatter` | Correlation/distribution; bubble size + color groups | [scatter.json](./docs/examples/scatter.json) |
-| `histogram` | Distribution of one measure; auto-binned bars + optional density | [histogram.json](./docs/examples/histogram.json) |
-| `pie` | Composition as shares; pie or donut | [pie-donut.json](./docs/examples/pie-donut.json) |
-| `heatmap` | Density across two categories | [heatmap.json](./docs/examples/heatmap.json) |
-| `funnel` | Conversion through ordered stages | [funnel.json](./docs/examples/funnel.json) |
-| `kpi` | Headline metric with delta + sparkline | [kpi.json](./docs/examples/kpi.json) |
-| `table` | Virtualized, sortable data table + conditional formatting | [table.json](./docs/examples/table.json) |
-| `matrix` | Pivot/cross-tab: groups, aggregates, subtotals/grand totals | [matrix.json](./docs/examples/matrix.json) |
-| `box` | Distributions by category; Tukey/min-max whiskers + outliers | [box.json](./docs/examples/box.json) |
-| `sankey` | Flows between nodes from `source → target` link rows | [sankey.json](./docs/examples/sankey.json) |
-| `choropleth` | Values shaded over GeoJSON regions; sequential color scale | [choropleth.json](./docs/examples/choropleth.json) |
-| `treemap` | Hierarchical part-to-whole as squarified nested tiles | [treemap.json](./docs/examples/treemap.json) |
-| `gauge` | A single value against a scale, with bands + target | [gauge.json](./docs/examples/gauge.json) |
-| `bullet` | Compact KPI-vs-target bar over qualitative ranges | [bullet.json](./docs/examples/bullet.json) |
-| `calendarHeatmap` | Daily values as a GitHub-style year grid | [calendar-heatmap.json](./docs/examples/calendar-heatmap.json) |
-| `waterfall` | Running-total bridge built from signed step deltas | [waterfall.json](./docs/examples/waterfall.json) |
-| `slope` | Before/after slope graph with direct end labels | [slope.json](./docs/examples/slope.json) |
-| `dumbbell` | Gap between two groups per category as connected dots | [dumbbell.json](./docs/examples/dumbbell.json) |
+| `line` | Trends over time or another ordered x field | `encoding.x`, `encoding.y`, optional `series` |
+| `area` | Filled trends and stacked part-to-whole over time | `encoding.x`, `encoding.y`, optional `series`, `stack` |
+| `bar` | Category comparisons | `encoding.x`, `encoding.y`, optional `series`, `stack`, `group` |
+| `combo` | Multiple cartesian layers on shared x, including bar plus line | `encoding.x`, `layers[]` |
+| `scatter` | Relationship between two measures | `encoding.x`, `encoding.y`, optional `size`, `color` |
+| `histogram` | Distribution of one quantitative field | `encoding.x`, optional `bin`, `density` |
+| `pie` | Shares of a total, with optional donut mode | `encoding.theta`, `encoding.color`, optional `donut` |
+| `heatmap` | Density or magnitude across two categories | `encoding.x`, `encoding.y`, `encoding.color` |
+| `box` | Distribution by group | `encoding.x`, `encoding.y`, optional `series` |
+| `funnel` | Ordered conversion stages | `encoding.stage`, `encoding.value` |
+| `sankey` | Weighted flows between nodes | `encoding.source`, `encoding.target`, `encoding.value` |
+| `choropleth` | Values joined to GeoJSON features | `geo`, `encoding.key`, `encoding.color`, optional `featureId` |
+| `treemap` | Hierarchical part-to-whole | `encoding.category`, `encoding.value`, optional `group`, `color` |
+| `gauge` | Single value against a bounded scale | `value`, `max`, optional `target`, `bands` |
+| `bullet` | Compact value versus target | `value`, optional `target`, `ranges` |
+| `calendarHeatmap` | Daily values over a year-style grid | `encoding.date`, `encoding.color` |
+| `waterfall` | Running total from signed deltas | `encoding.stage`, `encoding.value`, optional `showTotal` |
+| `slope` | Before/after or ordered change by series | `encoding.x`, `encoding.y`, `encoding.series` |
+| `dumbbell` | Gap between groups per category | `encoding.category`, `encoding.value`, `encoding.group` |
+| `kpi` | Headline metric with optional delta and sparkline | `value`, optional `delta`, `sparkline` |
+| `table` | Tabular detail with sorting, totals, and conditional formatting | `columns` |
+| `matrix` | Pivot or cross-tab with aggregates | `rows`, `columns`, `values` |
 
-Every cartesian chart also takes `transform`s (in-spec data shaping), `annotations`
-(reference lines, bands, threshold zones, points), `insights:true` (auto-mark the
-max/min), `trendline:true` (a linear line of best fit on `scatter`/`line`/`area`), and
-`facet:{field}` (split into a trellis grid of small multiples).
+Examples live in [`docs/examples`](./docs/examples). The field-by-field contract is in [`docs/spec-reference.md`](./docs/spec-reference.md), and the generated JSON Schema is in [`docs/chart-spec.schema.json`](./docs/chart-spec.schema.json).
 
-Add `"sketch": true` to **any** spec for a hand-drawn look — see
-[bar-sketch.json](./docs/examples/bar-sketch.json) and the
-[`SketchConfig` reference](./docs/spec-reference.md#sketchconfig).
+## Dashboards and slicers
+
+A `dashboard` spec composes views on a grid and shares a selection store across them. Views may use their own data or inherit dashboard data. With `interactions: 'auto'`, slicers filter compatible views, and chart selections cross-highlight charts that share fields.
+
+The five slicer visual types are `dropdown`, `list`, `search`, `range`, and `dateRange`. Each reads a `field` and publishes a named `param`; consumers use `filter: [{ param }]` or `highlight: { param }`.
+
+```ts
+import { renderDashboard, validateSpec } from 'graphein';
+import type { DashboardSpec } from 'graphein';
+
+const dashboard: DashboardSpec = {
+  type: 'dashboard',
+  data: rows,
+  views: [
+    {
+      id: 'region',
+      title: 'Region',
+      spec: { type: 'dropdown', field: 'region', multiple: true },
+      w: 3,
+      h: 2,
+    },
+    {
+      id: 'sales',
+      title: 'Sales',
+      spec: {
+        type: 'bar',
+        encoding: { x: { field: 'region' }, y: { field: 'sales' } },
+        filter: [{ param: 'region' }],
+      },
+      w: 9,
+      h: 4,
+    },
+  ],
+  interactions: 'auto',
+};
+
+validateSpec(dashboard);
+const instance = renderDashboard('#app', dashboard);
+instance.setSelection({ region: ['West'] });
+```
+
+Dashboard layout supports sectioned layouts, per-view titles and subtitles, card padding, backgrounds, responsive spans, and presets such as `auto`, `kpi-first`, and `sidebar`.
+
+## Rendering and accessibility details
+
+Graphein uses Canvas2D for data marks and gridlines, with an HTML/SVG overlay for text, legends, titles, tooltips, KPI cards, and accessibility attributes. Interaction state paints on a separate canvas so hover does not require a full redraw. When rendering settles, the root gets `data-graphein-ready="true"` and `window.__GRAPHEIN_READY` increments for automation.
+
+`@graphein/node` renders canvas-backed charts to PNG with `@napi-rs/canvas` and returns the same `RenderReport` shape as the browser API. It supports line, area, bar, scatter, box, pie, heatmap, sankey, choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap, waterfall, slope, and dumbbell. DOM-only specs such as `kpi`, `table`, `matrix`, slicers, and dashboards validate in core but are not PNG-rendered by the Node package.
+
+Sketch mode is part of the spec. Set `sketch: true` for default hand-drawn strokes, hachure fills, and font handling, or pass `SketchConfig` to tune roughness, bowing, fill style, stroke width, and seed.
 
 ## Documentation
 
-- **[Agent Guide](./docs/agent-guide.md)** — the playbook for generating charts &
-  dashboards: data shaping, chart selection, recipes, and gotchas.
-- **[Spec Reference](./docs/spec-reference.md)** — every field of every chart type,
-  encoding channels, scales, themes, and the format mini-language.
-- **[JSON Schema](./docs/chart-spec.schema.json)** — machine-readable `ChartSpec` schema
-  for validation and editor autocomplete, generated from the TypeScript types
-  (`npm run gen:schema`).
-- **[Examples](./docs/examples)** — a runnable JSON spec for every chart type.
-
-## How it works
-
-- **Hybrid rendering** — Canvas2D draws data marks and gridlines; an absolutely
-  positioned HTML/SVG overlay handles crisp text (axis labels, legend, titles, tooltips,
-  KPI cards) and accessibility.
-- **Declarative spec → scales → marks** — a Vega-Lite-flavored encoding maps data
-  columns onto visual channels. A layout engine reserves space for axes/legend/title,
-  then charts draw into the plot rect. Hi-DPI aware, single batched redraw.
-- **Interaction** — hover tooltips, crosshair, focus highlight, and slice/cell emphasis
-  paint on a separate interaction canvas, so hovering never triggers a full mark redraw.
-- **Ready signal** — when a render settles, Graphein sets `data-graphein-ready="true"` on the
-  surface root and increments `window.__GRAPHEIN_READY`, so automation can wait
-  deterministically.
-- **Headless & self-critiquing** — the same model build and mark renderers run in Node via
-  [`@graphein/node`](./packages/node) (backed by `@napi-rs/canvas`), painting overlay text
-  onto the canvas to emit a PNG plus a `RenderReport` — so the validate → render → critique
-  loop runs with no browser. Core's `renderToContext(target, spec)` paints onto any 2D
-  context if you bring your own canvas.
+- [Agent Guide](./docs/agent-guide.md): workflow, chart selection, repair loop, dashboards, and recipes for generated specs.
+- [Spec Reference](./docs/spec-reference.md): fields for every chart, table, matrix, slicer, dashboard, transform, annotation, and theme option.
+- [JSON Schema](./docs/chart-spec.schema.json): generated schema for `ChartSpec` and `DashboardSpec`.
+- [Examples](./docs/examples): runnable JSON specs.
 
 ## Packages
 
-| Package | Description | Status |
-| --- | --- | --- |
-| `graphein` | Framework-agnostic engine, scales, charts, tables (zero deps). | ✅ |
-| `@graphein/react` | Thin React wrapper: `<Chart spec={...} />`. | ✅ |
-| `@graphein/node` | Headless rendering: `ChartSpec` → PNG + `RenderReport`, no browser. | ✅ |
-| `graphein-mcp` | MCP server: the validate → repair → render → critique loop as one tool, plus the schema + guides as resources. | ✅ |
-| `apps/gallery` | React showcase gallery + Playwright `?shot=` screenshot harness. | ✅ (dev) |
+| Package | Purpose |
+| --- | --- |
+| [`graphein`](./packages/core) | Framework-agnostic core engine, validators, renderers, transforms, tables, matrices, slicers, and dashboards. |
+| [`@graphein/react`](./packages/react) | React wrapper with `<Chart spec={...} />` and `useChart(spec)`. |
+| [`@graphein/node`](./packages/node) | Headless PNG rendering for canvas-backed charts. |
+| [`graphein-mcp`](./packages/mcp) | MCP server with `render_chart`, `validate_chart`, `repair_chart`, and `summarize_chart`. |
+| [`apps/gallery`](./apps/gallery) | Vite gallery, Playground, and screenshot harness for development. |
+| [`tests/visual`](./tests/visual) | Playwright visual tests. |
 
 ## Development
 
-This is a monorepo managed with npm workspaces.
+This repository uses npm workspaces.
 
 ```bash
 npm install
-npm run build       # build all packages
-npm test            # run unit tests (Vitest)
-npm run typecheck   # type-check all workspaces
-npm run gallery     # launch the Vite gallery harness for visual iteration
+npm run build
+npm test
+npm run typecheck
+npm run lint
+npm run gallery
 ```
 
-The **gallery** is a React showcase. It opens on a branded **Overview**, then presents every
-chart family as a live **story** — canvas alongside its `ChartSpec`, the machine-readable
-`chart.report()`, and a deterministic `summarize()` — with global light/dark and hand-drawn
-**sketch** toggles that apply everywhere. Beyond the charts it has guided tours of
-**Foundations**, **Formatting**, and **Interactivity** (a fully auto-wired cross-filtering
-dashboard plus the five slicers), a **live** server-side-rendering page (`@graphein/node`
-PNGs + report, rendered by a real backend), a **live** **MCP** console (`graphein-mcp`'s
-validate → repair → render → critique loop), and per-package guides. A Playwright `?shot=`
-runner captures the matrix so visual quality is verified by review, not assumed. The
-**Playground** (`npm run gallery`, then pick *Playground* in the sidebar) lets you edit a
-`ChartSpec` live — validate, auto-repair, render, and read the report — seeded from presets
-spanning every chart type and data size.
+The core package is intended to remain dependency-free at runtime. After changing TypeScript spec types, run `npm run gen:schema` and commit the generated `docs/chart-spec.schema.json`. After changing docs that are bundled into the MCP package, run `npm run sync:resources --workspace graphein-mcp`.
 
-## Design references
+## License
 
-Built fresh, with lessons borrowed from the best of open source: **D3** (scale/tick math,
-shape generation), **Vega-Lite** (declarative encoding grammar), **uPlot/ECharts/Chart.js**
-(canvas performance, layered redraw), **Observable Plot** (sensible-defaults API),
-**LTTB** (series decimation), and **OKLab/OKLCH** (perceptual color).
+MIT
 
-## Brand
 
-The Graphein mark is a lowercase **"g"** whose nodes trace a sequential color ramp —
-indigo → blue → cyan → emerald — the same kind of perceptual scale the library ships for
-data. Logo lockups, icon variants, and favicon-ready marks live in
-[`docs/images`](docs/images).
-
-<p align="center">
-  <img src="docs/images/graphein-brand-showcase.png" alt="Graphein brand showcase — logo lockups, icon variants, and color palette" width="860">
-</p>

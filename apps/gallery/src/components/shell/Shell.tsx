@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { CommandPalette } from './CommandPalette';
+import { Footer } from './Footer';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Spinner } from '../ui/primitives';
 
@@ -165,6 +166,7 @@ export function Shell() {
               <Outlet />
             </Suspense>
           </ErrorBoundary>
+          <Footer />
         </main>
       </div>
 

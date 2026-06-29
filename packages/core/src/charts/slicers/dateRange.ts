@@ -13,9 +13,13 @@ import type { ChartSpec, DateRangeSlicerSpec } from '../../spec/types';
 import type { ThemeTokens } from '../../theme';
 import type { RangeSelection } from '../../spec/selection';
 import type { RenderContext } from '../index';
+import { drawTitleBlock } from '../chrome';
 import { makeChip, makeDualSlider, mountSlicerShell } from '../../render/controls';
 import { toDate } from '../../util/data';
 import { formatValue } from '../../format';
+import { paintCanvasText } from '../../render/overlayText';
+import { fontString } from '../../render/text';
+import { roundedRect } from '../../shape';
 import { currentValue, emptyNotice, publish, slicerLabel, slicerSource } from './common';
 
 const DAY_MS = 86_400_000;
@@ -50,6 +54,10 @@ export function drawDateRange(
   context?: RenderContext,
 ): void {
   const s = spec as DateRangeSlicerSpec;
+  if (surface.headless) {
+    drawDateRangeCanvas(surface, s, tokens, size, context);
+    return;
+  }
   const shell = mountSlicerShell(surface, tokens, size, {
     title: s.title,
     label: slicerLabel(s),
@@ -134,4 +142,104 @@ export function drawDateRange(
 
   const active = current?.kind === 'range' && (low > min || high < max);
   shell.setClear(active ? clear : null);
+}
+
+function drawDateRangeCanvas(
+  surface: Surface,
+  s: DateRangeSlicerSpec,
+  tokens: ThemeTokens,
+  size: Size,
+  context?: RenderContext,
+): void {
+  const ctx = surface.marks.ctx;
+  const rect = drawTitleBlock(surface, tokens, size, s.title ?? slicerLabel(s));
+  const ext = dateExtent(slicerSource(s, context) as Record<string, unknown>[], s.field);
+  const font = fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.medium);
+  if (!ext || !(ext[1] > ext[0])) {
+    paintCanvasText(ctx, {
+      x: rect.x,
+      y: rect.y,
+      text: `No date range for "${s.field}".`,
+      font,
+      color: tokens.color.textMuted,
+      size: tokens.font.size.small,
+      baseline: 'top',
+    });
+    return;
+  }
+
+  const [min, max] = ext;
+  const current = currentValue(s, context) as RangeSelection | null;
+  const toMs = (v: number | string | undefined, fallback: number): number => {
+    if (v == null) return fallback;
+    const d = toDate(v);
+    return d ? d.getTime() : fallback;
+  };
+  const low = current?.kind === 'range' ? toMs(current.min, min) : min;
+  const high = current?.kind === 'range' ? toMs(current.max, max) : max;
+  paintDateFields(ctx, tokens, rect, toISODate(low), toISODate(high));
+}
+
+function paintDateFields(
+  ctx: CanvasRenderingContext2D,
+  tokens: ThemeTokens,
+  rect: { x: number; y: number; width: number; height: number },
+  low: string,
+  high: string,
+): void {
+  const labelFont = fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.medium);
+  const valueFont = fontString(tokens.font.size.base, tokens.font.family, tokens.font.weight.normal);
+  const gap = tokens.spacing.sm;
+  const fieldH = 36;
+  const labelH = tokens.font.size.small + 4;
+  const y = rect.y + Math.max(0, (rect.height - (labelH + fieldH)) * 0.12);
+  const arrowW = 18;
+  const fieldW = Math.max(44, (rect.width - gap * 2 - arrowW) / 2);
+
+  const paintField = (x: number, label: string, value: string): void => {
+    paintCanvasText(ctx, {
+      x,
+      y,
+      text: label,
+      font: labelFont,
+      color: tokens.color.textMuted,
+      size: tokens.font.size.small,
+      baseline: 'top',
+    });
+    const fy = y + labelH;
+    ctx.save();
+    ctx.beginPath();
+    roundedRect(ctx, x, fy, fieldW, fieldH, tokens.radius.md);
+    ctx.fillStyle = tokens.color.surface;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = tokens.color.border;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(x + tokens.spacing.sm, fy, Math.max(0, fieldW - tokens.spacing.sm * 2), fieldH);
+    ctx.clip();
+    paintCanvasText(ctx, {
+      x: x + tokens.spacing.sm,
+      y: fy + fieldH / 2,
+      text: value,
+      font: valueFont,
+      color: tokens.color.text,
+      size: tokens.font.size.base,
+      baseline: 'middle',
+    });
+    ctx.restore();
+  };
+
+  paintField(rect.x, 'From', low);
+  paintCanvasText(ctx, {
+    x: rect.x + fieldW + gap + arrowW / 2,
+    y: y + labelH + fieldH / 2,
+    text: '→',
+    font: valueFont,
+    color: tokens.color.accent,
+    size: tokens.font.size.base,
+    align: 'center',
+    baseline: 'middle',
+  });
+  paintField(rect.x + fieldW + gap * 2 + arrowW, 'To', high);
 }

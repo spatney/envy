@@ -9,6 +9,9 @@ import type { ThemeTokens } from '../theme';
 import type { Datum, Point, Rect, Size } from '../types';
 import { accessor, toNumber } from '../util/data';
 import { CHROME_PAD, drawTitleBlock } from './chrome';
+import { fontString } from '../render/text';
+import { paintCanvasText } from '../render/overlayText';
+import { roundedRect } from '../shape';
 import type { RenderContext } from './index';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -234,6 +237,10 @@ export function drawKpi(
   context?: RenderContext,
 ): void {
   const kpi = spec as KpiSpec;
+  if (surface.headless) {
+    drawKpiCanvas(surface, kpi, tokens, size, context);
+    return;
+  }
   const data = kpi.data ?? [];
   const value = resolveValue(kpi.value, data);
   const delta = resolveValue(kpi.delta, data);
@@ -307,4 +314,136 @@ export function drawKpi(
       card.appendChild(node);
     }
   }
+}
+
+/** Paint the KPI as canvas marks (headless, no DOM). Mirrors the DOM card layout. */
+function drawKpiCanvas(
+  surface: Surface,
+  kpi: KpiSpec,
+  tokens: ThemeTokens,
+  size: Size,
+  context?: RenderContext,
+): void {
+  const ctx = surface.marks.ctx;
+  const data = kpi.data ?? [];
+  const value = resolveValue(kpi.value, data);
+  const delta = resolveValue(kpi.delta, data);
+  const sparkField = sparklineField(kpi);
+  const sparkValues = sparkField ? sparklineValues(data, sparkField) : [];
+  const hasSparkline = sparkValues.length > 0;
+  const framed = context?.framed === true;
+  const rect = cardRectFor(surface, tokens, size, kpi);
+  const pad = tokens.spacing.lg;
+  const sparkReserve = hasSparkline ? Math.min(44, Math.max(28, rect.height * 0.18)) + tokens.spacing.sm : 0;
+
+  if (!framed) {
+    ctx.save();
+    ctx.beginPath();
+    roundedRect(ctx, rect.x, rect.y, rect.width, rect.height, tokens.radius.lg);
+    ctx.fillStyle = tokens.color.surface;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = tokens.color.border;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const left = rect.x + (framed ? 0 : pad);
+  const contentWidth = Math.max(1, rect.width - (framed ? 0 : pad * 2));
+  const valueText = value == null ? '—' : formatValue(value, kpi.format);
+  const sizeByCard = Math.min(rect.width, rect.height) * 0.22;
+  const sizeByText = contentWidth / Math.max(1, valueText.length * 0.58);
+  const valueSize = clamp(Math.min(sizeByCard, sizeByText), 28, 64);
+  const labelH = kpi.label ? tokens.font.size.base * 1.25 : 0;
+  const deltaH = delta != null ? tokens.font.size.large : 0;
+  const stackH = labelH + valueSize + deltaH + tokens.spacing.sm * 2;
+  const avail = rect.height - sparkReserve;
+  let y = rect.y + Math.max(framed ? 0 : pad, (avail - stackH) / 2);
+
+  if (kpi.label) {
+    paintCanvasText(ctx, {
+      x: left,
+      y,
+      text: kpi.label.toUpperCase(),
+      font: fontString(tokens.font.size.base, tokens.font.family, tokens.font.weight.medium),
+      color: tokens.color.textMuted,
+      size: tokens.font.size.base,
+      baseline: 'top',
+    });
+    y += labelH + tokens.spacing.sm;
+  }
+  paintCanvasText(ctx, {
+    x: left,
+    y,
+    text: valueText,
+    font: fontString(valueSize, tokens.font.family, tokens.font.weight.bold),
+    color: tokens.color.text,
+    size: valueSize,
+    baseline: 'top',
+  });
+  y += valueSize + tokens.spacing.sm;
+  if (delta != null) {
+    const positive = delta >= 0;
+    paintCanvasText(ctx, {
+      x: left,
+      y,
+      text: `${positive ? '▲' : '▼'} ${formatDelta(delta, kpi.format)}`,
+      font: fontString(tokens.font.size.large, tokens.font.family, tokens.font.weight.medium),
+      color: positive ? tokens.color.positive : tokens.color.negative,
+      size: tokens.font.size.large,
+      baseline: 'top',
+    });
+  }
+
+  if (hasSparkline) {
+    const sparkH = clamp(rect.height * 0.18, 24, 40);
+    const inset = framed ? 0 : pad;
+    const sparkW = Math.max(0, rect.width - inset * 2);
+    const x0 = rect.x + inset;
+    const y1 = rect.y + rect.height - inset;
+    paintSparklineCanvas(ctx, tokens, x0, y1 - sparkH, sparkW, sparkH, sparkValues);
+  }
+}
+
+/** Stroke a sparkline polyline onto the marks context within the given box. */
+function paintSparklineCanvas(
+  ctx: CanvasRenderingContext2D,
+  tokens: ThemeTokens,
+  x0: number,
+  y0: number,
+  width: number,
+  height: number,
+  values: readonly number[],
+): void {
+  if (values.length === 0 || width <= 0 || height <= 0) return;
+  const stroke = 1.75;
+  const pad = stroke;
+  const innerH = Math.max(1, height - pad * 2);
+  const n = values.length;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+  const xAt = (i: number): number => x0 + (n === 1 ? width / 2 : (i / (n - 1)) * width);
+  const yAt = (v: number): number => y0 + pad + (1 - (span === 0 ? 0.5 : (v - min) / span)) * innerH;
+  ctx.save();
+  if (n === 1) {
+    ctx.beginPath();
+    ctx.arc(xAt(0), yAt(values[0] as number), 2.25, 0, Math.PI * 2);
+    ctx.fillStyle = tokens.color.accent;
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const px = xAt(i);
+      const py = yAt(values[i] as number);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = tokens.color.accent;
+    ctx.lineWidth = stroke;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+  ctx.restore();
 }

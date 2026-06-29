@@ -229,9 +229,27 @@ describe('@graphein/node — font registration', () => {
   });
 });
 
-describe('@graphein/node — unsupported kinds', () => {
-  it('throws a clear error for DOM-only visuals', () => {
-    const kpi = { type: 'kpi', data: [{ v: 42 }], value: { field: 'v', aggregate: 'sum' } } as ChartSpec;
-    expect(() => renderToPNG(kpi)).toThrow(/DOM-only/);
+describe('@graphein/node — formerly DOM-only kinds', () => {
+  it('rasterizes kpi/table/matrix/dashboard headlessly', () => {
+    const kpi = { type: 'kpi', label: 'ARR', data: [{ v: 42 }], value: { field: 'v', aggregate: 'sum' } } as ChartSpec;
+    const k = renderChart(kpi, { width: 300, height: 200 });
+    expect(k.report.type).toBe('kpi');
+    expect(k.report.ok).toBe(true);
+    expect(k.png.length).toBeGreaterThan(2000);
+
+    const table = {
+      type: 'table',
+      data: [{ region: 'East', sales: 120 }, { region: 'West', sales: 90 }],
+    } as ChartSpec;
+    expect(renderToPNG(table).length).toBeGreaterThan(2000);
+
+    const dash = {
+      type: 'dashboard',
+      data: [{ region: 'East', v: 1 }, { region: 'West', v: 2 }],
+      views: [{ id: 'k', spec: { type: 'kpi', value: { field: 'v', aggregate: 'sum' } } }],
+    } as unknown as ChartSpec;
+    const d = renderChart(dash, { width: 600, height: 300 });
+    expect(d.report.type).toBe('dashboard');
+    expect(d.png.length).toBeGreaterThan(2000);
   });
 });

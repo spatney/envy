@@ -23,6 +23,8 @@ import { buildCartesianModel, type CartesianChartSpec } from './cartesian';
 import { buildRenderReport, type RenderReport } from './report';
 import { isFaceted, buildFacetModels, drawFacet, facetReport } from './facet';
 import { drawAxesUnderlay, drawOverlay } from '../axes';
+import { renderDashboardToContext } from './dashboardHeadless';
+import type { DashboardSpec } from '../spec/dashboard';
 import {
   CARTESIAN_TYPES,
   cartesianRenderers,
@@ -48,21 +50,10 @@ export interface HeadlessTarget {
 }
 
 /**
- * Chart kinds whose presentation is pure DOM (HTML cards/tables/inputs) and so
- * have no canvas form. Rendering one headlessly throws a clear error.
+ * `dashboard` composes its child views onto the canvas itself (see
+ * {@link renderDashboardToContext}); every other kind paints through the cartesian
+ * or custom renderers, so no chart type is DOM-only on the headless path anymore.
  */
-const DOM_ONLY_TYPES: ReadonlySet<string> = new Set<string>([
-  'kpi',
-  'table',
-  'matrix',
-  'dropdown',
-  'list',
-  'search',
-  'range',
-  'dateRange',
-  'dashboard',
-]);
-
 function headlessTokens(spec: ChartSpec) {
   const tokens = resolveTheme(spec.theme);
   const sketch = resolveSketch(spec);
@@ -75,17 +66,14 @@ function headlessTokens(spec: ChartSpec) {
  * report. No animation, no interactivity, no DOM.
  *
  * Supports every canvas-backed chart: line, area, bar, scatter, box, pie,
- * heatmap, sankey, choropleth, combo, histogram, funnel. DOM-only kinds
- * (kpi/table/matrix/slicers/dashboard) are unsupported headlessly.
+ * heatmap, sankey, choropleth, combo, histogram, funnel — plus the (formerly
+ * DOM-only) kpi, table, matrix, slicers and dashboard, which now paint a static
+ * canvas snapshot so the whole catalog validates server-side.
  */
 export function renderToContext(target: HeadlessTarget, spec: ChartSpec): RenderReport {
   const type = spec.type;
-  if (DOM_ONLY_TYPES.has(type)) {
-    throw new Error(
-      `Graphein: "${type}" is a DOM-only visual and cannot be rendered to a canvas headlessly. ` +
-        `Headless rendering supports the canvas charts (line, area, bar, scatter, box, pie, ` +
-        `heatmap, sankey, choropleth, combo, histogram, funnel).`,
-    );
+  if ((type as string) === 'dashboard') {
+    return renderDashboardToContext(target, spec as unknown as DashboardSpec);
   }
 
   const ctx = target.marks;

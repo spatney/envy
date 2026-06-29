@@ -11,6 +11,9 @@ import {
   sequentialColorScale,
 } from '../color';
 import { formatValue } from '../format';
+import { paintCanvasText } from '../render/overlayText';
+import { fontString, measureText } from '../render/text';
+import { roundedRect } from '../shape';
 import { evalRules, iconForValue, toneColor } from './condFormat';
 
 const HEADER_ROW_HEIGHT = 32;
@@ -74,6 +77,11 @@ export interface BuildTableOptions {
   /** Computed internally by buildTable; column pixel widths fitted to the container. */
   widths?: number[];
 }
+
+export type CanvasTableOptions = Omit<BuildTableOptions, 'container' | 'onSort'> & {
+  ctx: CanvasRenderingContext2D;
+  clippedCue?: boolean;
+};
 
 export function formatCellValue(value: unknown, column: Pick<ViewColumn, 'format'>): string {
   return formatValue(value, column.format);
@@ -157,6 +165,48 @@ export function buildTable(opts: BuildTableOptions): void {
   container.appendChild(table);
 }
 
+export function paintTableCanvas(opts: CanvasTableOptions): void {
+  const { ctx, rect, tokens } = opts;
+  const metrics = densityMetrics(opts.density);
+  const available = Math.max(0, rect.width - 2);
+  const widths = computeFittedWidths(opts.columns, available);
+  opts.widths = widths;
+
+  ctx.save();
+  ctx.beginPath();
+  roundedRect(ctx, rect.x, rect.y, Math.max(0, rect.width), Math.max(0, rect.height), tokens.radius.sm);
+  ctx.fillStyle = tokens.color.background;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = tokens.color.border;
+  ctx.stroke();
+  ctx.clip();
+
+  const headerRows = normalizedHeaderRows(opts);
+  const headerHeight = headerRows.length * metrics.headerHeight;
+  const footerHeight = opts.footerRow ? metrics.rowHeight : 0;
+  const bodyTop = rect.y + headerHeight;
+  const bodyBottom = rect.y + rect.height - footerHeight;
+  const bodyHeight = Math.max(0, bodyBottom - bodyTop);
+  const visibleRows = Math.max(0, Math.min(opts.rowCount, Math.floor(bodyHeight / metrics.rowHeight)));
+  const clipped = visibleRows < opts.rowCount;
+  const cueReserve = clipped && opts.clippedCue !== false && visibleRows > 0 ? metrics.rowHeight : 0;
+  const rowsToDraw = Math.max(0, visibleRows - (cueReserve > 0 ? 1 : 0));
+
+  paintHeaderCanvas(opts, widths, headerRows, metrics);
+  for (let rowIndex = 0; rowIndex < rowsToDraw; rowIndex += 1) {
+    paintBodyRowCanvas(opts, widths, rowIndex, bodyTop + rowIndex * metrics.rowHeight, metrics);
+  }
+  if (cueReserve > 0) {
+    paintClippedCueCanvas(opts, bodyTop + rowsToDraw * metrics.rowHeight, metrics, opts.rowCount - rowsToDraw);
+  }
+  if (opts.footerRow) {
+    paintFooterCanvas(opts, widths, rect.y + rect.height - metrics.rowHeight, metrics);
+  }
+
+  ctx.restore();
+}
+
 const FILL_EPS = 0.5;
 
 let cachedScrollbarWidth: number | null = null;
@@ -186,7 +236,7 @@ function willScrollVertically(opts: BuildTableOptions): boolean {
   return contentHeight(opts) > opts.rect.height + 1;
 }
 
-function computeFittedWidths(columns: readonly ViewColumn[], available: number): number[] {
+export function computeFittedWidths(columns: readonly ViewColumn[], available: number): number[] {
   const natural = columns.map((column) => column.width ?? defaultColumnWidth(column));
   const naturalTotal = natural.reduce((sum, w) => sum + w, 0) || 1;
   if (available <= FILL_EPS) return natural;
@@ -565,7 +615,7 @@ function applyNegativeStyle(
   }
 }
 
-function densityMetrics(density: BuildTableOptions['density']): {
+export function densityMetrics(density: BuildTableOptions['density']): {
   rowHeight: number;
   headerHeight: number;
   padding: string;
@@ -574,6 +624,382 @@ function densityMetrics(density: BuildTableOptions['density']): {
   if (density === 'comfortable') return { rowHeight: 36, headerHeight: 36, padding: '8px 12px', paddingX: 12 };
   if (density === 'compact') return { rowHeight: 24, headerHeight: 28, padding: '3px 8px', paddingX: 8 };
   return { rowHeight: DEFAULT_BODY_ROW_HEIGHT, headerHeight: HEADER_ROW_HEIGHT, padding: '6px 10px', paddingX: 10 };
+}
+
+function normalizedHeaderRows(opts: CanvasTableOptions): HeaderCell[][] {
+  if (opts.headerRows) return opts.headerRows;
+  return [
+    opts.columns.map((column, colIndex) => ({
+      title: column.title,
+      align: column.align,
+      colIndex,
+    })),
+  ];
+}
+
+function paintHeaderCanvas(
+  opts: CanvasTableOptions,
+  widths: readonly number[],
+  rows: HeaderCell[][],
+  metrics: ReturnType<typeof densityMetrics>,
+): void {
+  rows.forEach((row, rowIndex) => {
+    let cursor = 0;
+    for (const cell of row) {
+      const start = cell.colIndex ?? cursor;
+      const colSpan = Math.max(1, cell.colSpan ?? 1);
+      const rowSpan = Math.max(1, cell.rowSpan ?? 1);
+      const x = opts.rect.x + sumWidths(widths.slice(0, start));
+      const y = opts.rect.y + rowIndex * metrics.headerHeight;
+      const w = sumWidths(widths.slice(start, start + colSpan));
+      const h = metrics.headerHeight * rowSpan;
+      paintCellBox(opts.ctx, x, y, w, h, opts.tokens.color.surface, opts.tokens.color.border);
+      paintCellText(opts, {
+        x,
+        y,
+        width: w,
+        height: h,
+        text: cell.title,
+        align: cell.align ?? 'left',
+        color: opts.tokens.color.text,
+        weight: opts.tokens.font.weight.bold,
+        paddingX: metrics.paddingX,
+      });
+      cursor = start + colSpan;
+    }
+  });
+}
+
+function paintBodyRowCanvas(
+  opts: CanvasTableOptions,
+  widths: readonly number[],
+  rowIndex: number,
+  y: number,
+  metrics: ReturnType<typeof densityMetrics>,
+): void {
+  const cls = opts.rowClass?.(rowIndex) ?? 'normal';
+  let x = opts.rect.x;
+  for (let colIndex = 0; colIndex < opts.columns.length; colIndex += 1) {
+    const column = opts.columns[colIndex] as ViewColumn;
+    const width = widths[colIndex] ?? 0;
+    const cell = opts.getCell(rowIndex, colIndex);
+    const baseBg = canvasRowBackground(opts, rowIndex, cls);
+    const conditional = resolveCanvasConditional(opts, column, colIndex, cell, baseBg);
+    const bg = conditional.background ?? baseBg;
+    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, bg, opts.tokens.color.border);
+    if (conditional.bar) paintDataBar(opts, x, y, width, metrics.rowHeight, conditional.bar);
+    const indent = opts.cellIndent?.(rowIndex, colIndex) ?? 0;
+    const text = conditional.showValue === false ? '' : formatDisplayValue(cell.value, column);
+    const color = negativeTextColor(cell.value, column, conditional.color ?? opts.tokens.color.text);
+    const weight = conditional.weight ?? (cls === 'normal' ? opts.tokens.font.weight.normal : opts.tokens.font.weight.bold);
+    paintCellValueWithIcon(opts, {
+      x,
+      y,
+      width,
+      height: metrics.rowHeight,
+      text,
+      align: column.align,
+      color,
+      weight,
+      paddingX: metrics.paddingX + indent,
+      icon: conditional.icon,
+      iconColor: conditional.iconColor,
+      iconPosition: conditional.iconPosition,
+    });
+    x += width;
+  }
+}
+
+function paintFooterCanvas(
+  opts: CanvasTableOptions,
+  widths: readonly number[],
+  y: number,
+  metrics: ReturnType<typeof densityMetrics>,
+): void {
+  let x = opts.rect.x;
+  for (let colIndex = 0; colIndex < opts.columns.length; colIndex += 1) {
+    const column = opts.columns[colIndex] as ViewColumn;
+    const width = widths[colIndex] ?? 0;
+    const cell = opts.footerRow?.cells[colIndex] ?? { value: null, raw: null };
+    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, opts.tokens.color.surface, opts.tokens.color.border, true);
+    paintCellText(opts, {
+      x,
+      y,
+      width,
+      height: metrics.rowHeight,
+      text: cell.label ? String(cell.value ?? '') : formatDisplayValue(cell.value, column),
+      align: column.align,
+      color: negativeTextColor(cell.value, column, opts.tokens.color.text),
+      weight: opts.tokens.font.weight.bold,
+      paddingX: metrics.paddingX,
+    });
+    x += width;
+  }
+}
+
+function paintClippedCueCanvas(
+  opts: CanvasTableOptions,
+  y: number,
+  metrics: ReturnType<typeof densityMetrics>,
+  remaining: number,
+): void {
+  paintCellBox(opts.ctx, opts.rect.x, y, opts.rect.width, metrics.rowHeight, opts.tokens.color.background, opts.tokens.color.border);
+  paintCellText(opts, {
+    x: opts.rect.x,
+    y,
+    width: opts.rect.width,
+    height: metrics.rowHeight,
+    text: `…${remaining} more`,
+    align: 'center',
+    color: opts.tokens.color.textMuted,
+    weight: opts.tokens.font.weight.medium,
+    paddingX: metrics.paddingX,
+  });
+}
+
+function paintCellBox(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  background: string,
+  border: string,
+  topBorder = false,
+): void {
+  ctx.save();
+  ctx.fillStyle = background;
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + width, y);
+  ctx.lineTo(x + width, y + height);
+  ctx.moveTo(x, y + height);
+  ctx.lineTo(x + width, y + height);
+  if (topBorder) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function paintCellValueWithIcon(
+  opts: CanvasTableOptions,
+  input: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    align: 'left' | 'center' | 'right';
+    color: string;
+    weight: number | string;
+    paddingX: number;
+    icon?: string;
+    iconColor?: string;
+    iconPosition?: 'left' | 'right';
+  },
+): void {
+  const font = fontString(opts.tokens.font.size.small, opts.tokens.font.family, input.weight);
+  const gap = input.icon ? 6 : 0;
+  const iconFont = fontString(opts.tokens.font.size.small, opts.tokens.font.family, opts.tokens.font.weight.bold);
+  const iconW = input.icon ? measureText(input.icon, iconFont).width : 0;
+  const textMax = Math.max(0, input.width - input.paddingX * 2 - iconW - gap);
+  const text = ellipsize(input.text, textMax, font);
+  const textW = measureText(text, font).width;
+  const groupW = textW + iconW + gap;
+  let start = input.x + input.paddingX;
+  if (input.align === 'right') start = input.x + input.width - input.paddingX - groupW;
+  else if (input.align === 'center') start = input.x + (input.width - groupW) / 2;
+  const midY = input.y + input.height / 2;
+  const iconFirst = input.icon && input.iconPosition !== 'right';
+  const iconX = iconFirst ? start : start + textW + gap;
+  const textX = iconFirst ? start + iconW + gap : start;
+
+  if (input.icon) {
+    paintCanvasText(opts.ctx, {
+      x: iconX,
+      y: midY,
+      text: input.icon,
+      font: iconFont,
+      color: input.iconColor ?? input.color,
+      size: opts.tokens.font.size.small,
+      baseline: 'middle',
+    });
+  }
+  paintRawCellText(opts, textX, midY, text, font, input.color, opts.tokens.font.size.small);
+}
+
+function paintCellText(
+  opts: CanvasTableOptions,
+  input: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    align: 'left' | 'center' | 'right';
+    color: string;
+    weight: number | string;
+    paddingX: number;
+  },
+): void {
+  const font = fontString(opts.tokens.font.size.small, opts.tokens.font.family, input.weight);
+  const maxWidth = Math.max(0, input.width - input.paddingX * 2);
+  const text = ellipsize(input.text, maxWidth, font);
+  const x =
+    input.align === 'right'
+      ? input.x + input.width - input.paddingX
+      : input.align === 'center'
+        ? input.x + input.width / 2
+        : input.x + input.paddingX;
+  paintRawCellText(opts, x, input.y + input.height / 2, text, font, input.color, opts.tokens.font.size.small, input.align);
+}
+
+function paintRawCellText(
+  opts: CanvasTableOptions,
+  x: number,
+  y: number,
+  text: string,
+  font: string,
+  color: string,
+  size: number,
+  align: CanvasTextAlign = 'left',
+): void {
+  if (!text) return;
+  paintCanvasText(opts.ctx, {
+    x,
+    y,
+    text,
+    font,
+    color,
+    size,
+    align,
+    baseline: 'middle',
+  });
+}
+
+function ellipsize(text: string, maxWidth: number, font: string): string {
+  if (maxWidth <= 0 || text.length === 0) return '';
+  if (measureText(text, font).width <= maxWidth) return text;
+  const ellipsis = '…';
+  const ellipsisW = measureText(ellipsis, font).width;
+  if (ellipsisW > maxWidth) return '';
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (measureText(text.slice(0, mid) + ellipsis, font).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo) + ellipsis;
+}
+
+interface CanvasConditional {
+  background?: string;
+  color?: string;
+  weight?: number | string;
+  icon?: string;
+  iconColor?: string;
+  iconPosition?: 'left' | 'right';
+  showValue?: boolean;
+  bar?: { leftRatio: number; widthRatio: number; color: string };
+}
+
+function resolveCanvasConditional(
+  opts: CanvasTableOptions,
+  column: ViewColumn,
+  colIndex: number,
+  cell: { value: unknown; raw: number | null },
+  rowBg: string,
+): CanvasConditional {
+  const cf = column.conditionalFormat;
+  const raw = cell.raw;
+  const domain = opts.conditionalDomains?.[colIndex] ?? null;
+  if (!cf) return {};
+  if ((cf.type === 'colorScale' || cf.type === 'bar' || cf.type === 'icon') && (raw == null || !Number.isFinite(raw))) {
+    return {};
+  }
+  const numeric = raw as number;
+
+  if (cf.type === 'colorScale') {
+    if (!domain) return {};
+    const midpoint = cf.midpoint ?? (domain[0] + domain[1]) / 2;
+    const scale =
+      cf.diverging === true || cf.midpoint !== undefined
+        ? divergingColorScale({ domain: [domain[0], midpoint, domain[1]], interpolator: divergingInterpolator(cf.scheme ?? 'redblue') })
+        : sequentialColorScale({ domain, interpolator: sequential(cf.scheme ?? 'blues') });
+    const color = scale.map(numeric);
+    if (cf.target === 'text') return { color: rgbaToCss(color) };
+    return { background: rgbaToCss(color), color: rgbaToCss(readableTextColor(color)) };
+  }
+
+  if (cf.type === 'rules') {
+    const style = evalRules(raw, cf.rules);
+    return {
+      background: style.background,
+      color: style.color,
+      weight: style.weight === 'bold' ? opts.tokens.font.weight.bold : style.weight === 'normal' ? opts.tokens.font.weight.normal : undefined,
+      icon: style.icon,
+      iconColor: style.color,
+      iconPosition: 'left',
+    };
+  }
+
+  if (cf.type === 'icon') {
+    const semantic = iconForValue(cf.set, numeric, domain, cf.rules);
+    if (!semantic) return {};
+    return {
+      icon: semantic.icon,
+      iconColor: toneColor(semantic.tone, { up: opts.tokens.color.positive, mid: '#d97706', down: opts.tokens.color.negative }),
+      iconPosition: cf.position ?? 'left',
+    };
+  }
+
+  if (!domain) return {};
+  const diverging = cf.negativeColor !== undefined || cf.baseline === 'zero';
+  const baseline = diverging ? normalized(0, domain) : 0;
+  const value = normalized(numeric, domain);
+  const leftRatio = diverging ? Math.min(baseline, value) : 0;
+  const widthRatio = diverging ? Math.abs(value - baseline) : value;
+  const positive = numeric >= 0;
+  const color = alphaColor(positive ? cf.color ?? opts.tokens.color.accent : cf.negativeColor ?? opts.tokens.color.negative, 0.85);
+  return { background: rowBg, showValue: cf.showValue !== false, bar: { leftRatio, widthRatio, color } };
+}
+
+function paintDataBar(
+  opts: CanvasTableOptions,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  bar: { leftRatio: number; widthRatio: number; color: string },
+): void {
+  const left = x + 4 + bar.leftRatio * Math.max(0, width - 8);
+  const barW = bar.widthRatio * Math.max(0, width - 8);
+  opts.ctx.save();
+  opts.ctx.globalAlpha *= 0.9;
+  opts.ctx.beginPath();
+  roundedRect(opts.ctx, left, y + 5, barW, Math.max(0, height - 10), Math.max(2, opts.tokens.radius.sm - 1));
+  opts.ctx.fillStyle = bar.color;
+  opts.ctx.fill();
+  opts.ctx.restore();
+}
+
+function canvasRowBackground(opts: CanvasTableOptions, rowIndex: number, cls: 'normal' | 'subtotal' | 'grandtotal'): string {
+  if (cls !== 'normal') return opts.tokens.color.surface;
+  if (opts.striped === true && rowIndex % 2 === 1) return subtleStripe(opts.tokens);
+  return opts.tokens.color.background;
+}
+
+function negativeTextColor(value: unknown, column: Pick<ViewColumn, 'negativeStyle'>, fallback: string): string {
+  const raw = typeof value === 'number' ? value : Number(value);
+  if (Number.isFinite(raw) && raw < 0 && (column.negativeStyle === 'red' || column.negativeStyle === 'parens-red')) {
+    return '#dc2626';
+  }
+  return fallback;
 }
 
 function applyStickyColumn(

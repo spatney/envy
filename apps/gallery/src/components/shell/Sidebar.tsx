@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { NAV, chartGroups } from '../../nav';
+import { NAV } from '../../nav';
 
 function linkClass({ isActive }: { isActive: boolean }): string {
   return `block rounded-lg px-3 py-1.5 text-sm transition-colors ${
@@ -10,7 +10,6 @@ function linkClass({ isActive }: { isActive: boolean }): string {
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const groups = chartGroups();
   return (
     <nav className="flex flex-col gap-6 p-4" aria-label="Gallery sections">
       {NAV.map((section) => (
@@ -19,25 +18,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             {section.title}
           </div>
           {section.kind === 'charts' ? (
-            <div className="space-y-3">
-              {groups.map((g) => (
-                <div key={g.id}>
-                  <div className="px-3 py-1 text-xs font-semibold text-muted">{g.title}</div>
-                  <div className="space-y-0.5">
-                    {g.stories.map((s) => (
-                      <NavLink
-                        key={s.id}
-                        to={`/charts/${s.id}`}
-                        className={linkClass}
-                        onClick={onNavigate}
-                      >
-                        {s.title.replace(/^[^—]+—\s*/, '')}
-                      </NavLink>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <NavLink to="/charts" className={linkClass} onClick={onNavigate} end>
+              Browse Chart Catalog
+            </NavLink>
           ) : (
             <div className="space-y-0.5">
               {section.items.map((item) => (

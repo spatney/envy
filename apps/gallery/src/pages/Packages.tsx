@@ -1,156 +1,137 @@
-import { Link } from 'react-router-dom';
-import { Page, PageHeader } from '../components/ui/Page';
 import { CodeBlock } from '../components/ui/CodeBlock';
-import { Callout, Card, Chip, Kicker } from '../components/ui/primitives';
+import { Page, PageHeader } from '../components/ui/Page';
+import {
+  ButtonLink,
+  Callout,
+  Card,
+  Chip,
+  Kicker,
+  SectionHeader,
+  SpectrumBar,
+} from '../components/ui/primitives';
 
-const packages = [
+const packageCards = [
   {
     name: 'graphein',
-    badge: 'Zero-dependency core',
-    purpose:
-      'The portable engine for every ChartSpec and DashboardSpec: chart types, validation, repair, rendering, summaries, and render reports.',
-    installTitle: 'Install',
+    accent: 'spec-1',
+    badge: 'core engine · zero dependencies',
     install: 'npm i graphein',
-    codeTitle: 'Core loop',
-    code: `import { render, renderDashboard, repairSpec, summarize, validateSpec } from 'graphein';
+    purpose:
+      'The framework-agnostic runtime. It validates and repairs ChartSpecs, renders charts and dashboards, returns summaries, and exposes RenderReport diagnostics.',
+    facts: ['render()', 'validateSpec()', 'repairSpec()', 'summarize()', 'chart.report()'],
+    codeTitle: 'Validate → repair → render → report',
+    code: `import { render, repairSpec, summarize, validateSpec } from 'graphein';
 
 const result = validateSpec(spec);
 const ready = result.valid ? spec : repairSpec(spec).spec;
 
 const chart = render('#chart', ready);
-const report = chart.report();
-const altText = summarize(ready);
+console.log(summarize(ready));
+console.log(chart.report());
 
-renderDashboard('#dashboard', dashboardSpec);`,
-    use:
-      'Use it whenever an agent, app, notebook, or automation needs a deterministic chart contract without bringing a framework along.',
+chart.update(nextSpec);
+chart.resize();
+chart.destroy();`,
   },
   {
     name: '@graphein/react',
-    badge: 'React integration',
+    accent: 'spec-2',
+    badge: 'React components + hooks',
+    install: 'npm i @graphein/react react',
     purpose:
-      'A thin React 19 wrapper around the same engine: <Chart>, <Dashboard>, useChart, useDashboard, and useSelection.',
-    installTitle: 'Install',
-    install: 'npm i @graphein/react',
+      'A thin React wrapper around the core renderer. Use <Chart /> and <Dashboard /> for declarative mounting, or useChart/useDashboard when the app owns the container.',
+    facts: ['<Chart spec />', '<Dashboard spec />', 'useChart()', 'useDashboard()', 'useSelection()'],
     codeTitle: 'Component API',
-    code: `import { useMemo } from 'react';
-import { Chart, Dashboard, useChart, useDashboard, useSelection } from '@graphein/react';
-import { createSelectionStore } from 'graphein';
+    code: `import { Chart, Dashboard } from '@graphein/react';
 
-export function RevenueCard({ spec, dashboardSpec }) {
-  const store = useMemo(() => createSelectionStore(), []);
-  const [region, setRegion] = useSelection(store, 'region');
-
+export function RevenuePage({ chartSpec, dashboardSpec }) {
   return (
     <>
-      <Chart spec={spec} store={store} />
-      <Dashboard spec={dashboardSpec} store={store} />
+      <div style={{ height: 360 }}>
+        <Chart spec={chartSpec} />
+      </div>
+      <Dashboard spec={dashboardSpec} />
     </>
   );
 }`,
-    use:
-      'Use it for product UI, docs, BI pages, and interactive applications that want React lifecycle, StrictMode safety, and shared selections.',
     link: '/react',
-    linkLabel: 'Open React guide',
+    linkLabel: 'React guide',
   },
   {
     name: '@graphein/node',
-    badge: 'Headless PNG',
+    accent: 'spec-3',
+    badge: 'headless PNG',
+    install: 'npm i @graphein/node graphein',
     purpose:
-      'Server-side rendering via @napi-rs/canvas for reports, CI artifacts, email digests, and export workflows.',
-    installTitle: 'Install',
-    install: 'npm i @graphein/node',
-    codeTitle: 'PNG export',
+      'Server-side rendering for canvas-backed charts via @napi-rs/canvas. It returns PNG bytes plus the same RenderReport used by the browser runtime.',
+    facts: ['renderChart()', 'renderToPNG()', '@napi-rs/canvas', 'PNG Buffer'],
+    codeTitle: 'Render in Node',
     code: `import { renderChart, renderToPNG } from '@graphein/node';
+import { writeFileSync } from 'node:fs';
 
-const chart = await renderChart(spec, { width: 1200, height: 720 });
-const report = chart.report();
-
-await renderToPNG(spec, 'regional-revenue.png', {
+const { png, report } = renderChart(spec, {
   width: 1200,
   height: 720,
-});`,
-    use:
-      'Use it when charts need to be generated offscreen in a job, API route, test runner, or publishing pipeline.',
+  dpr: 2,
+});
+
+if (!report.ok) console.warn(report.diagnostics);
+writeFileSync('regional-revenue.png', png);
+
+const compact = renderToPNG(spec, { width: 640, height: 360 });`,
     link: '/ssr',
-    linkLabel: 'Explore SSR',
+    linkLabel: 'SSR guide',
   },
   {
     name: 'graphein-mcp',
-    badge: 'Agent tool surface',
+    accent: 'spec-4',
+    badge: 'MCP server',
+    install: 'npx -y graphein-mcp',
     purpose:
-      'An MCP server that exposes validation, repair, rendering critique, API knowledge, and bundled docs as resources.',
-    installTitle: 'Run',
-    install: 'npx graphein-mcp',
-    codeTitle: 'Agent loop',
-    code: `// Tools available to an MCP client:
-// 1. validate a ChartSpec
-// 2. repair safe mistakes
-// 3. render headlessly
-// 4. read the RenderReport critique
-// 5. fetch schema, examples, and docs resources
-
-const fixed = await tools.repairSpec({ spec });
-const report = await tools.renderReport({ spec: fixed.spec });`,
-    use:
-      'Use it when the chart author is an AI agent and you want the schema, docs, examples, repair loop, and visual critique in one protocol.',
+      'A Model Context Protocol server for agent-first chart building. It exposes render, validate, repair, and summarize tools, and serves the schema plus docs as resources.',
+    facts: ['render_chart', 'validate_chart', 'repair_chart', 'summarize_chart', 'docs resources'],
+    codeTitle: 'MCP client config',
+    code: `{
+  "mcpServers": {
+    "graphein": {
+      "command": "npx",
+      "args": ["-y", "graphein-mcp"]
+    }
+  }
+}`,
     link: '/mcp',
-    linkLabel: 'See MCP workflow',
+    linkLabel: 'MCP workflow',
   },
 ] as const;
 
-function DependencyDiagram() {
-  const node = (label: string, note: string, tone?: 'accent') => (
-    <div
-      className={`rounded-xl border px-4 py-3 text-center shadow-sm ${
-        tone === 'accent'
-          ? 'border-accent bg-accent-soft text-accent'
-          : 'border-border bg-surface text-text'
-      }`}
-    >
-      <div className="font-mono text-sm font-semibold">{label}</div>
-      <div className="mt-1 text-xs text-muted">{note}</div>
-    </div>
-  );
-
-  const arrow = (label: string) => (
-    <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-faint">
-      <span className="h-px w-10 bg-border-strong" />
-      <span>{label}</span>
-      <span className="h-px w-10 bg-border-strong" />
-    </div>
-  );
-
+function MentalModel() {
   return (
-    <Card className="gx-rise overflow-hidden p-5 sm:p-6" as="section">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+    <Card className="overflow-hidden p-0" as="section">
+      <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="bg-surface-2 p-6 sm:p-7">
           <Kicker>Mental model</Kicker>
-          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-text">
-            Install leaves around a dependency-free core.
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-text sm:text-3xl">
+            Emit One ChartSpec. Add Only the Package Boundary You Need.
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            The engine remains zero-dep and tree-shakeable. Runtime, native, protocol, and framework
-            concerns live only in focused leaf packages.
+          <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+            Graphein keeps the grammar, validation, repairSpec(), renderer, summaries, and reports in the zero-dependency core. React, native canvas, and protocol code live in leaf packages.
           </p>
+          <SpectrumBar className="mt-6" />
         </div>
-        <Chip tone="ok">core stays 0 deps</Chip>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-center">
-        {node('graphein', 'render · validate · repair · report', 'accent')}
-        {arrow('core ← react')}
-        {node('@graphein/react', '<Chart> · hooks')}
-        {arrow('core ← node')}
-        {node('@graphein/node', 'PNG · headless')}
-      </div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-        <div className="rounded-xl border border-border bg-surface-2 p-4 text-sm leading-relaxed text-muted">
-          <span className="font-semibold text-text">graphein-mcp</span> composes the core knowledge loop
-          with node rendering when an agent needs validation, safe repair, screenshots, critique, and docs.
+        <div className="grid gap-3 p-6 sm:grid-cols-2 sm:p-7">
+          {[
+            ['graphein', 'ChartSpec + renderer + render → report loop'],
+            ['@graphein/react', 'React lifecycle around the same renderer'],
+            ['@graphein/node', 'PNG bytes and RenderReport in Node'],
+            ['graphein-mcp', 'Agent tools plus schema and docs resources'],
+          ].map(([name, note], index) => (
+            <div key={name} className="rounded-2xl border border-border bg-surface p-4">
+              <div className={`mb-3 h-1.5 w-14 rounded-full spec-${index + 1}`} />
+              <div className="font-mono text-sm font-semibold text-text">{name}</div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{note}</p>
+            </div>
+          ))}
         </div>
-        {arrow('core + node ← mcp')}
-        {node('graphein-mcp', 'tools · resources · critique')}
       </div>
     </Card>
   );
@@ -161,52 +142,67 @@ export function Packages() {
     <Page wide>
       <PageHeader
         kicker="Packages"
-        title="Four packages, one mental model"
-        blurb="Start with a plain JSON spec. Add the smallest integration layer needed for React apps, server rendering, or agent tooling."
+        title="Four Packages, One ChartSpec Contract"
+        blurb="Start with Graphein's zero-dependency core. Add React for UI, Node for PNG export, or MCP for agent-authored charts."
       />
 
-      <DependencyDiagram />
+      <MentalModel />
 
-      <Callout title="The split is intentional" tone="neutral">
-        Graphein keeps the core engine zero-dependency. Framework wrappers, native canvas bindings, and
-        MCP runtime concerns stay in leaf packages so browser bundles remain lean and predictable.
-      </Callout>
-
-      <div className="mt-6 grid gap-5">
-        {packages.map((pkg) => (
-          <Card key={pkg.name} className="gx-rise p-5 sm:p-6" as="section">
-            <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="mt-7 grid gap-5 lg:grid-cols-2">
+        {packageCards.map((pkg) => (
+          <Card key={pkg.name} className="flex flex-col p-5 sm:p-6" as="article">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-2xl font-semibold tracking-tight text-text">
-                    {pkg.name}
-                  </h2>
-                  <Chip tone="accent">{pkg.badge}</Chip>
-                </div>
-                <p className="mt-3 text-base leading-relaxed text-muted">{pkg.purpose}</p>
-                <div className="mt-5">
-                  <CodeBlock code={pkg.install} lang="bash" title={pkg.installTitle} />
-                </div>
-                <div className="mt-5 rounded-xl border border-border bg-surface-2 p-4">
-                  <div className="font-mono text-xs font-semibold uppercase tracking-wide text-faint">
-                    When to use it
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{pkg.use}</p>
-                  {'link' in pkg && (
-                    <Link
-                      to={pkg.link}
-                      className="mt-3 inline-flex text-sm font-semibold text-accent hover:underline"
-                    >
-                      {pkg.linkLabel} →
-                    </Link>
-                  )}
-                </div>
+                <div className={`mb-3 h-1.5 w-16 rounded-full ${pkg.accent}`} />
+                <h2 className="font-display text-2xl font-semibold tracking-tight text-text">
+                  {pkg.name}
+                </h2>
               </div>
-              <CodeBlock code={pkg.code} lang="tsx" title={pkg.codeTitle} maxHeight={360} />
+              <Chip tone="accent">{pkg.badge}</Chip>
             </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">{pkg.purpose}</p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {pkg.facts.map((fact) => (
+                <Chip key={fact}>{fact}</Chip>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-4">
+              <CodeBlock code={pkg.install} lang="bash" title="Install" />
+              <CodeBlock
+                code={pkg.code}
+                lang={pkg.name === 'graphein-mcp' ? 'json' : 'tsx'}
+                title={pkg.codeTitle}
+                maxHeight={380}
+              />
+            </div>
+
+            {'link' in pkg && (
+              <div className="mt-5">
+                <ButtonLink to={pkg.link} variant="ghost" size="sm">
+                  {pkg.linkLabel} →
+                </ButtonLink>
+              </div>
+            )}
           </Card>
         ))}
       </div>
+
+      <Callout title="Why this split matters" tone="neutral">
+        Browser apps can depend on <span className="font-mono text-text">graphein</span> without
+        native or protocol dependencies. Server jobs opt into{' '}
+        <span className="font-mono text-text">@graphein/node</span>; agents opt into{' '}
+        <span className="font-mono text-text">graphein-mcp</span>.
+      </Callout>
+
+      <SectionHeader
+        className="mt-8"
+        eyebrow="Next"
+        title="Choose by Runtime, Not Chart Type"
+        lead="The same ChartSpec works across packages. Move from browser preview to React app to PNG export without rewriting the spec."
+      />
     </Page>
   );
 }

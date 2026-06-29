@@ -1,344 +1,468 @@
-import { Link } from 'react-router-dom';
 import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import type { ChartSpec } from 'graphein';
 import { ChartStage } from '../components/chart/ChartStage';
-import { Page } from '../components/ui/Page';
 import { CodeBlock } from '../components/ui/CodeBlock';
-import { Callout, Card, Chip, Kicker } from '../components/ui/primitives';
-import { timeSeries } from '../content/data';
+import { Page } from '../components/ui/Page';
+import { ButtonLink, Card, Chip, GradientText, SectionHeader, SpectrumBar, Stat } from '../components/ui/primitives';
 
 const heroSpec: ChartSpec = {
   type: 'area',
-  data: timeSeries({
-    series: ['West', 'East', 'North', 'South'],
-    points: 48,
-    seed: 5,
-    base: 85,
-    trend: 1.35,
-    seasonAmp: 22,
-    noise: 7,
-  }),
+  data: [
+    { week: '2026-01-05', surface: 'Docs', specs: 42 },
+    { week: '2026-01-12', surface: 'Docs', specs: 58 },
+    { week: '2026-01-19', surface: 'Docs', specs: 71 },
+    { week: '2026-01-26', surface: 'Docs', specs: 86 },
+    { week: '2026-02-02', surface: 'Docs', specs: 98 },
+    { week: '2026-02-09', surface: 'Docs', specs: 118 },
+    { week: '2026-01-05', surface: 'Playground', specs: 28 },
+    { week: '2026-01-12', surface: 'Playground', specs: 39 },
+    { week: '2026-01-19', surface: 'Playground', specs: 64 },
+    { week: '2026-01-26', surface: 'Playground', specs: 92 },
+    { week: '2026-02-02', surface: 'Playground', specs: 121 },
+    { week: '2026-02-09', surface: 'Playground', specs: 149 },
+    { week: '2026-01-05', surface: 'MCP', specs: 16 },
+    { week: '2026-01-12', surface: 'MCP', specs: 27 },
+    { week: '2026-01-19', surface: 'MCP', specs: 51 },
+    { week: '2026-01-26', surface: 'MCP', specs: 83 },
+    { week: '2026-02-02', surface: 'MCP', specs: 119 },
+    { week: '2026-02-09', surface: 'MCP', specs: 171 },
+  ],
   encoding: {
-    x: { field: 'date', type: 'temporal', title: 'Week' },
-    y: { field: 'value', title: 'Adoption' },
-    series: { field: 'series', title: 'Region' },
+    x: { field: 'week', type: 'temporal', title: 'Week' },
+    y: { field: 'specs', title: 'Specs rendered' },
+    series: { field: 'surface' },
   },
   stack: true,
   curve: 'monotone',
-  title: {
-    text: 'Agent-authored adoption, live',
-    subtitle: 'Four tidy series rendered from one JSON-serializable spec',
-  },
   legend: { position: 'top' },
   axes: { x: { grid: false }, y: { ticks: 4 } },
-  tooltip: true,
+  insights: { outliers: true },
+  title: { text: 'Specs rendered by agents', subtitle: 'Tidy rows in, chart plus report out' },
 };
 
-const oneRuleSpec: ChartSpec = {
+const ruleSpec: ChartSpec = {
   type: 'line',
   data: [
     { month: '2026-01', channel: 'Self-serve', revenue: 42 },
-    { month: '2026-02', channel: 'Self-serve', revenue: 58 },
-    { month: '2026-03', channel: 'Self-serve', revenue: 71 },
-    { month: '2026-04', channel: 'Self-serve', revenue: 89 },
-    { month: '2026-01', channel: 'Enterprise', revenue: 64 },
-    { month: '2026-02', channel: 'Enterprise', revenue: 72 },
-    { month: '2026-03', channel: 'Enterprise', revenue: 94 },
-    { month: '2026-04', channel: 'Enterprise', revenue: 118 },
+    { month: '2026-02', channel: 'Self-serve', revenue: 55 },
+    { month: '2026-03', channel: 'Self-serve', revenue: 73 },
+    { month: '2026-04', channel: 'Self-serve', revenue: 91 },
+    { month: '2026-01', channel: 'Sales-led', revenue: 67 },
+    { month: '2026-02', channel: 'Sales-led', revenue: 79 },
+    { month: '2026-03', channel: 'Sales-led', revenue: 88 },
+    { month: '2026-04', channel: 'Sales-led', revenue: 116 },
   ],
   encoding: {
     x: { field: 'month', type: 'temporal' },
-    y: { field: 'revenue', title: 'Revenue' },
+    y: { field: 'revenue', title: 'Revenue ($k)' },
     series: { field: 'channel' },
   },
   curve: 'monotone',
   points: true,
   insights: true,
-  title: 'Revenue momentum',
+  title: 'Revenue by channel',
 };
 
-const oneRuleCode = `import { render, validateSpec } from 'graphein';
+const ruleCode = `const spec = {
+  type: 'line',
+  data: [
+    { month: '2026-01', channel: 'Self-serve', revenue: 42 },
+    { month: '2026-02', channel: 'Self-serve', revenue: 55 },
+    { month: '2026-03', channel: 'Self-serve', revenue: 73 },
+    { month: '2026-04', channel: 'Self-serve', revenue: 91 },
+    { month: '2026-01', channel: 'Sales-led', revenue: 67 },
+    { month: '2026-02', channel: 'Sales-led', revenue: 79 },
+    { month: '2026-03', channel: 'Sales-led', revenue: 88 },
+    { month: '2026-04', channel: 'Sales-led', revenue: 116 }
+  ],
+  encoding: {
+    x: { field: 'month', type: 'temporal' },
+    y: { field: 'revenue', title: 'Revenue ($k)' },
+    series: { field: 'channel' }
+  }
+};`;
 
-const spec = ${JSON.stringify(oneRuleSpec, null, 2)};
+type MiniChart = {
+  name: string;
+  note: string;
+  spec: ChartSpec;
+  height?: number;
+  className?: string;
+};
 
-const { valid, errors } = validateSpec(spec);
-if (!valid) throw new Error(errors[0].message);
-
-const chart = render('#chart', spec);
-chart.report(); // mark count, clipped labels, contrast, summary`;
-
-const features = [
+const miniCharts: MiniChart[] = [
   {
-    title: '22+ chart types',
-    route: '/charts/line-single',
-    chip: 'Showcase',
-    copy: 'Lines, areas, bars, maps, Sankey, waterfall, KPI cards, matrices, tables, slicers, and more — each backed by runnable specs.',
+    name: 'Line',
+    note: 'Retention by cohort',
+    spec: {
+      type: 'line',
+      data: [
+        { week: 'W1', cohort: 'January', retained: 100 },
+        { week: 'W2', cohort: 'January', retained: 72 },
+        { week: 'W3', cohort: 'January', retained: 61 },
+        { week: 'W4', cohort: 'January', retained: 54 },
+        { week: 'W1', cohort: 'February', retained: 100 },
+        { week: 'W2', cohort: 'February', retained: 77 },
+        { week: 'W3', cohort: 'February', retained: 66 },
+        { week: 'W4', cohort: 'February', retained: 62 },
+      ],
+      encoding: { x: { field: 'week' }, y: { field: 'retained', title: 'Retained %' }, series: { field: 'cohort' } },
+      points: true,
+      title: 'Cohort retention',
+    },
   },
   {
-    title: 'Validate → repair',
-    route: '/playground',
-    chip: 'Self-healing',
-    copy: 'Agents can validate before rendering, apply safe JSON Patch fixes with repairSpec(), and re-check without guessing.',
+    name: 'Bar',
+    note: 'Pipeline by stage',
+    spec: {
+      type: 'bar',
+      data: [
+        { stage: 'Lead', deals: 142 },
+        { stage: 'Qualified', deals: 86 },
+        { stage: 'Proposal', deals: 41 },
+        { stage: 'Closed', deals: 24 },
+      ],
+      encoding: { x: { field: 'stage' }, y: { field: 'deals' } },
+      title: 'Deals by stage',
+    },
   },
   {
-    title: 'Render reports',
-    route: '/foundations',
-    chip: 'Self-describing',
-    copy: 'Every chart can explain itself with deterministic summarize() output and flag clipped labels, overflow, and contrast issues.',
+    name: 'Scatter',
+    note: 'Cost versus latency',
+    spec: {
+      type: 'scatter',
+      data: [
+        { cost: 18, latency: 210, tier: 'Free' },
+        { cost: 28, latency: 188, tier: 'Free' },
+        { cost: 44, latency: 153, tier: 'Team' },
+        { cost: 61, latency: 132, tier: 'Team' },
+        { cost: 82, latency: 98, tier: 'Business' },
+        { cost: 97, latency: 86, tier: 'Business' },
+      ],
+      encoding: {
+        x: { field: 'cost', title: 'Monthly cost' },
+        y: { field: 'latency', title: 'Latency ms' },
+        color: { field: 'tier' },
+      },
+      trendline: { label: true },
+      title: 'Cost and latency',
+    },
   },
   {
-    title: 'Server-side rendering',
-    route: '/ssr',
-    chip: 'PNG-ready',
-    copy: '@graphein/node renders the same specs headlessly for reports, Slack digests, PDFs, and CI snapshots.',
+    name: 'Pie',
+    note: 'Support mix',
+    spec: {
+      type: 'pie',
+      data: [
+        { queue: 'Billing', tickets: 32 },
+        { queue: 'Auth', tickets: 24 },
+        { queue: 'API', tickets: 18 },
+        { queue: 'Data', tickets: 14 },
+        { queue: 'Other', tickets: 12 },
+      ],
+      encoding: { theta: { field: 'tickets' }, color: { field: 'queue' } },
+      donut: 0.58,
+      labels: { placement: 'auto', content: 'category-percent', connector: 'muted' },
+      title: 'Tickets by queue',
+    },
   },
   {
-    title: 'MCP server',
-    route: '/mcp',
-    chip: 'Agent tools',
-    copy: 'Expose the schema, examples, validation, repair, and render-report loop directly to coding agents.',
+    name: 'Heatmap',
+    note: 'Incidents by hour',
+    spec: {
+      type: 'heatmap',
+      data: [
+        { day: 'Mon', hour: '09', load: 12 },
+        { day: 'Mon', hour: '12', load: 18 },
+        { day: 'Mon', hour: '15', load: 22 },
+        { day: 'Tue', hour: '09', load: 16 },
+        { day: 'Tue', hour: '12', load: 28 },
+        { day: 'Tue', hour: '15', load: 31 },
+        { day: 'Wed', hour: '09', load: 9 },
+        { day: 'Wed', hour: '12', load: 19 },
+        { day: 'Wed', hour: '15', load: 26 },
+      ],
+      encoding: { x: { field: 'hour' }, y: { field: 'day' }, color: { field: 'load', type: 'quantitative' } },
+      scheme: 'teal',
+      title: 'Queue load',
+    },
   },
   {
-    title: 'Dashboards & selections',
-    route: '/interactivity',
-    chip: 'Interactive',
-    copy: 'Slicers, cross-filtering, highlighting, and dashboard layout are plain JSON — no callback maze required.',
+    name: 'Sankey',
+    note: 'Revenue flow',
+    spec: {
+      type: 'sankey',
+      data: [
+        { source: 'ARR', target: 'Product', value: 54 },
+        { source: 'ARR', target: 'Sales', value: 28 },
+        { source: 'ARR', target: 'Support', value: 18 },
+        { source: 'Product', target: 'Net income', value: 21 },
+        { source: 'Sales', target: 'Net income', value: 9 },
+        { source: 'Support', target: 'Net income', value: 7 },
+      ],
+      encoding: { source: { field: 'source' }, target: { field: 'target' }, value: { field: 'value' } },
+      nodePadding: 14,
+      title: 'ARR allocation',
+    },
+    className: 'lg:col-span-2',
   },
   {
-    title: 'Themes + sketch',
-    route: '/foundations',
-    chip: 'Expressive',
-    copy: 'Switch polished light/dark themes or flip into a hand-drawn sketch aesthetic while keeping the spec portable.',
+    name: 'KPI',
+    note: 'Metric with sparkline',
+    spec: {
+      type: 'kpi',
+      data: [
+        { week: 'W1', activations: 520 },
+        { week: 'W2', activations: 610 },
+        { week: 'W3', activations: 690 },
+        { week: 'W4', activations: 760 },
+      ],
+      value: { field: 'activations', aggregate: 'sum' },
+      label: 'Monthly activations',
+      delta: 0.18,
+      sparkline: { field: 'activations' },
+      title: 'Activation pace',
+    },
+    height: 210,
   },
   {
-    title: 'Zero-dependency core',
-    route: '/packages',
-    chip: 'Portable',
-    copy: 'The core engine stays dependency-free, tree-shakeable, and explicit; integrations live in focused leaf packages.',
+    name: 'Treemap',
+    note: 'Spend by service',
+    spec: {
+      type: 'treemap',
+      data: [
+        { group: 'Compute', service: 'API', cost: 148 },
+        { group: 'Compute', service: 'Workers', cost: 92 },
+        { group: 'Storage', service: 'Warehouse', cost: 116 },
+        { group: 'Storage', service: 'Objects', cost: 64 },
+        { group: 'Network', service: 'CDN', cost: 58 },
+        { group: 'Network', service: 'Egress', cost: 73 },
+      ],
+      encoding: { group: { field: 'group' }, category: { field: 'service' }, value: { field: 'cost' } },
+      labels: true,
+      title: 'Cloud cost',
+    },
+    className: 'lg:col-span-2',
   },
 ];
 
-const packages = [
-  ['graphein', 'Dependency-free chart engine, validation, repair, summarize(), and render reports.'],
-  ['@graphein/react', 'A React wrapper that keeps ChartSpec as the only API surface.'],
-  ['@graphein/node', 'Headless PNG rendering for automation, CI, and server workflows.'],
-  ['graphein-mcp', 'An MCP server that gives agents the schema, docs, examples, and checks.'],
+const loopSteps = [
+  ['Validate', 'Catch missing fields before a chart mounts.'],
+  ['Repair', 'Apply safe JSON Patch fixes and keep the diff visible.'],
+  ['Render', 'Render the same ChartSpec in React, vanilla DOM, or headless Node.'],
+  ['Report', 'Read mark counts, clipping, contrast, and summary text.'],
 ] as const;
 
-const steps = [
+const pillars = [
   {
-    title: 'Shape tidy data',
-    copy: 'One row per observation. Split groups with a series field instead of pre-pivoting.',
-    code: `[
-  { month: 'Jan', region: 'West', sales: 420 },
-  { month: 'Jan', region: 'East', sales: 380 }
-]`,
+    title: 'Dependency-free core',
+    copy: 'The graphein core ships the grammar, renderer, validation, repairSpec(), summarize(), and report() with zero runtime dependencies.',
+    tag: 'graphein',
   },
   {
-    title: 'Pick type + encoding',
-    copy: 'Choose the visual intent, then map columns to channels. The rest is inferred safely.',
-    code: `{
-  type: 'line',
-  encoding: {
-    x: { field: 'month' },
-    y: { field: 'sales' },
-    series: { field: 'region' }
-  }
-}`,
+    title: 'Reports and summaries',
+    copy: 'summarize() returns deterministic alt text. report() returns mark counts, clipping, contrast, and summary diagnostics.',
+    tag: 'report()',
   },
   {
-    title: 'Validate + render',
-    copy: 'Catch schema issues, auto-repair safe mistakes, render, then inspect the report.',
-    code: `const fixed = repairSpec(spec);
-validateSpec(fixed.spec);
-const chart = render('#app', fixed.spec);
-chart.report();`,
+    title: 'Browser, Node, and MCP',
+    copy: '@graphein/react mounts charts, @graphein/node exports PNGs, and graphein-mcp exposes validate, repair, render, and summarize tools.',
+    tag: 'SSR + MCP',
   },
-];
+] as const;
+
+function rise(ms: number): CSSProperties {
+  return { '--d': `${ms}ms` } as CSSProperties;
+}
 
 function Arrow() {
   return <span aria-hidden="true">→</span>;
 }
 
-function riseDelay(ms: number): CSSProperties {
-  return { '--d': `${ms}ms` } as CSSProperties;
-}
-
 export function Home() {
   return (
     <Page wide>
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-8 lg:p-10">
-        <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-        <div className="absolute right-8 top-8 hidden h-28 w-28 rounded-full border border-accent bg-accent-soft lg:block" />
+      <section className="relative isolate overflow-hidden rounded-3xl border border-border bg-bg px-5 py-6 shadow-sm sm:px-8 lg:px-10 lg:py-10">
+        <div className="aurora" />
         <div className="relative grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
           <div className="gx-rise">
-            <Kicker>Graphein</Kicker>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Chip tone="accent">The agent-first dataviz library</Chip>
-              <Chip>One spec in, production chart out</Chip>
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone="accent">Agent-first data visualization</Chip>
+              <Chip>JSON-serializable specs</Chip>
             </div>
-            <h1 className="mt-5 max-w-4xl font-display text-4xl font-semibold tracking-tight text-text sm:text-6xl">
-              Emit one JSON object. Get a beautiful, self-describing chart.
+            <h1 className="mt-5 max-w-4xl font-display text-5xl font-semibold tracking-tight text-text sm:text-7xl">
+              <GradientText animate>Charts an agent can finish.</GradientText>
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
-              Graphein is built for agents that need to move from data to polished insight in one
-              reliable step: validate the spec, render the visual, read the report, and ship.
+              Graphein turns tidy rows and one ChartSpec into a chart, validation result, and RenderReport.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/charts/line-single"
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-contrast shadow-sm transition hover:opacity-90"
-              >
-                Explore charts <Arrow />
-              </Link>
-              <Link
-                to="/playground"
-                className="inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface-2 px-5 py-3 text-sm font-semibold text-text transition hover:border-accent hover:text-accent"
-              >
-                Open the Playground <Arrow />
-              </Link>
-              <a
-                href="https://github.com/spatney/graphein"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-3 text-sm font-semibold text-muted transition hover:border-accent hover:text-accent"
-              >
-                GitHub <Arrow />
-              </a>
+              <ButtonLink to="/learn" size="lg">
+                Start Learn Track <Arrow />
+              </ButtonLink>
+              <ButtonLink to="/charts" variant="outline" size="lg">
+                Browse Chart Catalog <Arrow />
+              </ButtonLink>
             </div>
             <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
-              {[
-                ['22+', 'chart types'],
-                ['0', 'core deps'],
-                ['1', 'JSON spec'],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-xl border border-border bg-surface-2 p-3">
-                  <div className="font-display text-2xl font-semibold text-text">{value}</div>
-                  <div className="text-xs font-medium uppercase tracking-wide text-faint">{label}</div>
-                </div>
-              ))}
+              <div className="rounded-2xl border border-border bg-surface/90 p-4">
+                <Stat value="1" label="ChartSpec contract" gradient />
+              </div>
+              <div className="rounded-2xl border border-border bg-surface/90 p-4">
+                <Stat value="0" label="core dependencies" gradient />
+              </div>
+              <div className="rounded-2xl border border-border bg-surface/90 p-4">
+                <Stat value="4" label="loop calls" gradient />
+              </div>
             </div>
           </div>
 
-          <div className="gx-rise" style={riseDelay(90)}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <div className="font-mono text-xs font-semibold uppercase tracking-wide text-accent">
-                  Live ChartSpec
+          <div className="gx-rise" style={rise(100)}>
+            <Card className="overflow-hidden bg-surface p-3">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <div>
+                  <div className="font-mono text-xs font-semibold uppercase tracking-wide text-accent">Live ChartStage</div>
+                  <p className="text-sm text-muted">This chart renders from the ChartSpec shown below.</p>
                 </div>
-                <p className="text-sm text-muted">Theme-aware, responsive, and reporting on itself.</p>
+                <div className="flex gap-1.5" aria-hidden="true">
+                  <span className="h-2.5 w-2.5 rounded-full bg-spec-1" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-spec-2" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-spec-3" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-spec-4" />
+                </div>
               </div>
-              <Chip tone="ok">HMR live</Chip>
-            </div>
-            <ChartStage spec={heroSpec} height={430} />
+              <ChartStage spec={heroSpec} height={430} />
+            </Card>
           </div>
         </div>
       </section>
 
-      <section className="mt-12 grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-stretch">
-        <div className="gx-rise" style={riseDelay(130)}>
-          <Kicker>The one rule</Kicker>
-          <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text">
-            A single ChartSpec is the contract.
-          </h2>
-          <p className="mt-3 text-lg leading-relaxed text-muted">
-            No imperative drawing, no callback soup, no hidden state. Graphein’s API is a
-            JSON-serializable object that agents can generate, inspect, repair, diff, and reuse.
-          </p>
-          <Callout title="Agent loop, closed">
-            Validate the spec before rendering. After render, read the machine-readable report for
-            mark counts, layout health, contrast checks, and deterministic alt text.
-          </Callout>
+      <section className="mt-14 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
+        <div className="gx-rise" style={rise(80)}>
+          <SectionHeader
+            eyebrow="The one rule"
+            title="Emit One ChartSpec"
+            lead="Keep tidy rows. Map fields to channels. Validate before render."
+          />
           <div className="mt-5">
-            <CodeBlock code={oneRuleCode} lang="ts" title="one-chart.ts" maxHeight={430} />
+            <CodeBlock code={ruleCode} lang="ts" title="chart-spec.ts" maxHeight={470} />
           </div>
         </div>
-        <div className="gx-rise" style={riseDelay(180)}>
+        <div className="gx-rise" style={rise(140)}>
           <Card className="flex h-full flex-col p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-text">Same spec, live result</div>
-                <div className="text-sm text-muted">Rendered with @graphein/react.</div>
+                <div className="text-sm font-semibold text-text">Same object, rendered chart</div>
+                <p className="text-sm text-muted">No drawing commands. No callbacks. No hidden state.</p>
               </div>
-              <Chip tone="accent">summarize()</Chip>
+              <Chip tone="ok">valid</Chip>
             </div>
-            <ChartStage spec={oneRuleSpec} height={420} />
+            <ChartStage spec={ruleSpec} height={420} />
           </Card>
         </div>
       </section>
 
-      <section className="mt-14">
-        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <Kicker>Why teams choose Graphein</Kicker>
-            <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text">
-              Built for chart generation you can trust.
-            </h2>
-          </div>
-          <Link to="/foundations" className="text-sm font-semibold text-accent hover:underline">
-            Read the foundations <Arrow />
-          </Link>
+      <section className="mt-16">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <SectionHeader
+            eyebrow="Chart types"
+            title="One Grammar, 22 Chart Types"
+            lead="Choose the chart type by question. The ChartSpec shape stays consistent."
+          />
+          <ButtonLink to="/charts" variant="ghost">
+            View chart catalog <Arrow />
+          </ButtonLink>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature, index) => (
-            <Link key={feature.title} to={feature.route} className="group gx-rise block" style={riseDelay(index * 35)}>
-              <Card className="h-full p-5 transition group-hover:-translate-y-0.5 group-hover:border-accent">
-                <Chip tone="accent">{feature.chip}</Chip>
-                <h3 className="mt-4 font-display text-xl font-semibold text-text">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{feature.copy}</p>
-                <div className="mt-4 text-sm font-semibold text-accent">
-                  Explore <Arrow />
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {miniCharts.map((chart, index) => (
+            <Link
+              key={chart.name}
+              to="/charts"
+              className={`group gx-rise spectrum-border rounded-2xl ${chart.className ?? ''}`}
+              style={rise(index * 35)}
+            >
+              <Card className="h-full overflow-hidden p-3 transition group-hover:-translate-y-0.5">
+                <div className="mb-2 flex items-start justify-between gap-2 px-1">
+                  <div>
+                    <h3 className="font-display text-lg font-semibold text-text">{chart.name}</h3>
+                    <p className="text-sm text-muted">{chart.note}</p>
+                  </div>
+                  <Arrow />
                 </div>
+                <ChartStage spec={chart.spec} height={chart.height ?? 260} showSummary={false} />
               </Card>
             </Link>
           ))}
         </div>
       </section>
 
-      <section className="mt-14 rounded-2xl border border-border bg-surface-2 p-5 sm:p-6">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <Kicker>Packages</Kicker>
-            <h2 className="mt-1 font-display text-2xl font-semibold text-text">
-              One grammar across browser, React, Node, and agent tooling.
-            </h2>
+      <section className="mt-16 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+          <div className="gx-rise">
+            <SectionHeader
+              eyebrow="Render → Report Loop"
+              title="Close the Loop Without Screenshots"
+              lead="The API returns RenderReport diagnostics, so an agent can fix the ChartSpec without reading screenshots."
+            />
+            <SpectrumBar className="mt-6 w-32" />
           </div>
-          <Link to="/packages" className="text-sm font-semibold text-accent hover:underline">
-            View package guide <Arrow />
-          </Link>
-        </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
-          {packages.map(([name, copy]) => (
-            <Link key={name} to="/packages" className="rounded-xl border border-border bg-surface p-4 transition hover:border-accent">
-              <div className="font-mono text-sm font-semibold text-accent">{name}</div>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{copy}</p>
-            </Link>
-          ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {loopSteps.map(([title, copy], index) => (
+              <div key={title} className="gx-rise" style={rise(index * 70)}>
+                <Card className="h-full p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 font-mono text-sm font-semibold text-accent">
+                      {index + 1}
+                    </div>
+                    <h3 className="font-display text-xl font-semibold text-text">{title}</h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-muted">{copy}</p>
+                </Card>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="mt-14">
-        <div className="mb-6">
-          <Kicker>How it works</Kicker>
-          <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight text-text">
-            Three steps from tidy data to trustworthy visual.
-          </h2>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {steps.map((step, index) => (
-            <div key={step.title} className="gx-rise" style={riseDelay(index * 70)}>
-              <Card className="h-full p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft font-display text-lg font-semibold text-accent">
-                    {index + 1}
-                  </div>
-                  <h3 className="font-display text-xl font-semibold text-text">{step.title}</h3>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{step.copy}</p>
-                <pre className="mt-4 overflow-auto rounded-xl border border-border bg-surface-2 p-4 font-mono text-xs leading-relaxed text-muted">
-                  <code>{step.code}</code>
-                </pre>
+      <section className="mt-16">
+        <SectionHeader
+          eyebrow="Runtime facts"
+          title="Generated Charts With Machine Checks"
+          lead="The same ChartSpec runs in the editor, browser, Node, and MCP."
+          align="center"
+        />
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          {pillars.map((pillar, index) => (
+            <div key={pillar.title} className="gx-rise" style={rise(index * 80)}>
+              <Card className="spectrum-border h-full p-6">
+                <Chip tone="accent">{pillar.tag}</Chip>
+                <h3 className="mt-4 font-display text-2xl font-semibold tracking-tight text-text">{pillar.title}</h3>
+                <p className="mt-3 leading-relaxed text-muted">{pillar.copy}</p>
               </Card>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="relative mt-16 overflow-hidden rounded-3xl border border-border bg-surface p-6 sm:p-10">
+        <div className="aurora" />
+        <div className="relative mx-auto max-w-3xl text-center">
+          <Chip tone="accent">Start with ChartSpec</Chip>
+          <h2 className="mt-4 font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">
+            <GradientText>Give Your Agent a Chart Contract</GradientText>
+          </h2>
+          <p className="mt-4 text-lg leading-relaxed text-muted">
+            Learn the grammar, copy a working spec, then inspect the RenderReport before release.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <ButtonLink to="/learn" size="lg">
+              Start Learn Track <Arrow />
+            </ButtonLink>
+            <ButtonLink to="/charts" variant="outline" size="lg">
+              Browse Chart Catalog <Arrow />
+            </ButtonLink>
+          </div>
         </div>
       </section>
     </Page>

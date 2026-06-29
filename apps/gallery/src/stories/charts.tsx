@@ -99,8 +99,8 @@ export const chartStories: Story[] = [
   story({
     id: 'line-single',
     group: 'Line',
-    title: 'Line — weekly active users',
-    blurb: 'A clean product-health trend with optional area fill, smoothing, and automatic high/low callouts.',
+    title: 'Line — Weekly Active Users',
+    blurb: 'Six weekly rows render as a line with optional area fill, smoothing, and max/min callouts.',
     tags: ['temporal', 'trend', 'insights'],
     controls: [ctl.range('points', 'Points', 8, 120, 4, 52), ctl.toggle('area', 'Fill area'), ctl.toggle('curve', 'Smooth curve'), ctl.toggle('insights', 'Auto insights', true)],
     spec: (a: StoryArgs = {}) => ({
@@ -116,8 +116,8 @@ export const chartStories: Story[] = [
   story({
     id: 'line-regional-revenue',
     group: 'Line',
-    title: 'Line — regional revenue race',
-    blurb: 'Multiple tidy series share one temporal x-axis; optional regression labels show trend strength by region.',
+    title: 'Line — Regional Revenue Race',
+    blurb: 'Three regional series share one temporal x-axis; trendline labels report one fit per region.',
     tags: ['series', 'legend', 'trendline'],
     controls: [ctl.toggle('trendline', 'Trendline + R²', true)],
     spec: (a: StoryArgs = {}) => ({
@@ -131,8 +131,8 @@ export const chartStories: Story[] = [
   story({
     id: 'line-channel-facets',
     group: 'Line',
-    title: 'Line — acquisition small multiples',
-    blurb: 'Faceting creates comparable channel panels from one field without hand-building separate charts.',
+    title: 'Line — Acquisition Small Multiples',
+    blurb: "facet:{ field:'channel' } splits one dataset into shared-scale channel panels.",
     tags: ['facet', 'small-multiples'],
     wide: true,
     spec: () => ({
@@ -147,8 +147,8 @@ export const chartStories: Story[] = [
   story({
     id: 'line-dense-lttb',
     group: 'Line',
-    title: 'Line — 50k point signal',
-    blurb: 'A dense telemetry trace remains crisp because Graphein downsamples the draw path while preserving extrema.',
+    title: 'Line — 50k Point Signal',
+    blurb: '50,000 telemetry rows render with LTTB downsampling while extrema stay in the path.',
     tags: ['big-data', 'lttb'],
     wide: true,
     spec: () => ({
@@ -162,8 +162,8 @@ export const chartStories: Story[] = [
   story({
     id: 'area-stacked-demand',
     group: 'Area',
-    title: 'Area — stacked demand mix',
-    blurb: 'Stacked areas show both total load and each region’s contribution over time.',
+    title: 'Area — Stacked Demand Mix',
+    blurb: "Stacked areas show total load and each region's contribution across the same dates.",
     tags: ['stack', 'composition'],
     controls: [ctl.toggle('curve', 'Smooth curve', true)],
     spec: (a: StoryArgs = {}) => ({
@@ -178,8 +178,8 @@ export const chartStories: Story[] = [
   story({
     id: 'area-normalized-channel-share',
     group: 'Area',
-    title: 'Area — normalized channel share',
-    blurb: 'Pre-normalized shares turn a stacked area into a 100% mix-shift view.',
+    title: 'Area — Normalized Channel Share',
+    blurb: 'Rows sum to 100% per date, producing a mix-shift view by channel.',
     tags: ['normalized', 'share'],
     spec: () => ({
       type: 'area',
@@ -193,8 +193,8 @@ export const chartStories: Story[] = [
   story({
     id: 'bar-quarter-region',
     group: 'Bar',
-    title: 'Bar — grouped or stacked revenue',
-    blurb: 'Toggle side-by-side comparison and stacked totals without reshaping the tidy categorical rows.',
+    title: 'Bar — Grouped or Stacked Revenue',
+    blurb: 'Toggle grouped versus stacked bars without reshaping the quarter/region rows.',
     tags: ['category', 'grouped', 'stacked'],
     wide: true,
     controls: [ctl.toggle('stack', 'Stack')],
@@ -210,8 +210,8 @@ export const chartStories: Story[] = [
   story({
     id: 'bar-horizontal-priorities',
     group: 'Bar',
-    title: 'Bar — horizontal roadmap priorities',
-    blurb: 'Horizontal bars keep long labels readable while preserving instant rank comparison.',
+    title: 'Bar — Horizontal Roadmap Priorities',
+    blurb: 'Horizontal bars keep long roadmap labels readable and sort by opportunity score.',
     tags: ['rank', 'horizontal'],
     spec: () => ({
       type: 'bar',
@@ -232,8 +232,8 @@ export const chartStories: Story[] = [
   story({
     id: 'bar-faceted-segments',
     group: 'Bar',
-    title: 'Bar — segment small multiples',
-    blurb: 'A faceted bar grid compares plan mix across customer segments without pre-splitting data.',
+    title: 'Bar — Segment Small Multiples',
+    blurb: "facet:{ field:'segment' } compares plan mix across segments from one tidy table.",
     tags: ['facet', 'segments'],
     wide: true,
     spec: () => ({
@@ -253,8 +253,8 @@ export const chartStories: Story[] = [
   story({
     id: 'scatter-bubbles',
     group: 'Scatter',
-    title: 'Scatter — grouped bubbles',
-    blurb: 'Bubble size and color add portfolio context to a spend-versus-return plot.',
+    title: 'Scatter — Grouped Bubbles',
+    blurb: 'Color encodes portfolio and size encodes account count on a spend-versus-return plot.',
     tags: ['correlation', 'bubble'],
     controls: [ctl.toggle('trendline', 'Trendline + R²', true)],
     spec: (a: StoryArgs = {}) => ({
@@ -268,8 +268,8 @@ export const chartStories: Story[] = [
   story({
     id: 'scatter-faceted-experiments',
     group: 'Scatter',
-    title: 'Scatter — experiment cohorts',
-    blurb: 'Facets reveal whether each cohort shares the same efficiency frontier.',
+    title: 'Scatter — Experiment Cohorts',
+    blurb: "Facet panels compare each cohort's activation-versus-cost pattern on shared scales.",
     tags: ['facet', 'experiments'],
     wide: true,
     spec: () => ({
@@ -285,8 +285,8 @@ export const chartStories: Story[] = [
   story({
     id: 'combo-revenue-conversion',
     group: 'Combo',
-    title: 'Combo — revenue and conversion',
-    blurb: 'A bar-and-line combo pairs scale and rate metrics on separate axes.',
+    title: 'Combo — Revenue and Conversion',
+    blurb: 'Bars encode bookings; a line encodes conversion rate on a separate y-axis.',
     tags: ['dual-axis', 'bar-line'],
     wide: true,
     spec: () => ({
@@ -303,8 +303,8 @@ export const chartStories: Story[] = [
   story({
     id: 'combo-pipeline-satisfaction',
     group: 'Combo',
-    title: 'Combo — pipeline and satisfaction',
-    blurb: 'Area, bar, and line layers form a compact monthly operating view from one flat array.',
+    title: 'Combo — Pipeline and Satisfaction',
+    blurb: 'Area, bar, and line layers read pipeline, bookings, and CSAT from one monthly table.',
     tags: ['layers', 'ops'],
     wide: true,
     spec: () => ({
@@ -323,8 +323,8 @@ export const chartStories: Story[] = [
   story({
     id: 'histogram-latency',
     group: 'Histogram',
-    title: 'Histogram — request latency',
-    blurb: 'Raw observations are binned inside the spec so the distribution stays inspectable.',
+    title: 'Histogram — Request Latency',
+    blurb: 'Raw latency observations are binned inside the ChartSpec for an inspectable distribution.',
     tags: ['distribution', 'bins'],
     controls: [ctl.range('bins', 'Max bins', 8, 40, 2, 22), ctl.toggle('density', 'Density')],
     spec: (a: StoryArgs = {}) => ({
@@ -340,8 +340,8 @@ export const chartStories: Story[] = [
   story({
     id: 'histogram-order-value',
     group: 'Histogram',
-    title: 'Histogram — order value density',
-    blurb: 'A density histogram highlights shape rather than absolute count.',
+    title: 'Histogram — Order Value Density',
+    blurb: 'Density mode normalizes bins so order-value shape is comparable across sample sizes.',
     tags: ['density', 'orders'],
     spec: () => ({
       type: 'histogram',
@@ -357,8 +357,8 @@ export const chartStories: Story[] = [
   story({
     id: 'box-latency-cohorts',
     group: 'Box',
-    title: 'Box — latency by plan',
-    blurb: 'Quartiles, whiskers, and outliers expose both typical response and long-tail incidents.',
+    title: 'Box — Latency by Plan',
+    blurb: 'Quartiles, 1.5×IQR whiskers, and outliers show typical response plus long-tail incidents.',
     tags: ['distribution', 'outliers'],
     spec: () => ({
       type: 'box',
@@ -370,8 +370,8 @@ export const chartStories: Story[] = [
   story({
     id: 'box-release-comparison',
     group: 'Box',
-    title: 'Box — before/after release spread',
-    blurb: 'Grouped boxes compare raw distributions for two releases across the same tiers.',
+    title: 'Box — Before/After Release Spread',
+    blurb: 'Grouped boxes compare raw before/after distributions across the same tiers.',
     tags: ['grouped', 'release'],
     wide: true,
     spec: () => ({
@@ -385,8 +385,8 @@ export const chartStories: Story[] = [
   story({
     id: 'pie-browser-share',
     group: 'Pie',
-    title: 'Pie — browser share',
-    blurb: 'Automatic callout labels keep thin slices readable while preserving a familiar share-of-total view.',
+    title: 'Pie — Browser Share',
+    blurb: 'Outside callouts label thin browser slices while larger slices keep inside labels.',
     tags: ['share', 'callouts'],
     controls: [ctl.toggle('donut', 'Donut', true)],
     spec: (a: StoryArgs = {}) => ({
@@ -402,8 +402,8 @@ export const chartStories: Story[] = [
   story({
     id: 'pie-budget-donut',
     group: 'Pie',
-    title: 'Pie — operating budget donut',
-    blurb: 'Donut rings work best for a small number of meaningful slices with strong labels.',
+    title: 'Pie — Operating Budget Donut',
+    blurb: 'A donut with five budget slices uses labels and percentages on each category.',
     tags: ['budget', 'donut'],
     spec: () => ({
       type: 'pie',
@@ -424,8 +424,8 @@ export const chartStories: Story[] = [
   story({
     id: 'treemap-product-revenue',
     group: 'Treemap',
-    title: 'Treemap — product revenue',
-    blurb: 'Nested rectangles fit a full product portfolio into one compact stage while preserving parent groups.',
+    title: 'Treemap — Product Revenue',
+    blurb: 'Nested rectangles size product revenue and group each rectangle by product area.',
     tags: ['hierarchy', 'portfolio'],
     wide: true,
     spec: () => ({
@@ -453,8 +453,8 @@ export const chartStories: Story[] = [
   story({
     id: 'treemap-cloud-costs',
     group: 'Treemap',
-    title: 'Treemap — cloud cost composition',
-    blurb: 'A grouped treemap separates infrastructure cost centers from the services driving them.',
+    title: 'Treemap — Cloud Cost Composition',
+    blurb: 'A grouped treemap separates cloud cost centers from service-level spend.',
     tags: ['cost', 'cloud'],
     wide: true,
     spec: () => ({
@@ -478,8 +478,8 @@ export const chartStories: Story[] = [
   story({
     id: 'funnel-signup',
     group: 'Funnel',
-    title: 'Funnel — signup activation',
-    blurb: 'Funnel stages show where prospects convert, stall, and return for renewal.',
+    title: 'Funnel — Signup Activation',
+    blurb: 'Funnel stages show the drop from visits to activated, retained, and renewed accounts.',
     tags: ['conversion', 'activation'],
     controls: [
       {
@@ -512,8 +512,8 @@ export const chartStories: Story[] = [
   story({
     id: 'heatmap-traffic-week-hour',
     group: 'Heatmap',
-    title: 'Heatmap — traffic by week and hour',
-    blurb: 'Two-category density makes lunch peaks, weekend dips, and overnight quiet hours obvious.',
+    title: 'Heatmap — Traffic by Week and Hour',
+    blurb: 'A day/hour grid encodes request volume for lunch peaks, weekend dips, and overnight lows.',
     tags: ['grid', 'density'],
     wide: true,
     spec: () => ({
@@ -527,8 +527,8 @@ export const chartStories: Story[] = [
   story({
     id: 'heatmap-support-sla',
     group: 'Heatmap',
-    title: 'Heatmap — support SLA pressure',
-    blurb: 'Queue and severity pressure can be scanned without collapsing one operational dimension away.',
+    title: 'Heatmap — Support SLA Pressure',
+    blurb: 'Queue by severity cells preserve both operational dimensions while encoding open tickets.',
     tags: ['support', 'sla'],
     spec: () => ({
       type: 'heatmap',
@@ -542,8 +542,8 @@ export const chartStories: Story[] = [
   story({
     id: 'calendar-activity-year',
     group: 'Calendar heatmap',
-    title: 'Calendar heatmap — daily activity',
-    blurb: 'A full-year calendar reveals weekday habits, seasonal launch spikes, and quiet holiday bands.',
+    title: 'Calendar Heatmap — Daily Activity',
+    blurb: 'A 366-day grid shows weekday cadence, launch spikes, and holiday gaps.',
     tags: ['calendar', 'daily'],
     wide: true,
     spec: () => ({
@@ -558,8 +558,8 @@ export const chartStories: Story[] = [
   story({
     id: 'kpi-arr',
     group: 'KPI',
-    title: 'KPI — ARR with sparkline',
-    blurb: 'A headline metric, directional delta, and tiny trendline make a compact scorecard tile.',
+    title: 'KPI — ARR With Sparkline',
+    blurb: 'A KPI card combines ARR, delta, and a sparkline from monthly rows.',
     tags: ['metric', 'sparkline'],
     height: 240,
     spec: () => ({
@@ -576,8 +576,8 @@ export const chartStories: Story[] = [
   story({
     id: 'kpi-nps-health',
     group: 'KPI',
-    title: 'KPI — NPS health',
-    blurb: 'Literal KPI values work when the number already comes from an upstream model.',
+    title: 'KPI — NPS Health',
+    blurb: 'A literal KPI value displays an upstream NPS score with target context.',
     tags: ['nps', 'health'],
     height: 220,
     spec: () => ({ type: 'kpi', value: 61, label: 'Net promoter score', delta: 0.08, format: ',.0f', title: 'Customer advocacy pulse' }),
@@ -586,8 +586,8 @@ export const chartStories: Story[] = [
   story({
     id: 'gauge-service-health',
     group: 'Gauge',
-    title: 'Gauge — service health',
-    blurb: 'A radial gauge emphasizes one operational value against a target and qualitative bands.',
+    title: 'Gauge — Service Health',
+    blurb: 'A radial gauge compares one availability value with target and qualitative bands.',
     tags: ['target', 'bands'],
     height: 300,
     spec: () => ({
@@ -606,8 +606,8 @@ export const chartStories: Story[] = [
   story({
     id: 'gauge-capacity',
     group: 'Gauge',
-    title: 'Gauge — warehouse capacity',
-    blurb: 'Gauges are effective for bounded resource levels with a meaningful maximum and target.',
+    title: 'Gauge — Warehouse Capacity',
+    blurb: 'The gauge encodes bounded capacity with max, target, and warning bands.',
     tags: ['capacity', 'target'],
     height: 300,
     spec: () => ({
@@ -626,8 +626,8 @@ export const chartStories: Story[] = [
   story({
     id: 'bullet-quarterly-revenue',
     group: 'Bullet',
-    title: 'Bullet — quarterly revenue',
-    blurb: 'Bullet graphs fit goal tracking into a tight horizontal space with ranges and a target marker.',
+    title: 'Bullet — Quarterly Revenue',
+    blurb: 'A bullet graph shows quarterly revenue against ranges and a target marker.',
     tags: ['target', 'compact'],
     height: 220,
     spec: () => ({
@@ -645,8 +645,8 @@ export const chartStories: Story[] = [
   story({
     id: 'bullet-support-sla',
     group: 'Bullet',
-    title: 'Bullet — support SLA',
-    blurb: 'A compact SLA indicator shows whether the team is inside the target band.',
+    title: 'Bullet — Support SLA',
+    blurb: 'A bullet indicator compares SLA attainment against target and range bands.',
     tags: ['sla', 'support'],
     height: 220,
     spec: () => ({ type: 'bullet', title: 'Priority support response time', label: 'Median response', value: 42, target: 30, min: 0, max: 90, ranges: [30, 45, 60], format: ',.0f' }),
@@ -655,8 +655,8 @@ export const chartStories: Story[] = [
   story({
     id: 'waterfall-cash-bridge',
     group: 'Waterfall',
-    title: 'Waterfall — cash bridge',
-    blurb: 'Signed deltas show how inflows and outflows build from opening to closing cash.',
+    title: 'Waterfall — Cash Bridge',
+    blurb: 'Signed deltas bridge opening cash to closing cash through inflows and outflows.',
     tags: ['bridge', 'finance'],
     wide: true,
     spec: () => ({
@@ -679,8 +679,8 @@ export const chartStories: Story[] = [
   story({
     id: 'waterfall-margin-walk',
     group: 'Waterfall',
-    title: 'Waterfall — margin walk',
-    blurb: 'A margin walk separates pricing, mix, savings, and cost pressure before the net change.',
+    title: 'Waterfall — Margin Walk',
+    blurb: 'A margin walk separates pricing, mix, savings, and cost pressure before net change.',
     tags: ['margin', 'operations'],
     wide: true,
     spec: () => ({
@@ -703,8 +703,8 @@ export const chartStories: Story[] = [
   story({
     id: 'slope-market-share',
     group: 'Slope',
-    title: 'Slope — market share shift',
-    blurb: 'Slope charts strip before/after comparison down to who rose, who fell, and by how much.',
+    title: 'Slope — Market Share Shift',
+    blurb: 'A slope chart compares 2019 and 2024 share and labels the movement by category.',
     tags: ['before-after', 'rank'],
     spec: () => ({
       type: 'slope',
@@ -727,8 +727,8 @@ export const chartStories: Story[] = [
   story({
     id: 'slope-renewal-rate',
     group: 'Slope',
-    title: 'Slope — renewal rate movement',
-    blurb: 'Direct end labels keep segment-by-segment movement legible without a legend.',
+    title: 'Slope — Renewal Rate Movement',
+    blurb: 'Direct end labels identify each segment without a legend.',
     tags: ['renewal', 'segments'],
     spec: () => ({
       type: 'slope',
@@ -752,8 +752,8 @@ export const chartStories: Story[] = [
   story({
     id: 'dumbbell-life-expectancy',
     group: 'Dumbbell',
-    title: 'Dumbbell — life expectancy gains',
-    blurb: 'Connected dots encode the gap between two groups per category and sort by movement.',
+    title: 'Dumbbell — Life Expectancy Gains',
+    blurb: 'Connected dots encode the 2000-to-2020 gap and sort countries by movement.',
     tags: ['gap', 'before-after'],
     spec: () => ({
       type: 'dumbbell',
@@ -781,8 +781,8 @@ export const chartStories: Story[] = [
   story({
     id: 'dumbbell-pay-gap',
     group: 'Dumbbell',
-    title: 'Dumbbell — compensation bands',
-    blurb: 'Dumbbells make benchmark gaps visible for every level while preserving exact endpoints.',
+    title: 'Dumbbell — Compensation Bands',
+    blurb: 'Dumbbells show company versus market pay endpoints for each level.',
     tags: ['gap', 'people'],
     spec: () => ({
       type: 'dumbbell',
@@ -809,8 +809,8 @@ export const chartStories: Story[] = [
   story({
     id: 'sankey-energy',
     group: 'Sankey',
-    title: 'Sankey — energy supply to demand',
-    blurb: 'Sankey links are source, target, and value rows; nodes and widths are derived.',
+    title: 'Sankey — Energy Supply to Demand',
+    blurb: 'source, target, and value rows derive the Sankey nodes and link widths.',
     tags: ['flow', 'energy'],
     wide: true,
     height: 460,
@@ -826,8 +826,8 @@ export const chartStories: Story[] = [
   story({
     id: 'sankey-budget',
     group: 'Sankey',
-    title: 'Sankey — revenue to net income',
-    blurb: 'Financial flows are easier to audit when every split keeps proportional width.',
+    title: 'Sankey — Revenue to Net Income',
+    blurb: 'Proportional link widths show how revenue splits into costs and net income.',
     tags: ['flow', 'finance'],
     wide: true,
     height: 430,
@@ -844,8 +844,8 @@ export const chartStories: Story[] = [
   story({
     id: 'choropleth-states-adoption',
     group: 'Choropleth',
-    title: 'Choropleth — state adoption index',
-    blurb: 'The GeoJSON `name` property joins to one metric row per state in a pre-projected Albers map.',
+    title: 'Choropleth — State Adoption Index',
+    blurb: 'GeoJSON name joins each state feature to one adoption metric row in Albers projection.',
     tags: ['map', 'geo'],
     wide: true,
     height: 480,
@@ -864,8 +864,8 @@ export const chartStories: Story[] = [
   story({
     id: 'choropleth-states-density',
     group: 'Choropleth',
-    title: 'Choropleth — population density',
-    blurb: 'The same map geometry can join feature-derived values for an alternate regional story.',
+    title: 'Choropleth — Population Density',
+    blurb: 'The same state geometry joins a different metric: population density by state.',
     tags: ['map', 'density'],
     wide: true,
     height: 480,
@@ -885,8 +885,8 @@ export const chartStories: Story[] = [
   story({
     id: 'table-order-health',
     group: 'Table',
-    title: 'Table — regional order health',
-    blurb: 'Grouped columns, totals, data bars, icon sets, and risk rules make tables first-class specs.',
+    title: 'Table — Regional Order Health',
+    blurb: 'A table spec covers grouped columns, totals, data bars, icon sets, and risk rules.',
     tags: ['table', 'conditional-formatting'],
     wide: true,
     height: 520,
@@ -915,8 +915,8 @@ export const chartStories: Story[] = [
   story({
     id: 'table-customer-ledger',
     group: 'Table',
-    title: 'Table — customer ledger',
-    blurb: 'A lighter ledger demonstrates sortable business records with readable financial formatting.',
+    title: 'Table — Customer Ledger',
+    blurb: 'A sortable ledger renders customer records with currency and date formats.',
     tags: ['ledger', 'orders'],
     wide: true,
     height: 440,
@@ -942,8 +942,8 @@ export const chartStories: Story[] = [
   story({
     id: 'matrix-revenue-pivot',
     group: 'Matrix',
-    title: 'Matrix — revenue pivot',
-    blurb: 'Tidy rows pivot into row and column groups with totals and conditional formatting at render time.',
+    title: 'Matrix — Revenue Pivot',
+    blurb: 'Tidy rows pivot into row and column groups with totals and conditional formatting.',
     tags: ['pivot', 'matrix'],
     wide: true,
     height: 520,
@@ -966,8 +966,8 @@ export const chartStories: Story[] = [
   story({
     id: 'matrix-margin-share',
     group: 'Matrix',
-    title: 'Matrix — margin share of row',
-    blurb: 'Show-as calculations convert leaf cells into row percentages without precomputed totals.',
+    title: 'Matrix — Margin Share of Row',
+    blurb: "showAs:'percentOfRow' converts leaf cells into row percentages at render time.",
     tags: ['show-as', 'percent-of-row'],
     wide: true,
     height: 500,

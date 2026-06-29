@@ -85,11 +85,11 @@ renderChart(spec, {
 
 ## Supported charts
 
-Every canvas-backed type: **line, area, bar, scatter, box, pie, heatmap, sankey,
-choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap,
-waterfall, slope, dumbbell**.
-DOM-only visuals (`kpi`, `table`, `matrix`, slicers, `dashboard`) are HTML — they have
-no canvas form and throw a clear error.
+**Every type.** Cartesian + custom canvas charts: **line, area, bar, scatter, box, pie,
+heatmap, sankey, choropleth, combo, histogram, funnel, treemap, gauge, bullet,
+calendarHeatmap, waterfall, slope, dumbbell** — plus the formerly DOM-only **kpi, table,
+matrix, slicers (dropdown/list/search/range/dateRange) and dashboard**, which render a
+static canvas snapshot. So the whole catalog rasterizes + validates headlessly.
 
 ## License
 

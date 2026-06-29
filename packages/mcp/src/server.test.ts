@@ -134,14 +134,13 @@ describe('handlers', () => {
       expect(p.repairsApplied).toContainEqual({ op: 'replace', path: '/type', value: 'bar' });
     });
 
-    it('gracefully handles a DOM-only visual with no headless image', () => {
+    it('rasterizes a (formerly DOM-only) kpi to an image + report', () => {
       const out = renderChartHandler({ spec: kpiSpec });
       expect(out.isError).toBe(false);
-      expect(out.content.some((c) => c.type === 'image')).toBe(false);
+      expect(out.content.some((c) => c.type === 'image')).toBe(true);
       const p = textPayload(out);
-      expect(p.rendered).toBe(false);
+      expect(p.rendered).toBe(true);
       expect(p.type).toBe('kpi');
-      expect(String(p.reason)).toMatch(/DOM-only/);
     });
   });
 });

@@ -12,8 +12,11 @@ import type { ChartSpec, ListSlicerSpec } from '../../spec/types';
 import type { ThemeTokens } from '../../theme';
 import type { SetSelection } from '../../spec/selection';
 import type { RenderContext } from '../index';
+import { drawTitleBlock } from '../chrome';
 import { makeOptionRow, makeTextInput, mountSlicerShell } from '../../render/controls';
 import { fontString } from '../../render/text';
+import { paintCanvasText } from '../../render/overlayText';
+import { roundedRect } from '../../shape';
 import { formatValue } from '../../format';
 import { toKey } from '../../util/data';
 import { currentValue, publish, slicerLabel, slicerOptions } from './common';
@@ -26,6 +29,10 @@ export function drawList(
   context?: RenderContext,
 ): void {
   const s = spec as ListSlicerSpec;
+  if (surface.headless) {
+    drawListCanvas(surface, s, tokens, size, context);
+    return;
+  }
   const shell = mountSlicerShell(surface, tokens, size, {
     title: s.title,
     label: slicerLabel(s),
@@ -161,4 +168,94 @@ export function drawList(
   // Subtle hover is handled by makeOptionRow.
   rebuild();
   shell.setClear(selected.size ? clearAll : null);
+}
+
+function drawListCanvas(
+  surface: Surface,
+  s: ListSlicerSpec,
+  tokens: ThemeTokens,
+  size: Size,
+  context?: RenderContext,
+): void {
+  const ctx = surface.marks.ctx;
+  const rect = drawTitleBlock(surface, tokens, size, s.title ?? slicerLabel(s));
+  const options = slicerOptions(s, context);
+  const display = (v: unknown): string => formatValue(v, undefined) || '—';
+  const current = currentValue(s, context) as SetSelection | null;
+  const selected = new Set((current?.kind === 'set' ? current.values : []).map((v) => toKey(v)));
+  const rowH = Math.max(24, tokens.font.size.base + tokens.spacing.sm + 2);
+  const pad = tokens.spacing.xs;
+  const visibleRows = Math.max(1, Math.floor((rect.height - pad * 2) / rowH));
+
+  ctx.save();
+  ctx.beginPath();
+  roundedRect(ctx, rect.x, rect.y, rect.width, rect.height, tokens.radius.md);
+  ctx.fillStyle = tokens.color.surface;
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = tokens.color.border;
+  ctx.stroke();
+  ctx.clip();
+
+  const font = fontString(tokens.font.size.base, tokens.font.family, tokens.font.weight.normal);
+  const checkSize = 12;
+  options.slice(0, visibleRows).forEach((opt, i) => {
+    const y = rect.y + pad + i * rowH;
+    const key = toKey(opt);
+    const active = selected.has(key);
+    if (active) {
+      ctx.beginPath();
+      roundedRect(ctx, rect.x + pad, y + 1, rect.width - pad * 2, rowH - 2, tokens.radius.sm);
+      ctx.fillStyle = tokens.color.background;
+      ctx.fill();
+    }
+    const bx = rect.x + tokens.spacing.sm;
+    const by = y + rowH / 2 - checkSize / 2;
+    ctx.beginPath();
+    roundedRect(ctx, bx, by, checkSize, checkSize, 3);
+    ctx.fillStyle = active ? tokens.color.accent : tokens.color.background;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = active ? tokens.color.accent : tokens.color.border;
+    ctx.stroke();
+    if (active) {
+      paintCanvasText(ctx, {
+        x: bx + checkSize / 2,
+        y: y + rowH / 2,
+        text: '✓',
+        font: fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.bold),
+        color: tokens.color.surface,
+        size: tokens.font.size.small,
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx + checkSize + tokens.spacing.sm, y, Math.max(0, rect.width - checkSize - tokens.spacing.sm * 4), rowH);
+    ctx.clip();
+    paintCanvasText(ctx, {
+      x: bx + checkSize + tokens.spacing.sm,
+      y: y + rowH / 2,
+      text: display(opt),
+      font,
+      color: tokens.color.text,
+      size: tokens.font.size.base,
+      baseline: 'middle',
+    });
+    ctx.restore();
+  });
+  if (options.length > visibleRows) {
+    paintCanvasText(ctx, {
+      x: rect.x + rect.width - tokens.spacing.sm,
+      y: rect.y + rect.height - tokens.spacing.xs,
+      text: `+${options.length - visibleRows} more`,
+      font: fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.medium),
+      color: tokens.color.textMuted,
+      size: tokens.font.size.small,
+      align: 'right',
+      baseline: 'alphabetic',
+    });
+  }
+  ctx.restore();
 }

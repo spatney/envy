@@ -677,9 +677,10 @@ if (!report.ok) {
 await fs.writeFile('chart.png', png);
 ```
 
-It supports every canvas-backed chart (line, area, bar, scatter, box, pie, heatmap,
-sankey, choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap).
-DOM-only visuals (kpi/table/matrix/slicers/dashboard) throw. Core's dependency-free
+It supports the entire catalog (line, area, bar, scatter, box, pie, heatmap, sankey,
+choropleth, combo, histogram, funnel, treemap, gauge, bullet, calendarHeatmap) **plus** the
+formerly DOM-only kpi, table, matrix, slicers and dashboard — they paint a static canvas
+snapshot, so every type validates and rasterizes server-side. Core's dependency-free
 `renderToContext(target, spec)` paints onto any 2D context if you bring your own canvas
 (`OffscreenCanvas`, `node-canvas`, …).
 

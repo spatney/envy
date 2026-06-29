@@ -4,7 +4,18 @@ import { mcpCall, backendAvailable, fetchMcpResource, type McpResource, type Mcp
 import { Page, PageHeader } from '../components/ui/Page';
 import { CodeBlock } from '../components/ui/CodeBlock';
 import { Tabs } from '../components/ui/Tabs';
-import { Callout, Card, Chip, Kicker, Spinner } from '../components/ui/primitives';
+import {
+  Button,
+  Callout,
+  Card,
+  Chip,
+  GradientText,
+  Kicker,
+  SectionHeader,
+  SpectrumBar,
+  Spinner,
+  Stat,
+} from '../components/ui/primitives';
 
 type ToolResult = Awaited<ReturnType<typeof mcpCall>>;
 type ResourceName = 'agent-guide' | 'schema' | 'spec-reference';
@@ -44,6 +55,29 @@ const toolSpecs: Record<McpTool, ChartSpec> = {
   repair: brokenSpec,
   render: workingSpec,
   summarize: workingSpec,
+};
+
+const toolCopy: Record<McpTool, { title: string; purpose: string; endpoint: string }> = {
+  validate: {
+    title: 'validate_chart',
+    purpose: 'Checks the spec contract and returns errors, warnings, safe fixes, and suggestions. No rendering work.',
+    endpoint: 'POST /api/mcp/validate',
+  },
+  repair: {
+    title: 'repair_chart',
+    purpose: 'Applies only unambiguous JSON Patch fixes, returns the patched spec, and leaves remaining issues visible.',
+    endpoint: 'POST /api/mcp/repair',
+  },
+  render: {
+    title: 'render_chart',
+    purpose: 'Validates, safely repairs by default, renders a PNG, and returns the machine-readable critique payload.',
+    endpoint: 'POST /api/mcp/render',
+  },
+  summarize: {
+    title: 'summarize_chart',
+    purpose: 'Produces deterministic alt-text from the validated spec without asking an LLM to inspect pixels.',
+    endpoint: 'POST /api/mcp/summarize',
+  },
 };
 
 const resourceMeta: Record<ResourceName, { label: string; lang: 'json' | 'bash'; note: string }> = {
@@ -117,6 +151,17 @@ function imageContent(result?: ToolResult | null) {
   return result?.content.find((item) => item.type === 'image' && item.data && item.mimeType);
 }
 
+function displayResult(result: ToolResult) {
+  return {
+    ...result,
+    content: result.content.map((item) =>
+      item.type === 'image' && item.data
+        ? { ...item, data: `<base64 ${item.data.length.toLocaleString()} chars>` }
+        : item,
+    ),
+  };
+}
+
 function pretty(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
@@ -155,22 +200,25 @@ function ToolRunner({ tool }: { tool: McpTool }) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ToolResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const body = useMemo(
+    () =>
+      tool === 'render'
+        ? { spec: toolSpecs[tool], width: 640, height: 360, dpr: 1 }
+        : { spec: toolSpecs[tool] },
+    [tool],
+  );
 
   const run = useCallback(async () => {
     setRunning(true);
     setError(null);
     try {
-      const body =
-        tool === 'render'
-          ? { spec: toolSpecs[tool], width: 640, height: 360, dpr: 1 }
-          : { spec: toolSpecs[tool] };
       setResult(await mcpCall(tool, body));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setRunning(false);
     }
-  }, [tool]);
+  }, [body, tool]);
 
   const text = textContent(result);
   const image = imageContent(result);
@@ -178,19 +226,22 @@ function ToolRunner({ tool }: { tool: McpTool }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
       <div className="space-y-3">
-        <p className="text-sm leading-relaxed text-muted">
-          This runner sends the exact spec below to <span className="font-mono text-text">mcpCall('{tool}')</span>.
-        </p>
-        <CodeBlock code={pretty(toolSpecs[tool])} lang="json" title={`${tool} input`} maxHeight={300} />
-        <button
+        <div className="rounded-2xl border border-border bg-surface-2 p-4">
+          <Chip tone="accent">{toolCopy[tool].endpoint}</Chip>
+          <h3 className="mt-3 font-display text-xl font-semibold text-text">{toolCopy[tool].title}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted">{toolCopy[tool].purpose}</p>
+        </div>
+        <CodeBlock code={pretty(body)} lang="json" title="request JSON" maxHeight={320} />
+        <Button
           type="button"
           onClick={run}
           disabled={running}
-          className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-60"
+          variant="outline"
+          className="rounded-lg"
         >
           {running && <Spinner />}
           Run {tool}
-        </button>
+        </Button>
       </div>
       <div className="space-y-3">
         {error && <Callout tone="warn" title="Tool call failed">{error}</Callout>}
@@ -206,11 +257,14 @@ function ToolRunner({ tool }: { tool: McpTool }) {
             src={`data:${image.mimeType};base64,${image.data}`}
           />
         )}
+        {result && (
+          <CodeBlock code={pretty(displayResult(result))} lang="json" title="full MCP response envelope" maxHeight={260} />
+        )}
         {text && (
           <CodeBlock
             code={text}
             lang={text.trim().startsWith('{') || text.trim().startsWith('[') ? 'json' : 'bash'}
-            title={`${tool} result`}
+            title="text content"
             maxHeight={360}
           />
         )}
@@ -304,33 +358,38 @@ export function Mcp() {
     <Page wide>
       <PageHeader
         kicker="MCP server"
-        title="A live console for the Graphein agent loop"
-        blurb="graphein-mcp turns chart building into a toolable loop: validate a JSON spec, repair safe mistakes, render a PNG, and return a deterministic critique — while serving the same guide, schema, and reference an agent needs to use the API correctly."
+        title="Live Console for the Graphein Agent Loop"
+        blurb="graphein-mcp exposes the render → report loop as tools: validate a ChartSpec, repair safe mistakes, render a PNG, summarize it, and serve the guide, schema, and reference as resources."
       />
 
       <div className="grid gap-5">
-        <Card className="gx-rise overflow-hidden p-6">
-          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div>
-              <Kicker>Why it matters</Kicker>
-              <h2 className="mt-2 font-display text-2xl font-semibold text-text">
-                Agents need feedback, not screenshots.
-              </h2>
-              <p className="mt-3 leading-relaxed text-muted">
-                A human can glance at a chart and notice a typo, a clipped axis, or a weak explanation. An
-                agent needs those checks exposed as data. Graphein MCP packages the entire
-                validate → repair → render → critique cycle as callable tools, then serves the API knowledge as
-                resources so the agent can correct itself without guessing.
-              </p>
+        <Card className="gx-rise relative overflow-hidden p-6">
+          <div className="aurora" aria-hidden="true" />
+          <div className="relative grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+            <SectionHeader
+              eyebrow="Why it matters"
+              title={
+                <>
+                  Agents Need <GradientText>Structured Feedback</GradientText>, Not Screenshots
+                </>
+              }
+              lead="graphein-mcp packages validate → repair → render → report as tool calls and serves the guide, schema, and spec reference an agent needs to fix its own ChartSpec."
+            />
+            <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border bg-surface/80 p-4 backdrop-blur">
+              <Stat value="4" label="tools" gradient />
+              <Stat value="3" label="resources" />
+              <Stat value={available === false ? 'static' : available ? 'live' : '…'} label="backend" />
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {['validate', 'repair', 'render', 'summarize'].map((tool) => (
-                <div key={tool} className="rounded-xl border border-border bg-surface-2 p-4">
-                  <div className="font-mono text-xs uppercase tracking-wide text-faint">tool</div>
-                  <div className="mt-1 font-display text-lg font-semibold text-text">{tool}</div>
-                </div>
-              ))}
-            </div>
+          </div>
+          <SpectrumBar className="relative mt-5" />
+          <div className="relative mt-5 grid gap-3 md:grid-cols-4">
+            {(Object.keys(toolCopy) as McpTool[]).map((tool) => (
+              <div key={tool} className="rounded-2xl border border-border bg-surface/85 p-4">
+                <div className="font-mono text-xs uppercase tracking-wide text-faint">{toolCopy[tool].endpoint}</div>
+                <div className="mt-2 font-display text-lg font-semibold text-text">{tool}</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted">{toolCopy[tool].purpose}</p>
+              </div>
+            ))}
           </div>
         </Card>
 
@@ -345,7 +404,7 @@ export function Mcp() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <Kicker>Centerpiece</Kicker>
-              <h2 className="mt-1 font-display text-2xl font-semibold text-text">Broken → repaired → rendered → explained</h2>
+              <h2 className="mt-1 font-display text-2xl font-semibold text-text">Broken → Repaired → Rendered → Summarized</h2>
             </div>
             <Chip tone={repairJson?.applied?.length ? 'ok' : 'neutral'}>
               {repairJson?.applied?.length ? 'real repair applied' : 'waiting for repair'}
@@ -383,7 +442,7 @@ export function Mcp() {
                 <div data-testid="loop-repair" className="sr-only">{repairText}</div>
               </Stage>
 
-              <Stage number="03" title="render returns a real PNG" tone="accent">
+              <Stage number="03" title="render returns PNG bytes" tone="accent">
                 <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
                   <div className="rounded-2xl border border-border bg-surface-2 p-3">
                     {renderImage ? (
@@ -401,11 +460,9 @@ export function Mcp() {
                 </div>
               </Stage>
 
-              <Stage number="04" title="summarize explains the result" tone="neutral">
+              <Stage number="04" title="summarize returns alt text" tone="neutral">
                 <p className="mb-3 text-sm leading-relaxed text-muted">
-                  The same render call also returns the chart report: a vision-free critique with mark counts,
-                  diagnostics, contrast checks, and summary text. The summarize tool exposes the concise natural-language
-                  version for alt text, test assertions, or agent self-review.
+                  The render call also returns a RenderReport with mark counts, diagnostics, contrast checks, and summary text. The summarize tool returns concise alt text for tests and agent self-review.
                 </p>
                 <div className="rounded-xl border border-border bg-surface-2 p-4 text-lg leading-relaxed text-text">
                   {summaryText}
@@ -418,7 +475,7 @@ export function Mcp() {
         <Card className="p-5">
           <div className="mb-4">
             <Kicker>Tool tabs</Kicker>
-            <h2 className="mt-1 font-display text-2xl font-semibold text-text">Run each MCP tool directly</h2>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-text">Run Each MCP Tool Directly</h2>
           </div>
           {available === false ? (
             <Callout tone="neutral">Start the gallery backend to enable these live runners.</Callout>
@@ -437,10 +494,9 @@ export function Mcp() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <Kicker>Served resources</Kicker>
-              <h2 className="mt-1 font-display text-2xl font-semibold text-text">The exact docs an agent receives</h2>
+              <h2 className="mt-1 font-display text-2xl font-semibold text-text">Exact Docs an Agent Receives</h2>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-                graphein-mcp does not only execute tools. It serves the chart schema, the agent guide, and the full spec
-                reference as resources, so a client can retrieve authoritative API knowledge at the moment it needs it.
+                graphein-mcp executes tools and serves the chart schema, agent guide, and full spec reference as resources. Clients can fetch API details during the chart task.
               </p>
             </div>
             <select
@@ -454,6 +510,32 @@ export function Mcp() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            {(Object.keys(resourceMeta) as ResourceName[]).map((name) => {
+              const resource = resources[name];
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setSelectedResource(name)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    selectedResource === name
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-border bg-surface-2 hover:border-border-strong'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone={resource?.ok ? 'ok' : available === false ? 'neutral' : 'warn'}>
+                      {resource?.ok ? 'loaded' : available === false ? 'offline' : 'pending'}
+                    </Chip>
+                    <span className="font-mono text-[11px] text-faint">graphein://{name}</span>
+                  </div>
+                  <h3 className="mt-3 font-display text-base font-semibold text-text">{resourceMeta[name].label}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">{resource?.description ?? resourceMeta[name].note}</p>
+                </button>
+              );
+            })}
           </div>
           <p className="mb-3 text-sm text-muted">{resourceMeta[selectedResource].note}</p>
           {resourceError && <Callout tone="warn" title="Resource fetch failed">{resourceError}</Callout>}
@@ -482,7 +564,7 @@ export function Mcp() {
         <Card className="p-5">
           <div className="mb-4">
             <Kicker>How to wire it up</Kicker>
-            <h2 className="mt-1 font-display text-2xl font-semibold text-text">One server entry, many clients</h2>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-text">One Server Entry, Many Clients</h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
               The published package can be launched with <span className="font-mono text-text">npx -y graphein-mcp</span>.
               If the binary is already installed, use <span className="font-mono text-text">graphein-mcp</span> as the command instead.
@@ -504,3 +586,4 @@ export function Mcp() {
     </Page>
   );
 }
+

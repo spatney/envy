@@ -1,5 +1,5 @@
 import { drawTitleBlock } from './chrome';
-import { buildTable, resolveConditionalDomain, type ViewColumn } from './tableView';
+import { buildTable, paintTableCanvas, resolveConditionalDomain, type ViewColumn } from './tableView';
 import { resolveSketch } from '../spec/sketch';
 import type { Surface } from '../render/surface';
 import type { ChartSpec, TableSpec } from '../spec/types';
@@ -13,7 +13,44 @@ const BUFFER_ROWS = 8;
 
 export function drawTable(surface: Surface, spec: ChartSpec, tokens: ThemeTokens, size: Size): void {
   if (spec.type !== 'table') return;
+  if (surface.headless) {
+    drawTableCanvas(surface, spec, tokens, size);
+    return;
+  }
   renderTable(surface, spec, tokens, size);
+}
+
+function drawTableCanvas(surface: Surface, spec: TableSpec, tokens: ThemeTokens, size: Size): void {
+  const rect = drawTitleBlock(surface, tokens, size, spec.title);
+  const data = spec.data ?? [];
+  const columns = resolveColumns(data, spec);
+  const read = columns.map((column) => accessor(column.key));
+  const sortState = initialSortState(spec, columns);
+  const sortedRows = sortRows(data, columns, read, sortState);
+  const domains = columns.map((column, colIndex) =>
+    resolveConditionalDomain(
+      column.conditionalFormat,
+      data.map((row) => numericRaw(read[colIndex](row))),
+    ),
+  );
+
+  paintTableCanvas({
+    ctx: surface.marks.ctx,
+    tokens,
+    rect,
+    columns,
+    rowCount: sortedRows.length,
+    getCell(rowIndex, colIndex) {
+      const value = read[colIndex](sortedRows[rowIndex]);
+      return { value, raw: numericRaw(value) };
+    },
+    striped: spec.striped === true,
+    conditionalDomains: domains,
+    headerRows: buildTableHeaderRows(columns),
+    footerRow: buildTotalsRow(sortedRows, columns, read, spec),
+    density: spec.density,
+    sketch: resolveSketch(spec) != null,
+  });
 }
 
 function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, size: Size): void {
