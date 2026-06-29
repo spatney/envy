@@ -227,8 +227,7 @@ export function Ssr() {
         blurb="Send the same agent-authored ChartSpec to browsers, docs, CI, notebooks, and reports. @graphein/node renders through @napi-rs/canvas, returns PNG bytes plus RenderReport, and keeps the core engine zero-dependency."
       />
 
-      <Card className="relative mb-5 overflow-hidden p-5">
-        <div className="aurora" aria-hidden="true" />
+      <Card className="relative mb-5 overflow-hidden p-4">
         <div className="relative grid gap-5 lg:grid-cols-[1fr_460px] lg:items-end">
           <SectionHeader
             eyebrow="PNG pipeline"
@@ -273,7 +272,7 @@ export function Ssr() {
             </div>
           </div>
 
-          <div className="grid gap-5 p-5 xl:grid-cols-[260px_1fr]">
+          <div className="grid gap-5 p-4 xl:grid-cols-[260px_1fr]">
             <div className="space-y-4">
               <div className="space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-faint">
@@ -404,7 +403,7 @@ export function Ssr() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <Kicker>RenderReport</Kicker>
@@ -418,7 +417,7 @@ export function Ssr() {
         </Card>
       </div>
 
-      <Card className="mt-5 p-5">
+      <Card className="mt-5 p-4">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <Kicker>Parity view</Kicker>
@@ -467,7 +466,7 @@ export function Ssr() {
       </Card>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="p-5">
+        <Card className="p-4">
           <Kicker>Why it matters</Kicker>
           <h2 className="mt-1 font-display text-2xl font-semibold text-text">
             PNG Exports Without a Browser Farm

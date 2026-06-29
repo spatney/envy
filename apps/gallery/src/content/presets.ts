@@ -9,6 +9,7 @@ import type { ChartSpec, DashboardSpec, GeoFeatureCollection } from 'graphein';
 import {
   boxDistributions,
   categorical,
+  choroplethMetric,
   heatmapGrid,
   rng,
   salesTable,
@@ -18,6 +19,12 @@ import {
   type Datum,
 } from './data';
 import { dashboardDemo, funnelData, interactiveData } from './interactive';
+import usStatesRaw from './us-states.albers.json';
+
+const usStates = usStatesRaw as unknown as GeoFeatureCollection;
+const usStateNames = usStates.features
+  .map((f) => (f.properties?.name as string | undefined) ?? '')
+  .filter(Boolean);
 
 export interface Preset {
   id: string;
@@ -29,39 +36,6 @@ export interface Preset {
 }
 
 const REGIONS = ['West', 'East', 'North', 'South'];
-
-/** A compact synthetic "grid map" so the choropleth preset stays editable. */
-function gridChoropleth(): { geo: GeoFeatureCollection; data: Datum[] } {
-  const cols = 6;
-  const rows = 4;
-  const r = rng(7);
-  const features: GeoFeatureCollection['features'] = [];
-  const data: Datum[] = [];
-  let i = 0;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const name = `R${(++i).toString().padStart(2, '0')}`;
-      features.push({
-        type: 'Feature',
-        properties: { name },
-        geometry: {
-          type: 'Polygon',
-          coordinates: [
-            [
-              [x, y],
-              [x + 1, y],
-              [x + 1, y + 1],
-              [x, y + 1],
-              [x, y],
-            ],
-          ],
-        },
-      });
-      data.push({ region: name, value: Math.round(20 + r() * 80) });
-    }
-  }
-  return { geo: { type: 'FeatureCollection', features }, data };
-}
 
 export const presets: Preset[] = [
   // --- Line ---
@@ -920,25 +894,22 @@ export const presets: Preset[] = [
   // --- Choropleth ---
   {
     id: 'choropleth',
-    label: 'Choropleth · grid map',
+    label: 'Choropleth · US states',
     group: 'Choropleth',
-    note: 'inline GeoJSON, editable',
-    build: () => {
-      const { geo, data } = gridChoropleth();
-      return {
-        type: 'choropleth',
-        title: 'Adoption index by region',
-        geo,
-        data,
-        encoding: {
-          key: { field: 'region' },
-          color: { field: 'value', title: 'Index', type: 'quantitative' },
-        },
-        featureId: 'name',
-        projection: 'identity',
-        scheme: 'teal',
-      };
-    },
+    note: 'real GeoJSON map, name join',
+    build: () => ({
+      type: 'choropleth',
+      title: { text: 'Adoption index by state', subtitle: 'One value per state, joined on name' },
+      geo: usStates,
+      data: choroplethMetric(usStateNames, { seed: 51, base: 40 }),
+      encoding: {
+        key: { field: 'name' },
+        color: { field: 'value', title: 'Adoption index', type: 'quantitative' },
+      },
+      featureId: 'name',
+      projection: 'identity',
+      scheme: 'teal',
+    }),
   },
   // --- Interactive (slicers + dashboard) ---
   {

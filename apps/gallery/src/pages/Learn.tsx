@@ -25,14 +25,13 @@ export function Learn() {
     <Page wide>
       <header className="gx-rise overflow-hidden rounded-3xl border border-border bg-surface">
         <div className="relative px-6 py-10 sm:px-10 sm:py-12">
-          <div className="aurora" aria-hidden="true" />
           <div className="relative z-10 max-w-2xl">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--grad-brand)' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               Learn
             </div>
             <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">
-              Learn Graphein by <span className="spectrum-text">Editing Real Specs</span>
+              Learn Graphein by <span className="text-accent">Editing Real Specs</span>
             </h1>
             <p className="mt-4 text-lg leading-relaxed text-muted">
               Fourteen short chapters. Each chapter teaches one ChartSpec field, gives you one edit, and checks the result against the rendered chart. No setup.
@@ -75,7 +74,7 @@ export function Learn() {
                   <Link
                     key={chapter.id}
                     to={`/learn/${chapter.id}`}
-                    className="spectrum-border group relative flex flex-col rounded-2xl border border-border bg-surface p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
+                    className="group relative flex flex-col rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-accent"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs text-faint">{number}</span>

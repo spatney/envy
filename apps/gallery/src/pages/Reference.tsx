@@ -117,7 +117,7 @@ export function Reference() {
       />
 
       <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-        <Card className="p-5 sm:p-6" as="section">
+        <Card className="p-4 sm:p-5" as="section">
           <SectionHeader
             eyebrow="Contract"
             title="One Discriminated JSON Object"
@@ -153,7 +153,7 @@ export function Reference() {
         ))}
       </div>
 
-      <Card className="mt-7 p-5 sm:p-6" as="section">
+      <Card className="mt-7 p-4 sm:p-5" as="section">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <SectionHeader
             eyebrow="Chart types"
@@ -219,7 +219,7 @@ export function Reference() {
       </Card>
 
       <div className="mt-7 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="p-5 sm:p-6" as="section">
+        <Card className="p-4 sm:p-5" as="section">
           <SectionHeader
             eyebrow="Slicers"
             title="Controls Are Specs Too"
@@ -238,7 +238,7 @@ export function Reference() {
             ))}
           </div>
         </Card>
-        <Card className="p-5 sm:p-6" as="section">
+        <Card className="p-4 sm:p-5" as="section">
           <SectionHeader
             eyebrow="Dashboards"
             title="One Page, One Selection Store"

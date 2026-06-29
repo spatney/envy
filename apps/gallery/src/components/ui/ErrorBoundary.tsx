@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="mx-auto max-w-2xl px-6 py-16">
-          <div className="gx-card border-err/40 bg-surface p-6">
+          <div className="gx-card border-err/40 bg-surface p-5">
             <div className="flex items-start gap-4">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-err/30 bg-err/10 text-err" aria-hidden="true">
                 !

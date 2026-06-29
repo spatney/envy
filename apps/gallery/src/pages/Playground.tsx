@@ -322,7 +322,7 @@ export function Playground() {
                 <span className="w-10 text-right font-mono text-xs text-faint">{stageWidth}%</span>
               </label>
             </div>
-            <div className="gx-stage min-h-[520px] p-4 sm:p-6">
+            <div className="gx-stage min-h-[520px] p-4 sm:p-5">
               {valid && parsed.spec ? (
                 <div className="mx-auto h-[470px] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm" style={{ width: `${stageWidth}%` }}>
                   {isDashboard(parsed.spec) ? (
@@ -338,7 +338,7 @@ export function Playground() {
                   )}
                 </div>
               ) : (
-                <div className="flex min-h-[470px] items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface/70 p-8 text-center">
+                <div className="flex min-h-[470px] items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface/70 p-6 text-center">
                   <div className="max-w-md">
                     <Chip tone="warn">waiting for a valid spec</Chip>
                     <p className="mt-4 text-sm leading-relaxed text-muted">

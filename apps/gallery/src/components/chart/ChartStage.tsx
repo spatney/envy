@@ -36,7 +36,7 @@ export function ChartStage({
         </div>
       )}
       <div
-        className={padded ? 'gx-stage p-4 sm:p-6' : ''}
+        className={padded ? 'gx-stage p-4 sm:p-5' : ''}
         style={{ height }}
       >
         <ChartCanvas

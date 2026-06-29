@@ -149,7 +149,7 @@ export function Shell() {
             <Suspense
               fallback={
                 <div className="mx-auto grid max-w-3xl gap-4 px-6 py-16" role="status" aria-label="Loading page">
-                  <div className="gx-card overflow-hidden p-6">
+                  <div className="gx-card overflow-hidden p-5">
                     <div className="flex items-center gap-3">
                       <Spinner className="h-5 w-5" />
                       <span className="text-sm font-medium text-muted">Loading gallery page…</span>

@@ -32,15 +32,29 @@ function typeOf(story: Story): string {
   }
 }
 
+/** Strip chrome (title, legend, axis titles, fit labels) for a clean grid thumbnail. */
+function thumbSpec(input: ReturnType<Story['spec']>): ReturnType<Story['spec']> {
+  const s = JSON.parse(JSON.stringify(input)) as Record<string, unknown>;
+  delete s.title;
+  delete s.subtitle;
+  s.legend = false;
+  delete s.facet;
+  if (s.trendline) s.trendline = true;
+  if (s.insights) s.insights = false;
+  const enc = s.encoding as Record<string, { title?: string }> | undefined;
+  if (enc) for (const ch of ['x', 'y']) if (enc[ch]) delete enc[ch].title;
+  return s as unknown as ReturnType<Story['spec']>;
+}
+
 function ChartCard({ story }: { story: Story }) {
-  const spec = useMemo(() => story.spec(), [story]);
+  const spec = useMemo(() => thumbSpec(story.spec()), [story]);
   const title = story.title.replace(/^[^—]+—\s*/, '');
   return (
     <Link
       to={`/charts/${story.id}`}
-      className="spectrum-border group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-colors hover:border-border-strong"
     >
-      <div className="gx-stage h-40 p-3">
+      <div className="gx-stage h-44 p-3">
         <ChartCanvas spec={spec} />
       </div>
       <div className="border-t border-border p-4">

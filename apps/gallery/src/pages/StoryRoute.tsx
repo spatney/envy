@@ -111,13 +111,12 @@ function StoryDetail({ story }: { story: Story }) {
     tabs.push({
       id: 'docs',
       label: 'Docs',
-      content: <Card className="p-5 text-sm leading-relaxed text-muted">{story.docs}</Card>,
+      content: <Card className="p-4 text-sm leading-relaxed text-muted">{story.docs}</Card>,
     });
   }
 
   return (
     <Page wide>
-      <div className="aurora pointer-events-none fixed inset-x-0 top-0 h-72 opacity-40" aria-hidden="true" />
       <div className="relative gx-rise">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <ButtonLink to="/charts" variant="ghost" size="sm">
@@ -137,9 +136,9 @@ function StoryDetail({ story }: { story: Story }) {
           </div>
         </div>
 
-        <header className="overflow-hidden rounded-3xl border border-border bg-surface shadow-[var(--shadow-md)]">
+        <header className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
           <div className="grid gap-0 lg:grid-cols-[1fr_320px]">
-            <div className="p-6 sm:p-8">
+            <div className="p-5 sm:p-6">
               <Kicker>{story.group}</Kicker>
               <h1 className="mt-3 max-w-4xl font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">
                 <GradientText>{story.title}</GradientText>
@@ -163,7 +162,7 @@ function StoryDetail({ story }: { story: Story }) {
               </div>
             </div>
 
-            <div className="border-t border-border bg-surface-2 p-6 sm:p-8 lg:border-l lg:border-t-0">
+            <div className="border-t border-border bg-surface-2 p-5 sm:p-6 lg:border-l lg:border-t-0">
               <div className="grid grid-cols-3 gap-5">
                 <Stat value={String(spec.type)} label="Type" gradient />
                 <Stat value={dataCount(spec)} label="Rows" />
@@ -193,7 +192,7 @@ function StoryDetail({ story }: { story: Story }) {
                     onClick={() => setWidth(w.id)}
                     aria-pressed={width === w.id}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      width === w.id ? 'spectrum-fill shadow-[var(--shadow-glow)]' : 'text-muted hover:text-text'
+                      width === w.id ? 'spectrum-fill' : 'text-muted hover:text-text'
                     }`}
                   >
                     {w.label}
@@ -208,7 +207,7 @@ function StoryDetail({ story }: { story: Story }) {
           </div>
 
           <aside className="space-y-4">
-            <Card className="p-5">
+            <Card className="p-4">
               {hasControls ? (
                 <StoryControls
                   controls={story.controls!}
@@ -225,7 +224,7 @@ function StoryDetail({ story }: { story: Story }) {
                 </div>
               )}
             </Card>
-            <Card className="p-5">
+            <Card className="p-4">
               <Kicker>Playground handoff</Kicker>
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 Send the current args and ChartSpec to the Playground for validation, repair, and iteration.
@@ -248,7 +247,7 @@ function StoryDetail({ story }: { story: Story }) {
           {prevStory && (
             <Link
               to={storyPath(prevStory)}
-              className="spectrum-border rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
+              className="rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-accent"
             >
               <div className="text-xs font-semibold uppercase tracking-wide text-faint">Previous in group</div>
               <div className="mt-1 font-display text-lg font-semibold text-text">← {prevStory.title}</div>
@@ -257,7 +256,7 @@ function StoryDetail({ story }: { story: Story }) {
           {nextStory && (
             <Link
               to={storyPath(nextStory)}
-              className="spectrum-border rounded-2xl border border-border bg-surface p-4 text-right transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
+              className="rounded-2xl border border-border bg-surface p-4 text-right transition-colors hover:border-accent"
             >
               <div className="text-xs font-semibold uppercase tracking-wide text-faint">Next in group</div>
               <div className="mt-1 font-display text-lg font-semibold text-text">{nextStory.title} →</div>

@@ -109,7 +109,6 @@ const miniCharts: MiniChart[] = [
       ],
       encoding: { x: { field: 'week' }, y: { field: 'retained', title: 'Retained %' }, series: { field: 'cohort' } },
       points: true,
-      title: 'Cohort retention',
     },
   },
   {
@@ -124,7 +123,6 @@ const miniCharts: MiniChart[] = [
         { stage: 'Closed', deals: 24 },
       ],
       encoding: { x: { field: 'stage' }, y: { field: 'deals' } },
-      title: 'Deals by stage',
     },
   },
   {
@@ -145,8 +143,7 @@ const miniCharts: MiniChart[] = [
         y: { field: 'latency', title: 'Latency ms' },
         color: { field: 'tier' },
       },
-      trendline: { label: true },
-      title: 'Cost and latency',
+      trendline: true,
     },
   },
   {
@@ -163,8 +160,7 @@ const miniCharts: MiniChart[] = [
       ],
       encoding: { theta: { field: 'tickets' }, color: { field: 'queue' } },
       donut: 0.58,
-      labels: { placement: 'auto', content: 'category-percent', connector: 'muted' },
-      title: 'Tickets by queue',
+      labels: false,
     },
   },
   {
@@ -185,7 +181,6 @@ const miniCharts: MiniChart[] = [
       ],
       encoding: { x: { field: 'hour' }, y: { field: 'day' }, color: { field: 'load', type: 'quantitative' } },
       scheme: 'teal',
-      title: 'Queue load',
     },
   },
   {
@@ -203,7 +198,6 @@ const miniCharts: MiniChart[] = [
       ],
       encoding: { source: { field: 'source' }, target: { field: 'target' }, value: { field: 'value' } },
       nodePadding: 14,
-      title: 'ARR allocation',
     },
     className: 'lg:col-span-2',
   },
@@ -222,7 +216,6 @@ const miniCharts: MiniChart[] = [
       label: 'Monthly activations',
       delta: 0.18,
       sparkline: { field: 'activations' },
-      title: 'Activation pace',
     },
     height: 210,
   },
@@ -241,7 +234,6 @@ const miniCharts: MiniChart[] = [
       ],
       encoding: { group: { field: 'group' }, category: { field: 'service' }, value: { field: 'cost' } },
       labels: true,
-      title: 'Cloud cost',
     },
     className: 'lg:col-span-2',
   },
@@ -283,8 +275,7 @@ function Arrow() {
 export function Home() {
   return (
     <Page wide>
-      <section className="relative isolate overflow-hidden rounded-3xl border border-border bg-bg px-5 py-6 shadow-sm sm:px-8 lg:px-10 lg:py-10">
-        <div className="aurora" />
+      <section className="relative isolate overflow-hidden rounded-3xl border border-border bg-surface px-5 py-6 sm:px-8 lg:px-10 lg:py-10">
         <div className="relative grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
           <div className="gx-rise">
             <div className="flex flex-wrap items-center gap-2">
@@ -306,14 +297,14 @@ export function Home() {
               </ButtonLink>
             </div>
             <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-border bg-surface/90 p-4">
-                <Stat value="1" label="ChartSpec contract" gradient />
+              <div className="rounded-2xl border border-border bg-surface-2 p-4">
+                <Stat value="1" label="ChartSpec contract" />
               </div>
-              <div className="rounded-2xl border border-border bg-surface/90 p-4">
-                <Stat value="0" label="core dependencies" gradient />
+              <div className="rounded-2xl border border-border bg-surface-2 p-4">
+                <Stat value="0" label="core dependencies" />
               </div>
-              <div className="rounded-2xl border border-border bg-surface/90 p-4">
-                <Stat value="4" label="loop calls" gradient />
+              <div className="rounded-2xl border border-border bg-surface-2 p-4">
+                <Stat value="4" label="loop calls" />
               </div>
             </div>
           </div>
@@ -379,10 +370,10 @@ export function Home() {
             <Link
               key={chart.name}
               to="/charts"
-              className={`group gx-rise spectrum-border rounded-2xl ${chart.className ?? ''}`}
+              className={`group gx-rise rounded-2xl ${chart.className ?? ''}`}
               style={rise(index * 35)}
             >
-              <Card className="h-full overflow-hidden p-3 transition group-hover:-translate-y-0.5">
+              <Card className="h-full overflow-hidden p-3 transition-colors hover:border-border-strong">
                 <div className="mb-2 flex items-start justify-between gap-2 px-1">
                   <div>
                     <h3 className="font-display text-lg font-semibold text-text">{chart.name}</h3>
@@ -397,7 +388,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="mt-16 rounded-3xl border border-border bg-surface p-5 sm:p-8">
+      <section className="mt-16 rounded-3xl border border-border bg-surface p-4 sm:p-6">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div className="gx-rise">
             <SectionHeader
@@ -410,7 +401,7 @@ export function Home() {
           <div className="grid gap-3 sm:grid-cols-2">
             {loopSteps.map(([title, copy], index) => (
               <div key={title} className="gx-rise" style={rise(index * 70)}>
-                <Card className="h-full p-5">
+                <Card className="h-full p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 font-mono text-sm font-semibold text-accent">
                       {index + 1}
@@ -435,7 +426,7 @@ export function Home() {
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           {pillars.map((pillar, index) => (
             <div key={pillar.title} className="gx-rise" style={rise(index * 80)}>
-              <Card className="spectrum-border h-full p-6">
+              <Card className="h-full p-5">
                 <Chip tone="accent">{pillar.tag}</Chip>
                 <h3 className="mt-4 font-display text-2xl font-semibold tracking-tight text-text">{pillar.title}</h3>
                 <p className="mt-3 leading-relaxed text-muted">{pillar.copy}</p>
@@ -445,8 +436,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="relative mt-16 overflow-hidden rounded-3xl border border-border bg-surface p-6 sm:p-10">
-        <div className="aurora" />
+      <section className="relative mt-16 overflow-hidden rounded-3xl border border-border bg-surface p-5 sm:p-8">
         <div className="relative mx-auto max-w-3xl text-center">
           <Chip tone="accent">Start with ChartSpec</Chip>
           <h2 className="mt-4 font-display text-4xl font-semibold tracking-tight text-text sm:text-5xl">

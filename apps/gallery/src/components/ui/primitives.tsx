@@ -130,7 +130,7 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 const BTN_BASE =
   'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50';
 const BTN_VARIANT: Record<ButtonVariant, string> = {
-  spectrum: 'spectrum-fill shadow-[var(--shadow-glow)] hover:brightness-110 hover:-translate-y-px',
+  spectrum: 'spectrum-fill hover:brightness-110',
   outline: 'border border-border-strong bg-surface text-text hover:border-accent hover:text-accent',
   ghost: 'text-muted hover:bg-surface-2 hover:text-text',
 };

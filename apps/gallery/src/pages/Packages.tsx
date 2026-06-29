@@ -108,7 +108,7 @@ function MentalModel() {
   return (
     <Card className="overflow-hidden p-0" as="section">
       <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="bg-surface-2 p-6 sm:p-7">
+        <div className="bg-surface-2 p-5 sm:p-6">
           <Kicker>Mental model</Kicker>
           <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-text sm:text-3xl">
             Emit One ChartSpec. Add Only the Package Boundary You Need.
@@ -118,7 +118,7 @@ function MentalModel() {
           </p>
           <SpectrumBar className="mt-6" />
         </div>
-        <div className="grid gap-3 p-6 sm:grid-cols-2 sm:p-7">
+        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
           {[
             ['graphein', 'ChartSpec + renderer + render → report loop'],
             ['@graphein/react', 'React lifecycle around the same renderer'],
@@ -150,7 +150,7 @@ export function Packages() {
 
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         {packageCards.map((pkg) => (
-          <Card key={pkg.name} className="flex flex-col p-5 sm:p-6" as="article">
+          <Card key={pkg.name} className="flex flex-col p-4 sm:p-5" as="article">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className={`mb-3 h-1.5 w-16 rounded-full ${pkg.accent}`} />

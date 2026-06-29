@@ -1,4 +1,4 @@
-import { ordinalColorScale, parseColor, readableTextColor, rgbaToCss } from '../color';
+import { ordinalColorScale, parseColor, rgbaToCss } from '../color';
 import { formatValue } from '../format';
 import type { Surface } from '../render/surface';
 import { arc } from '../shape';
@@ -289,6 +289,7 @@ export function drawPie(
         size: tokens.font.size.small,
         transform: o.align === 'right' ? 'translate(-100%,-50%)' : 'translateY(-50%)',
         opacity: alpha === 1 ? undefined : alpha,
+        pill: { background: tokens.color.surface, border: tokens.color.border, padX: 6 },
       });
     }
 
@@ -299,11 +300,12 @@ export function drawPie(
         left: l.x,
         top: l.y,
         text: l.text,
-        color: rgbaToCss(readableTextColor(slice.rgba)),
+        color: tokens.color.text,
         size: tokens.font.size.small,
         weight: tokens.font.weight.bold,
         transform: 'translate(-50%,-50%)',
         opacity: alpha === 1 ? undefined : alpha,
+        pill: { background: tokens.color.surface, border: tokens.color.border, padX: 6 },
       });
     }
   }

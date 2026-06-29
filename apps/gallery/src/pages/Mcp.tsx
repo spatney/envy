@@ -246,7 +246,7 @@ function ToolRunner({ tool }: { tool: McpTool }) {
       <div className="space-y-3">
         {error && <Callout tone="warn" title="Tool call failed">{error}</Callout>}
         {!result && !error && (
-          <div className="rounded-xl border border-border bg-surface-2 p-5 text-sm text-muted">
+          <div className="rounded-xl border border-border bg-surface-2 p-4 text-sm text-muted">
             Run the tool to see the live MCP response.
           </div>
         )}
@@ -363,8 +363,7 @@ export function Mcp() {
       />
 
       <div className="grid gap-5">
-        <Card className="gx-rise relative overflow-hidden p-6">
-          <div className="aurora" aria-hidden="true" />
+        <Card className="gx-rise relative overflow-hidden p-5">
           <div className="relative grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
             <SectionHeader
               eyebrow="Why it matters"
@@ -412,7 +411,7 @@ export function Mcp() {
           </div>
 
           {loadingLoop && (
-            <Card className="flex items-center gap-3 p-5 text-muted">
+            <Card className="flex items-center gap-3 p-4 text-muted">
               <Spinner /> Calling the live MCP tools…
             </Card>
           )}
@@ -472,7 +471,7 @@ export function Mcp() {
           )}
         </section>
 
-        <Card className="p-5">
+        <Card className="p-4">
           <div className="mb-4">
             <Kicker>Tool tabs</Kicker>
             <h2 className="mt-1 font-display text-2xl font-semibold text-text">Run Each MCP Tool Directly</h2>
@@ -490,7 +489,7 @@ export function Mcp() {
           )}
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <Kicker>Served resources</Kicker>
@@ -555,13 +554,13 @@ export function Mcp() {
               />
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-5 text-muted">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-2 p-4 text-muted">
               <Spinner /> Loading resource text…
             </div>
           )}
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4">
           <div className="mb-4">
             <Kicker>How to wire it up</Kicker>
             <h2 className="mt-1 font-display text-2xl font-semibold text-text">One Server Entry, Many Clients</h2>

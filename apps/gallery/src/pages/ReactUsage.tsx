@@ -158,7 +158,7 @@ export function ThemedChart() {
 
 function GuideSection({ kicker, title, children }: { kicker: string; title: string; children: ReactNode }) {
   return (
-    <Card className="p-5 sm:p-6" as="section">
+    <Card className="p-4 sm:p-5" as="section">
       <Kicker>{kicker}</Kicker>
       <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-text">{title}</h2>
       <div className="mt-5">{children}</div>
@@ -248,7 +248,7 @@ export function ReactUsage() {
 
         <GuideSection kicker="04" title="Theme from the Spec, Not React Callbacks">
           <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="rounded-xl border border-border bg-surface-2 p-5">
+            <div className="rounded-xl border border-border bg-surface-2 p-4">
               <SectionHeader
                 eyebrow="Theming"
                 title="Built-in Light/Dark Plus Token Overrides"
