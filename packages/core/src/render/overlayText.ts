@@ -107,7 +107,10 @@ export function overlayTextToCanvasCmd(o: OverlayTextOpts, font: string): Canvas
     ? -Math.PI / 2
     : t.includes('rotate(90deg)')
       ? Math.PI / 2
-      : undefined;
+      : (() => {
+          const m = t.match(/rotate\((-?\d+(?:\.\d+)?)deg\)/);
+          return m ? (parseFloat(m[1]) * Math.PI) / 180 : undefined;
+        })();
 
   let align: CanvasTextAlign = 'left';
   let x = o.left;

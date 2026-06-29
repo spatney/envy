@@ -44,6 +44,12 @@ export interface AxisInput {
    * false/omitted for them.
    */
   edgeAnchored?: boolean;
+  /**
+   * Explicit tick-label rotation in degrees (0/45/90). When omitted, categorical
+   * (non-edge-anchored) labels auto-rotate to 45° if they wouldn't fit; the
+   * resolved angle is returned on {@link Frame.xLabelAngle}.
+   */
+  labelAngle?: number;
 }
 
 export interface FrameInput {
@@ -75,6 +81,8 @@ export interface Frame {
   legendRect?: Rect;
   legendItems?: PositionedLegendItem[];
   legendPosition?: LegendPosition;
+  /** Resolved x tick-label rotation in degrees (0 = horizontal). */
+  xLabelAngle: number;
 }
 
 export const TICK_SIZE = 6;
@@ -87,6 +95,22 @@ const LEGEND_ROW_GAP = 6;
 const LEGEND_PAD = 4;
 
 const lineHeight = (size: number): number => Math.round(size * 1.35);
+
+/**
+ * Resolve the x tick-label rotation. An explicit `labelAngle` wins; otherwise
+ * categorical (non-edge-anchored) labels rotate to 45° when there isn't room to
+ * lay them flat, so every category stays visible rather than being thinned out.
+ * Edge-anchored (linear/time) axes never auto-rotate.
+ */
+function resolveXLabelAngle(axis: AxisInput, available: number, font: ThemeFont): number {
+  if (axis.labelAngle != null) return Math.max(0, Math.min(90, axis.labelAngle));
+  const labels = axis.labels;
+  if (axis.edgeAnchored || labels.length < 2 || available <= 0) return 0;
+  const wfont = fontString(font.size.small, font.family, font.weight.normal);
+  const widest = Math.max(...labels.map((l) => measureText(l, wfont).width));
+  const needed = widest + 10; // breathing room between flat labels
+  return available / labels.length >= needed ? 0 : 45;
+}
 
 function legendItemWidth(label: string, font: ThemeFont): number {
   const w = measureText(label, fontString(font.size.small, font.family, font.weight.normal)).width;
@@ -170,6 +194,7 @@ export function computeFrame(input: FrameInput): Frame {
     originX: ox,
     originY: oy,
     plot: { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) },
+    xLabelAngle: 0,
   };
 
   // --- Title (top band) ---
@@ -244,13 +269,27 @@ export function computeFrame(input: FrameInput): Frame {
     }
   }
   if (input.xAxis?.show) {
-    let gutter = lineHeight(font.size.small) + TICK_SIZE + AXIS_LABEL_GAP;
+    const angle = resolveXLabelAngle(input.xAxis, right - left, font);
+    frame.xLabelAngle = angle;
+    const labelH = lineHeight(font.size.small);
+    let labelBand = labelH;
+    if (angle > 0 && input.xAxis.labels.length) {
+      const wfont = fontString(font.size.small, font.family, font.weight.normal);
+      const widest = Math.max(...input.xAxis.labels.map((l) => measureText(l, wfont).width));
+      // Cap how much vertical room rotated labels may claim so very long names
+      // don't swallow the plot; the band rounds up to whole pixels.
+      const cappedW = Math.min(widest, (bottom - top) * 0.4);
+      const rad = (angle * Math.PI) / 180;
+      labelBand = Math.ceil(cappedW * Math.sin(rad) + labelH * Math.cos(rad));
+    }
+    let gutter = labelBand + TICK_SIZE + AXIS_LABEL_GAP;
     if (input.xAxis.title) gutter += lineHeight(font.size.base) + AXIS_TITLE_GAP;
     bottom -= gutter;
     // Edge-anchored x labels (linear/time) center on the first/last ticks, which
     // sit on the plot's left/right edges — reserve half of each so they don't
-    // overflow (and get clipped) at narrow widths.
-    if (input.xAxis.edgeAnchored && input.xAxis.labels.length) {
+    // overflow (and get clipped) at narrow widths. Rotated labels anchor at the
+    // tick and lean left, so they don't push the right edge.
+    if (input.xAxis.edgeAnchored && angle === 0 && input.xAxis.labels.length) {
       const wfont = fontString(font.size.small, font.family, font.weight.normal);
       const labels = input.xAxis.labels;
       const firstHalf = Math.ceil(measureText(labels[0], wfont).width / 2);

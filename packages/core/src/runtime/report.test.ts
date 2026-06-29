@@ -114,12 +114,27 @@ describe('buildRenderReport — axis label overlap', () => {
       type: 'bar',
       data: cats.map((c, i) => ({ cat: c, v: i + 1 })),
       encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+      axes: { x: { labelAngle: 0 } }, // force flat to exercise overlap detection
     };
     const size = { width: 320, height: 240 };
     const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size, model: barModel(spec, size) });
     const d = r.diagnostics.find((x) => x.code === 'axis-label-overlap');
     expect(d).toBeDefined();
     expect(d?.axis).toBe('x');
+  });
+
+  it('auto-rotates dense category labels (45°) and reports no overlap', () => {
+    const cats = Array.from({ length: 14 }, (_, i) => `Category label ${i + 1}`);
+    const spec: BarSpec = {
+      type: 'bar',
+      data: cats.map((c, i) => ({ cat: c, v: i + 1 })),
+      encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+    };
+    const size = { width: 320, height: 240 };
+    const model = barModel(spec, size);
+    expect(model.frame.xLabelAngle).toBe(45);
+    const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size, model });
+    expect(r.diagnostics.find((x) => x.code === 'axis-label-overlap')).toBeUndefined();
   });
 
   it('does not warn when labels fit', () => {

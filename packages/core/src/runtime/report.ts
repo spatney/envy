@@ -285,6 +285,8 @@ function checkAxisLabelOverlap(
 ): void {
   const ticks = model.xTicks;
   if (ticks.length < 2) return;
+  // Rotated x labels lean diagonally and don't collide — every category shows.
+  if (model.frame.xLabelAngle > 0) return;
   const font = fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.normal);
   const GAP = 4; // minimum breathing room between labels
   let collisions = 0;

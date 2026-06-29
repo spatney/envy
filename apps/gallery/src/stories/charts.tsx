@@ -208,6 +208,24 @@ export const chartStories: Story[] = [
     }),
   }),
   story({
+    id: 'bar-rotated-labels',
+    group: 'Bar',
+    title: 'Bar — Rotated Category Labels',
+    blurb: 'Dense category labels auto-rotate to 45° so every month shows instead of being thinned; force a flat or vertical angle with axes.x.labelAngle.',
+    tags: ['category', 'labels', 'rotated'],
+    controls: [ctl.toggle('vertical', 'Vertical (90°)')],
+    spec: (a: StoryArgs = {}) => ({
+      type: 'bar',
+      data: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(
+        (m, i) => ({ month: m, revenue: 120 + i * 18 }),
+      ),
+      encoding: { x: { field: 'month' }, y: { field: 'revenue', title: 'Revenue ($k)' } },
+      axes: a.vertical ? { x: { labelAngle: 90 } } : undefined,
+      cornerRadius: 4,
+      title: 'Monthly revenue',
+    }),
+  }),
+  story({
     id: 'bar-horizontal-priorities',
     group: 'Bar',
     title: 'Bar — Horizontal Roadmap Priorities',

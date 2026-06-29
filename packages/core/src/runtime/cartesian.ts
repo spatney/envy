@@ -490,7 +490,7 @@ export function buildCartesianModel(
     font: tokens.font,
     title: titleInput,
     legend: legend.show && legendItems.length > 1 ? { items: legendItems, position: legend.position } : undefined,
-    xAxis: { show: xShow, labels: xLabels, title: resolveAxisTitle(enc.x, xAxisCfg), edgeAnchored: !categories },
+    xAxis: { show: xShow, labels: xLabels, title: resolveAxisTitle(enc.x, xAxisCfg), edgeAnchored: !categories, labelAngle: xAxisCfg.labelAngle },
     yAxis: { show: yShow, labels: yLabels, title: resolveAxisTitle(enc.y, yAxisCfg) },
   });
   const plot = frame.plot;

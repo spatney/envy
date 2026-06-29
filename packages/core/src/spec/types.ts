@@ -98,6 +98,13 @@ export interface AxisConfig {
   format?: string;
   /** Show tick labels. */
   labels?: boolean;
+  /**
+   * Rotation of x-axis tick labels in degrees: `0` horizontal, `45` diagonal,
+   * `90` vertical. Omit for **auto** — categorical (bar/column) labels rotate to
+   * 45° when there isn't room to show them all horizontally, so every category
+   * stays visible instead of being thinned out. (X axis only.)
+   */
+  labelAngle?: number;
 }
 
 export interface AxesConfig {

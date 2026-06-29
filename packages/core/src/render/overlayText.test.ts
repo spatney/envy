@@ -163,6 +163,16 @@ describe('overlayTextToCanvasCmd — transform vocabulary', () => {
     expect(c.rotate).toBeCloseTo(Math.PI / 2);
   });
 
+  it('maps a right-anchored diagonal rotate(-45deg) to right align + 45° lean', () => {
+    const c = overlayTextToCanvasCmd(
+      { left: 120, top: 200, text: 'September', color: '#000', size: 12, transform: 'translateX(-100%) rotate(-45deg)' },
+      font,
+    );
+    expect(c.align).toBe('right');
+    expect(c.baseline).toBe('top');
+    expect(c.rotate).toBeCloseTo(-Math.PI / 4);
+  });
+
   it('sizes the line-symbol footprint wider than square/circle', () => {
     expect(legendSwatchWidth('line')).toBe(14);
     expect(legendSwatchWidth('square')).toBe(11);

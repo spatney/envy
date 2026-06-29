@@ -31,6 +31,7 @@ interface TextOptions {
   weight?: number;
   align?: 'left' | 'center' | 'right';
   transform?: string;
+  transformOrigin?: string;
   whiteSpace?: 'nowrap' | 'normal';
 }
 
@@ -61,6 +62,7 @@ function addText(surface: Surface, font: string, o: TextOptions): void {
     el.style.textAlign = o.align ?? 'left';
   }
   if (o.transform) el.style.transform = o.transform;
+  if (o.transformOrigin) el.style.transformOrigin = o.transformOrigin;
   el.style.pointerEvents = 'none';
   overlay.appendChild(el);
 }
@@ -241,10 +243,24 @@ function placeXLabels(
   return boxes.filter((_, i) => keep[i]);
 }
 
-/** Compute the placed (thinned, non-overlapping) x labels for a model. Shared by
- * the gridline/tick underlay and the label overlay so they stay perfectly aligned. */
+/** Place every x tick rotated by `angle°`, anchored right-end at its tick so the
+ * text leans up-and-left without overlapping. No thinning — all categories show. */
+function placeRotatedXLabels(ticks: CartesianModel['xTicks'], angle: number): PlacedLabel[] {
+  return ticks.map((t) => ({
+    text: t.label,
+    pos: t.pos,
+    left: t.pos,
+    transform: `translateX(-100%) rotate(-${angle}deg)`,
+  }));
+}
+
+/** Compute the placed x labels for a model. Rotated axes keep every tick; flat
+ * axes thin to a non-overlapping subset. Shared by the gridline/tick underlay and
+ * the label overlay so they stay perfectly aligned. */
 function resolveXLabels(model: CartesianModel): PlacedLabel[] {
   const f = model.tokens.font;
+  const angle = model.frame.xLabelAngle;
+  if (angle > 0) return placeRotatedXLabels(model.xTicks, angle);
   const smallFont = fontString(f.size.small, f.family, f.weight.normal);
   const thinned = thinXTicks(model, f.size.small * 0.58);
   return placeXLabels(thinned, model.frame.originX, model.frame.width, smallFont);
@@ -279,6 +295,7 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
   // informative on a time/linear axis.
   if (model.spec.axes?.x?.labels !== false) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
+    const rotated = frame.xLabelAngle > 0;
     for (const p of resolveXLabels(model)) {
       addText(surface, smallFont, {
         left: p.left,
@@ -286,7 +303,9 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
         text: p.text,
         color: tokens.color.textMuted,
         size: f.size.small,
+        align: rotated ? 'right' : undefined,
         transform: p.transform,
+        transformOrigin: rotated ? '100% 0%' : undefined,
       });
     }
   }

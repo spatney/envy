@@ -98,6 +98,7 @@ Shared by **all** chart types.
 | `tickValues` | `number[]` | Explicit tick positions. |
 | `format` | `string` | [Format hint](#format-mini-language) for tick labels. |
 | `labels` | `boolean` | Show/hide tick labels. |
+| `labelAngle` | `number` | X‑axis only. Tick‑label rotation in degrees (`0`/`45`/`90`). Omit for **auto**: dense categorical labels rotate to 45° so all stay visible instead of being thinned. |
 
 ### `SketchConfig`
 

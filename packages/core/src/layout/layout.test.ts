@@ -69,4 +69,48 @@ describe('layout/computeFrame', () => {
     expect(f.plot.width).toBeGreaterThanOrEqual(0);
     expect(f.plot.height).toBeGreaterThanOrEqual(0);
   });
+
+  it('keeps category labels flat when they fit', () => {
+    const f = computeFrame({
+      width: 800,
+      height: 300,
+      padding,
+      font: lightTheme.font,
+      xAxis: { show: true, labels: ['Jan', 'Feb', 'Mar', 'Apr'] },
+    });
+    expect(f.xLabelAngle).toBe(0);
+  });
+
+  it('auto-rotates categorical labels to 45° when they would not fit', () => {
+    const cats = Array.from({ length: 12 }, (_, i) => `Quarterly region ${i}`);
+    const f = computeFrame({
+      width: 320,
+      height: 300,
+      padding,
+      font: lightTheme.font,
+      xAxis: { show: true, labels: cats },
+    });
+    expect(f.xLabelAngle).toBe(45);
+    expect(f.plot.height).toBeGreaterThan(0); // diagonal gutter still leaves room
+  });
+
+  it('does not auto-rotate edge-anchored (time/linear) labels', () => {
+    const cats = Array.from({ length: 12 }, (_, i) => `2024-0${i}`);
+    const f = computeFrame({
+      width: 320,
+      height: 300,
+      padding,
+      font: lightTheme.font,
+      xAxis: { show: true, labels: cats, edgeAnchored: true },
+    });
+    expect(f.xLabelAngle).toBe(0);
+  });
+
+  it('honors an explicit labelAngle and reserves a taller gutter than flat', () => {
+    const labels = ['Northwest', 'Southwest', 'Northeast', 'Southeast'];
+    const flat = computeFrame({ width: 800, height: 300, padding, font: lightTheme.font, xAxis: { show: true, labels, labelAngle: 0 } });
+    const vert = computeFrame({ width: 800, height: 300, padding, font: lightTheme.font, xAxis: { show: true, labels, labelAngle: 90 } });
+    expect(vert.xLabelAngle).toBe(90);
+    expect(vert.plot.height).toBeLessThan(flat.plot.height);
+  });
 });
