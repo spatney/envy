@@ -129,6 +129,9 @@ const CANVAS_MARK_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
   'choropleth',
 ]);
 
+/** Stable empty-data sentinel so the no-data path keeps a single reference. */
+const EMPTY_DATA: Datum[] = [];
+
 function resolveContainer(target: HTMLElement | string): HTMLElement {
   if (typeof target === 'string') {
     const el = document.querySelector(target);
@@ -205,7 +208,7 @@ export function render(
   let txDef: unknown;
   let txOut: Datum[] = [];
   const effectiveData = (): Datum[] => {
-    const src = currentSpec.data ?? [];
+    const src = currentSpec.data ?? EMPTY_DATA;
     const tx = currentSpec.transform;
     if (!tx || tx.length === 0) return src;
     if (txSrc === src && txDef === tx) return txOut;
@@ -253,7 +256,9 @@ export function render(
     const baseData = effectiveData();
     const filtered = filterValues.length ? filterRows(baseData, filterValues) : baseData;
     const effectiveSpec =
-      filtered === baseData ? currentSpec : ({ ...currentSpec, data: filtered } as ChartSpec);
+      filtered === (currentSpec.data ?? EMPTY_DATA)
+        ? currentSpec
+        : ({ ...currentSpec, data: filtered } as ChartSpec);
     const emphasis = resolveEmphasis(currentSpec.highlight, store, DIM_ALPHA);
     const ownParam = currentSpec.params?.[0];
 

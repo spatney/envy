@@ -98,4 +98,27 @@ describe('render().report() — end to end', () => {
     expect(chart.report().markCount).toBe(2);
     chart.destroy();
   });
+
+  it('renders transform output (not raw rows) when there is no cross-filter', () => {
+    const spec: BarSpec = {
+      type: 'bar',
+      dimensions: { width: 640, height: 400 },
+      data: [
+        { region: 'West', amount: 120 },
+        { region: 'West', amount: 95 },
+        { region: 'East', amount: 80 },
+        { region: 'North', amount: 0 },
+      ],
+      transform: [
+        { filter: { field: 'amount', gt: 0 } },
+        { aggregate: [{ op: 'sum', field: 'amount', as: 'revenue' }], groupby: ['region'] },
+      ],
+      encoding: { x: { field: 'region' }, y: { field: 'revenue' } },
+    };
+    const chart = render(mount(), spec);
+    // Filter drops North(0), then sum-by-region → 2 bars; the model must reflect
+    // the transformed rows, not the 4 raw ones.
+    expect(chart.report().markCount).toBe(2);
+    chart.destroy();
+  });
 });
