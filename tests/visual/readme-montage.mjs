@@ -8,6 +8,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import usFc from '../../apps/gallery/src/content/us-states.albers.json' with { type: 'json' };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = join(ROOT, 'docs', 'images');
@@ -29,6 +30,18 @@ const TILES = [
   { type: 'treemap', title: 'Catalog', data: [{ c: 'Apps', v: 50 }, { c: 'Games', v: 30 }, { c: 'Tools', v: 20 }, { c: 'Media', v: 14 }, { c: 'Books', v: 9 }], encoding: { category: { field: 'c' }, value: { field: 'v' } } },
   { type: 'slope', title: 'Before / after', data: [{ x: '2023', y: 30, g: 'A' }, { x: '2024', y: 52, g: 'A' }, { x: '2023', y: 44, g: 'B' }, { x: '2024', y: 36, g: 'B' }], encoding: { x: { field: 'x' }, y: { field: 'y' }, series: { field: 'g' } } },
   { type: 'box', title: 'Latency cohorts', data: Array.from({ length: 90 }, (_, i) => ({ g: ['A', 'B', 'C'][i % 3], y: 20 + (i % 30) + (i % 3) * 12 })), encoding: { x: { field: 'g' }, y: { field: 'y' } } },
+  { type: 'combo', title: 'Revenue vs. rate', data: months([60, 72, 68, 81, 90, 104]).map((d, i) => ({ ...d, rate: 0.03 + i * 0.004 })), encoding: { x: { field: 'm' } }, layers: [{ mark: 'bar', encoding: { y: { field: 'y' } } }, { mark: 'line', axis: 'right', encoding: { y: { field: 'rate', format: '.0%' } } }] },
+  { type: 'funnel', title: 'Conversion', data: [{ s: 'Visit', v: 1000 }, { s: 'Signup', v: 620 }, { s: 'Trial', v: 380 }, { s: 'Paid', v: 145 }], encoding: { stage: { field: 's' }, value: { field: 'v' } } },
+  { type: 'sankey', title: 'Flows', data: [{ s: 'Search', t: 'Home', v: 8 }, { s: 'Ads', t: 'Home', v: 5 }, { s: 'Home', t: 'Cart', v: 7 }, { s: 'Home', t: 'Exit', v: 6 }, { s: 'Cart', t: 'Buy', v: 5 }], encoding: { source: { field: 's' }, target: { field: 't' }, value: { field: 'v' } } },
+  { type: 'bullet', title: 'Quota', value: 78, target: 90, ranges: [50, 75, 100] },
+  { type: 'calendarHeatmap', title: 'Activity', data: Array.from({ length: 120 }, (_, i) => ({ d: new Date(2024, 0, i + 1).toISOString().slice(0, 10), v: Math.round(Math.abs(Math.sin(i / 4)) * 9) })), encoding: { date: { field: 'd' }, color: { field: 'v' } } },
+  { type: 'dumbbell', title: 'Gap by team', data: [{ c: 'A', v: 30, g: '2023' }, { c: 'A', v: 52, g: '2024' }, { c: 'B', v: 22, g: '2023' }, { c: 'B', v: 40, g: '2024' }, { c: 'C', v: 35, g: '2023' }, { c: 'C', v: 48, g: '2024' }], encoding: { category: { field: 'c' }, value: { field: 'v' }, group: { field: 'g' } } },
+  { type: 'kpi', title: 'ARR', value: { field: 's', aggregate: 'sum' }, data: [3, 5, 4, 6, 8, 7, 9, 11].map((s) => ({ s: s * 140000 })), delta: 0.124, sparkline: { field: 's' } },
+  { type: 'choropleth', title: 'Density', geo: usFc, featureId: 'name', projection: 'identity', scheme: 'teal', data: usFc.features.map((f) => ({ k: f.properties.name, v: f.properties.density })), encoding: { key: { field: 'k' }, color: { field: 'v' } } },
+  { type: 'table', title: 'Orders', data: [{ region: 'NA', sales: 38, growth: 0.12 }, { region: 'EU', sales: 31, growth: 0.05 }, { region: 'APAC', sales: 24, growth: 0.18 }, { region: 'LATAM', sales: 12, growth: -0.03 }], columns: [{ field: 'region', title: 'Region' }, { field: 'sales', title: 'Sales', align: 'right', conditionalFormat: { type: 'bar', color: '#0d9488', showValue: true } }, { field: 'growth', title: 'Growth', format: '.0%', align: 'right' }] },
+  { type: 'matrix', title: 'Pivot', data: Array.from({ length: 9 }, (_, i) => ({ r: ['NA', 'EU', 'APAC'][i % 3], c: ['Q1', 'Q2', 'Q3'][(i / 3) | 0], v: 10 + i })), rows: ['r'], columns: ['c'], values: [{ field: 'v', op: 'sum', label: 'Sum' }] },
+  { type: 'bar', title: 'Quarterly', data: [{ q: 'Q1', y: 22, g: 'A' }, { q: 'Q2', y: 30, g: 'A' }, { q: 'Q1', y: 14, g: 'B' }, { q: 'Q2', y: 19, g: 'B' }], encoding: { x: { field: 'q' }, y: { field: 'y' }, series: { field: 'g' } }, stack: true },
+  { type: 'dropdown', title: 'Region filter', field: 'region', multiple: true, data: ['NA', 'EU', 'APAC', 'LATAM'].map((region) => ({ region })) },
 ];
 
 // Light, dark, sketch — cycled so every row carries all three looks.
@@ -38,7 +51,7 @@ const LOOKS = [
   { theme: 'light', sketch: true, bg: '#fbfaf6' },
 ];
 
-const COLS = 4;
+const COLS = 6;
 const TW = 380, TH = 240, GAP = 14, PAD = 22, DPR = 2;
 const rows = Math.ceil(TILES.length / COLS);
 const W = PAD * 2 + COLS * TW + (COLS - 1) * GAP;
