@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { createSelectionStore } from '../../interaction/store';
 import { validateSpec } from '../../spec/validate';
 import { resolveTheme } from '../../theme';
@@ -9,6 +9,11 @@ import { drawDropdown } from './dropdown';
 
 beforeAll(() => {
   HTMLCanvasElement.prototype.getContext = (() => null) as any;
+});
+
+// The dropdown menu is portaled to document.body, so reset it between cases.
+afterEach(() => {
+  document.body.replaceChildren();
 });
 
 const tokens = resolveTheme('light');
@@ -79,16 +84,16 @@ describe('drawDropdown', () => {
     expect(trigger.textContent).toContain('Pick one');
 
     trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    let options = [...s.overlay.querySelectorAll('[role="option"]')] as HTMLElement[];
+    let options = [...document.body.querySelectorAll('[role="option"]')] as HTMLElement[];
     expect(options.map((o) => o.textContent)).toEqual(['West', 'East', 'North']);
 
     options[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(context.store.get('region')).toEqual({ kind: 'set', field: 'region', values: ['East'] });
-    expect(s.overlay.querySelectorAll('[role="option"]')).toHaveLength(0);
+    expect(document.body.querySelectorAll('[role="option"]')).toHaveLength(0);
     expect(trigger.textContent).toContain('East');
 
     trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    options = [...s.overlay.querySelectorAll('[role="option"]')] as HTMLElement[];
+    options = [...document.body.querySelectorAll('[role="option"]')] as HTMLElement[];
     options[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(context.store.get('region')).toBeNull();
     expect(trigger.textContent).toContain('Pick one');
@@ -105,7 +110,7 @@ describe('drawDropdown', () => {
     expect(trigger.textContent).toContain('Any');
     trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    const checks = [...s.overlay.querySelectorAll('input[type="checkbox"]')] as HTMLInputElement[];
+    const checks = [...document.body.querySelectorAll('input[type="checkbox"]')] as HTMLInputElement[];
     checks[0].checked = true;
     checks[0].dispatchEvent(new Event('change', { bubbles: true }));
     expect(context.store.get('region')).toEqual({ kind: 'set', field: 'region', values: ['West'] });
@@ -121,7 +126,7 @@ describe('drawDropdown', () => {
     expect(context.store.get('region')).toEqual({ kind: 'set', field: 'region', values: ['East'] });
 
     document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    expect(s.overlay.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
+    expect(document.body.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
 
     const clear = s.overlay.querySelector('button[aria-label="Clear selection"]')!;
     clear.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -137,7 +142,7 @@ describe('drawDropdown', () => {
 
     const trigger = s.overlay.querySelector('button')!;
     trigger.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(s.overlay.querySelectorAll('[role="option"]')).toHaveLength(0);
+    expect(document.body.querySelectorAll('[role="option"]')).toHaveLength(0);
     expect(trigger.textContent).toContain('All');
   });
 });

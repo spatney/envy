@@ -343,6 +343,54 @@ export const presets: Preset[] = [
       };
     },
   },
+  // --- Palette & style (the `palette` field: named scheme or explicit colors) ---
+  {
+    id: 'palette-colorblind',
+    label: 'Palette · colorblind-safe',
+    group: 'Palette',
+    note: "Okabe–Ito scheme via palette:'colorblind'",
+    build: () => ({
+      type: 'bar',
+      title: 'Revenue by quarter & product',
+      data: categorical({ categories: ['Q1', 'Q2', 'Q3', 'Q4'], series: ['Widgets', 'Gadgets', 'Gizmos', 'Sprockets', 'Cogs'] }),
+      encoding: { x: { field: 'category' }, y: { field: 'value', title: 'Revenue ($k)' }, series: { field: 'series' } },
+      palette: 'colorblind',
+    }),
+  },
+  {
+    id: 'palette-custom',
+    label: 'Palette · custom colors',
+    group: 'Palette',
+    note: 'pass an explicit array of series colors',
+    build: () => ({
+      type: 'line',
+      title: 'Channel revenue (brand palette)',
+      data: timeSeries({ series: ['Organic', 'Paid', 'Partners', 'Lifecycle'], points: 12, stepDays: 30, seed: 9 }),
+      encoding: {
+        x: { field: 'date', type: 'temporal' },
+        y: { field: 'value', title: 'Revenue ($k)' },
+        series: { field: 'series' },
+      },
+      palette: ['#0d9488', '#6366f1', '#f59e0b', '#ef4444'],
+      curve: 'monotone',
+    }),
+  },
+  // --- Diagnostics (report() findings carry safe fixes; "Repair from report") ---
+  {
+    id: 'report-clipped-axis',
+    label: 'Report repair · clipped axis',
+    group: 'Diagnostics',
+    note: 'a manual y domain clips marks → report() offers a fix',
+    build: () => ({
+      type: 'bar',
+      title: 'Revenue (y domain set too low)',
+      data: categorical({ categories: ['Q1', 'Q2', 'Q3', 'Q4'], base: 320, noise: 90, seed: 4 }),
+      encoding: {
+        x: { field: 'category' },
+        y: { field: 'value', title: 'Revenue', scale: { domain: [0, 150] } },
+      },
+    }),
+  },
   // --- Scatter ---
   {
     id: 'scatter-md',
@@ -950,15 +998,90 @@ export const presets: Preset[] = [
     }),
   },
   {
-    id: 'dashboard',
-    label: 'Dashboard · auto-wired',
+    id: 'legend-interactive',
+    label: 'Legend · click to toggle series',
     group: 'Interactive',
-    note: 'cross-filter from slicers + chart clicks',
-    build: () => dashboardDemo(),
+    note: 'legend.interactive — click to hide, shift-click to isolate',
+    build: () => ({
+      type: 'line',
+      title: 'Revenue by region (interactive legend)',
+      data: timeSeries({ series: REGIONS, points: 16, seed: 5 }),
+      encoding: {
+        x: { field: 'date', type: 'temporal' },
+        y: { field: 'value', title: 'Revenue ($k)' },
+        series: { field: 'series' },
+      },
+      legend: { interactive: true },
+    }),
   },
 ];
 
 export const presetById = (id: string): Preset | undefined => presets.find((p) => p.id === id);
+
+/**
+ * Dashboard presets — full cross-interacting BI pages. These live in their own
+ * catalog (and their own `/playground/dashboard` route) because a dashboard is a
+ * laid-out page, not a single visual, and needs a taller, full-width stage.
+ */
+export const dashboardPresets: Preset[] = [
+  {
+    id: 'dashboard-cockpit',
+    label: 'Cockpit · auto-wired (KPI-first)',
+    group: 'Dashboard',
+    note: 'slicers + KPI band + charts; cross-filter from the top or a mark',
+    build: () => dashboardDemo(),
+  },
+  {
+    id: 'dashboard-compact',
+    label: 'Compact · slicer + KPI + trend',
+    group: 'Dashboard',
+    note: 'a minimal three-view page with interactions:auto',
+    build: () => ({
+      type: 'dashboard',
+      title: 'Regional sales — compact',
+      subtitle: 'A small auto-wired page: filter region, watch the KPI and trend follow',
+      data: interactiveData(),
+      layout: { cols: 12, density: 'comfortable', maxWidth: 1200, padding: 16 },
+      views: [
+        {
+          id: 'region',
+          title: 'Region',
+          accent: '#14b8a6',
+          spec: { type: 'dropdown', field: 'region', title: 'Region', multiple: true },
+          w: 3,
+          h: 2,
+        },
+        {
+          id: 'total',
+          title: 'Total sales',
+          subtitle: 'Sum of revenue',
+          accent: '#0ea5e9',
+          spec: { type: 'kpi', value: { field: 'sales', aggregate: 'sum' }, format: ',.0f', delta: 0.064, sparkline: { field: 'sales' } },
+          w: 9,
+          h: 2,
+        },
+        {
+          id: 'trend',
+          title: 'Monthly trend by region',
+          spec: {
+            type: 'line',
+            encoding: {
+              x: { field: 'month', type: 'temporal' },
+              y: { field: 'sales', title: 'Sales' },
+              series: { field: 'region' },
+            },
+          },
+          w: 12,
+          h: 3,
+        },
+      ],
+      interactions: 'auto',
+    }),
+  },
+];
+
+export const dashboardPresetById = (id: string): Preset | undefined =>
+  dashboardPresets.find((p) => p.id === id);
 
 /** Presets grouped in catalog order, for an <optgroup>-style picker. */
 export function presetGroups(): { group: string; items: Preset[] }[] {

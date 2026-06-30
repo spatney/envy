@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { render } from './render';
-import type { BarSpec } from '../spec/types';
+import { repairReport, type RenderReport } from './report';
+import type { BarSpec, ChartSpec, LineSpec } from '../spec/types';
 
 // A permissive Canvas2D stub so render() can mount a real Surface in jsdom.
 function fakeContext(): CanvasRenderingContext2D {
@@ -41,6 +42,23 @@ const mount = (): HTMLElement => {
   return el;
 };
 
+const diagnostic = (spec: ChartSpec, code: string) => {
+  const chart = render(mount(), spec);
+  const report = chart.report();
+  chart.destroy();
+  const d = report.diagnostics.find((x) => x.code === code);
+  expect(d).toBeDefined();
+  return { report, d: d! };
+};
+
+function expectIdempotentRepair(spec: ChartSpec, report: RenderReport) {
+  const once = repairReport(spec, report);
+  const twice = repairReport(once.spec, report);
+  expect(twice.spec).toEqual(once.spec);
+  expect(once.applied.length).toBeGreaterThan(0);
+  return once;
+}
+
 describe('render().report() — end to end', () => {
   it('exposes a populated report after the first draw', () => {
     const spec: BarSpec = {
@@ -59,6 +77,7 @@ describe('render().report() — end to end', () => {
     expect(report.markCount).toBe(3);
     expect(report.plot).toBeDefined();
     expect(report.ok).toBe(true);
+    expect(report.diagnostics.every((d) => d.fix === undefined)).toBe(true);
     expect(report.summary).toBe('C is the largest at 8 (50% of the 16 total), A the smallest at 3.');
     chart.destroy();
   });
@@ -120,5 +139,66 @@ describe('render().report() — end to end', () => {
     // the transformed rows, not the 4 raw ones.
     expect(chart.report().markCount).toBe(2);
     chart.destroy();
+  });
+
+  it('attaches an x label rotation fix for axis label overlap', () => {
+    const cats = Array.from({ length: 14 }, (_, i) => `Category label ${i + 1}`);
+    const spec: BarSpec = {
+      type: 'bar',
+      dimensions: { width: 320, height: 240 },
+      data: cats.map((cat, i) => ({ cat, v: i + 1 })),
+      encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+      axes: { x: { labelAngle: 0 } },
+    };
+    const { report, d } = diagnostic(spec, 'axis-label-overlap');
+    expect(d.fix).toEqual([{ op: 'replace', path: '/axes/x/labelAngle', value: 45 }]);
+    const repaired = expectIdempotentRepair(spec, report);
+    expect((repaired.spec as BarSpec).axes?.x?.labelAngle).toBe(45);
+  });
+
+  it('attaches a bottom legend-position fix for legend overflow', () => {
+    const data = Array.from({ length: 12 }, (_, i) => i).flatMap((i) =>
+      ['A', 'B', 'C'].map((x) => ({ x, y: i + 1, k: `series ${i + 1}` })),
+    );
+    const spec: LineSpec = {
+      type: 'line',
+      dimensions: { width: 520, height: 150 },
+      data,
+      encoding: { x: { field: 'x', type: 'nominal' }, y: { field: 'y' }, series: { field: 'k' } },
+    };
+    const { report, d } = diagnostic(spec, 'legend-overflow');
+    expect(d.fix).toEqual([{ op: 'add', path: '/legend', value: { position: 'bottom' } }]);
+    const repaired = expectIdempotentRepair(spec, report);
+    expect((repaired.spec as LineSpec).legend).toEqual({ position: 'bottom' });
+  });
+
+  it('attaches a colorblind palette fix and hint for too many colors', () => {
+    const data = Array.from({ length: 10 }, (_, i) => i).flatMap((i) =>
+      ['A', 'B', 'C'].map((x) => ({ x, y: i + 1, k: `series ${i + 1}` })),
+    );
+    const spec: LineSpec = {
+      type: 'line',
+      dimensions: { width: 900, height: 600 },
+      data,
+      encoding: { x: { field: 'x', type: 'nominal' }, y: { field: 'y' }, series: { field: 'k' } },
+    };
+    const { report, d } = diagnostic(spec, 'too-many-colors');
+    expect(d.fix).toEqual([{ op: 'add', path: '/palette', value: 'colorblind' }]);
+    expect(d.hint).toContain('colorblind palette');
+    const repaired = expectIdempotentRepair(spec, report);
+    expect((repaired.spec as LineSpec).palette).toBe('colorblind');
+  });
+
+  it('removes a manual y domain when marks are clipped', () => {
+    const spec: LineSpec = {
+      type: 'line',
+      dimensions: { width: 640, height: 400 },
+      data: [{ x: 'A', v: 0 }, { x: 'B', v: 150 }],
+      encoding: { x: { field: 'x', type: 'nominal' }, y: { field: 'v', scale: { domain: [0, 120] } } },
+    };
+    const { report, d } = diagnostic(spec, 'marks-clipped');
+    expect(d.fix).toEqual([{ op: 'remove', path: '/encoding/y/scale/domain' }]);
+    const repaired = expectIdempotentRepair(spec, report);
+    expect((repaired.spec as LineSpec).encoding.y.scale?.domain).toBeUndefined();
   });
 });

@@ -475,6 +475,8 @@ specs still round‑trip through `JSON.stringify`. Three optional fields on any 
 - `filter` clauses are a `{ param }` (cross‑filter) or a literal predicate:
   `{ field, equals }`, `{ field, oneOf }`, `{ field, range:[min,max] }`,
   `{ field, contains }`. An empty/absent selection matches everything (`empty:'all'`).
+- Set `legend:{ "interactive": true }` on multi-series cartesian charts to let swatch
+  clicks publish the **visible** series as a set selection (shift/alt-click isolates).
 
 **Slicers** are first‑class visuals that publish a selection from a control:
 
@@ -586,6 +588,8 @@ unless `layout.navigators:'inline'`. Theme cascades to every view.
 
 The default look is **flat and modern** (solid fills, minimal shadows). The built‑in
 palette is accessible on both light and dark backgrounds.
+Use top-level `"palette": "colorblind"` for Okabe–Ito categorical colors, or
+`"bright"`, `"muted"`, or a custom string array when a chart needs different series colors.
 
 ## Hand-drawn ("sketch") mode
 

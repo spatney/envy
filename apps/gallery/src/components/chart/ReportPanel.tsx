@@ -38,6 +38,12 @@ export function ReportPanel({ report }: { report: RenderReport | null }) {
               <Chip tone={SEV_TONE[d.severity]}>{d.severity}</Chip>
               <span className="text-muted">
                 <span className="font-mono text-xs text-faint">{d.code}</span> — {d.message}
+                {d.fix && d.fix.length > 0 && (
+                  <Chip tone="accent" className="ml-1.5 align-middle">
+                    auto-fix
+                  </Chip>
+                )}
+                {d.hint && <span className="mt-0.5 block text-xs italic text-faint">hint: {d.hint}</span>}
               </span>
             </li>
           ))}

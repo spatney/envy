@@ -70,43 +70,34 @@ describe('DOM control factories', () => {
   });
 
   it('makeSelectButton, makePopover, and positionPopover style/select geometry', () => {
-    const host = document.createElement('div');
     const button = makeSelectButton(tokens, 'All regions');
     const pop = makePopover(tokens);
-    host.append(button, pop);
 
-    button.getBoundingClientRect = () => ({
-      left: 30,
-      top: 10,
-      right: 150,
-      bottom: 34,
-      width: 120,
-      height: 24,
-      x: 30,
-      y: 10,
-      toJSON: () => ({}),
-    });
-    host.getBoundingClientRect = () => ({
-      left: 10,
-      top: 4,
-      right: 260,
-      bottom: 140,
-      width: 250,
-      height: 136,
-      x: 10,
-      y: 4,
-      toJSON: () => ({}),
-    });
+    const rect = (over: Partial<DOMRect>): (() => DOMRect) => () =>
+      ({ left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}), ...over }) as DOMRect;
 
-    positionPopover(pop, button, host);
+    // A fixed-position, body-portaled popover anchors to the viewport.
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+
+    button.getBoundingClientRect = rect({ left: 30, top: 10, right: 150, bottom: 34, width: 120, height: 24 });
+    positionPopover(pop, button);
 
     expect(button.textContent).toContain('All regions');
     expect(button.textContent).toContain('▾');
+    expect(pop.style.position).toBe('fixed');
     expect(pop.style.pointerEvents).toBe('auto');
-    expect(pop.style.left).toBe('20px');
-    expect(pop.style.top).toBe('34px');
+    expect(pop.style.left).toBe('30px');
+    expect(pop.style.top).toBe('38px'); // drops below the trigger
     expect(pop.style.width).toBe('120px');
-    expect(pop.style.maxHeight).toBe('98px');
+    expect(pop.style.maxHeight).toBe('722px'); // capped to viewport space below
+
+    // Near the bottom edge it flips above, anchored by `bottom`.
+    button.getBoundingClientRect = rect({ left: 30, top: 700, right: 150, bottom: 724, width: 120, height: 24 });
+    positionPopover(pop, button);
+    expect(pop.style.top).toBe('');
+    expect(pop.style.bottom).toBe('72px');
+    expect(pop.style.maxHeight).toBe('688px');
   });
 
   it('makeOptionRow supports option and checkbox branches with hover styling', () => {

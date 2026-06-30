@@ -106,7 +106,7 @@ export function Shell() {
         searchButtonRef={searchButtonRef}
       />
 
-      <div className="mx-auto flex w-full max-w-[1600px] overflow-x-hidden">
+      <div className="mx-auto flex w-full max-w-[1840px] overflow-x-hidden">
         {/* Desktop sidebar */}
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-72 shrink-0 overflow-y-auto border-r border-border lg:block">
           <Sidebar />

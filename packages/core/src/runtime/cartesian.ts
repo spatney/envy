@@ -54,12 +54,12 @@ import {
   curveStepBefore,
   type Curve,
 } from '../shape';
-import { ordinalColorScale } from '../color';
+import { categorical, ordinalColorScale } from '../color';
 import { rgbaToCss } from '../color';
 import { formatNumber, formatValue, smartDate } from '../format';
 import { computeFrame, type Frame, type LegendItem } from '../layout';
 import { resolveSketch, type ResolvedSketch } from '../spec/sketch';
-import type { Emphasis } from '../interaction/types';
+import type { Emphasis, LegendHitRegion } from '../interaction/types';
 
 export type CartesianChartSpec = LineSpec | AreaSpec | BarSpec | ScatterSpec | BoxSpec;
 
@@ -125,6 +125,10 @@ export interface CartesianModel {
    * `highlight` param + the shared store; `buildCartesianModel` leaves it null.
    */
   emphasis?: Emphasis | null;
+  /** Interactive legend swatch hit targets; only present when legend.interactive is true. */
+  legendHits?: LegendHitRegion[];
+  /** Draw-side mark counts for render diagnostics; semantic markCount stays data-based. */
+  markStats?: { drawn: number; original: number };
 }
 
 const CURVES: Record<CurveType, Curve> = {
@@ -261,6 +265,11 @@ function formatNumericTick(value: number, userFormat: string | undefined): strin
 }
 
 const DEFAULT_PADDING = { top: 12, right: 16, bottom: 12, left: 12 };
+const LEGEND_SWATCH = 11;
+
+function legendInteractive(spec: CartesianChartSpec): boolean {
+  return typeof spec.legend === 'object' && spec.legend.interactive === true;
+}
 
 export interface BuildOptions {
   width: number;
@@ -300,7 +309,11 @@ export function buildCartesianModel(
   const seriesField = resolveSeriesField(spec);
   const rawSeries: Series[] = groupBySeries(data, seriesField);
   const seriesKeys = rawSeries.map((s) => s.key);
-  const palette = tokens.color.palette;
+  const palette = Array.isArray(spec.palette)
+    ? spec.palette
+    : typeof spec.palette === 'string'
+      ? categorical(spec.palette)
+      : tokens.color.palette;
   const colorScale = ordinalColorScale({ domain: seriesKeys, palette });
   const colorCache = new Map<string, string>();
   const sharedColor = opts.shared?.colorOf;
@@ -493,6 +506,26 @@ export function buildCartesianModel(
     xAxis: { show: xShow, labels: xLabels, title: resolveAxisTitle(enc.x, xAxisCfg), edgeAnchored: !categories, labelAngle: xAxisCfg.labelAngle },
     yAxis: { show: yShow, labels: yLabels, title: resolveAxisTitle(enc.y, yAxisCfg) },
   });
+  const legendHits =
+    legendInteractive(spec) && seriesField && frame.legendItems
+      ? frame.legendItems.map((item, i): LegendHitRegion => {
+          // Cover the whole legend item — swatch *and* label — so clicking the
+          // text toggles the series, not just the small color chip.
+          const rowH = Math.max(LEGEND_SWATCH, Math.round(tokens.font.size.small * 1.35));
+          const midY = item.y + LEGEND_SWATCH / 2;
+          return {
+            rect: {
+              x: item.x,
+              y: midY - rowH / 2,
+              width: item.width,
+              height: rowH,
+            },
+            key: series[i]?.key ?? item.label,
+            value: series[i]?.value ?? item.label,
+            label: item.label,
+          };
+        })
+      : undefined;
   const plot = frame.plot;
 
   // --- Build scales with final ranges ---
@@ -541,6 +574,7 @@ export function buildCartesianModel(
     xTicks,
     yTicks,
     colorOf,
+    legendHits,
     sketch: resolveSketch(spec),
   };
 }

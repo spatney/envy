@@ -97,6 +97,17 @@ describe('wireViews — auto', () => {
     expect(bar.filter).toContainEqual({ param: '__sel__v2' });
   });
 
+  it('treats interactive legends as visible-series filter sources', () => {
+    const legendSource: ChartSpec = {
+      ...scatterByCategory,
+      legend: { interactive: true, param: 'visibleCategory' },
+    };
+    const wired = wireViews(views(legendSource, barByRegion), 'auto');
+    const [scatter, bar] = wired.map((v) => v.spec);
+    expect(scatter.filter ?? []).not.toContainEqual({ param: 'visibleCategory' });
+    expect(bar.filter).toContainEqual({ param: 'visibleCategory' });
+  });
+
   it('does not mutate the input specs', () => {
     const input = views(regionSlicer, barByRegion);
     const snapshot = JSON.stringify(input);

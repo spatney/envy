@@ -32,6 +32,14 @@ import {
   slicerOptions,
 } from './common';
 
+/**
+ * Tracks the open popover per surface so a re-render (e.g. a dashboard view
+ * redrawing after its own selection changes) tears down the previous menu —
+ * the popover lives on `document.body`, outside the surface, so clearing the
+ * surface alone would otherwise orphan it.
+ */
+const openMenus = new WeakMap<Surface, () => void>();
+
 export function drawDropdown(
   surface: Surface,
   spec: ChartSpec,
@@ -44,6 +52,9 @@ export function drawDropdown(
     drawDropdownCanvas(surface, s, tokens, size, context);
     return;
   }
+  // Close any menu left open by this surface's previous render.
+  openMenus.get(surface)?.();
+
   const shell = mountSlicerShell(surface, tokens, size, {
     title: s.title,
     label: slicerLabel(s),
@@ -85,15 +96,33 @@ export function drawDropdown(
   };
 
   let pop: HTMLDivElement | null = null;
+  const reposition = (): void => {
+    if (!pop) return;
+    if (!trigger.isConnected) {
+      closeMenu();
+      return;
+    }
+    positionPopover(pop, trigger);
+  };
   const closeMenu = (): void => {
     if (pop) {
       pop.remove();
       pop = null;
       document.removeEventListener('pointerdown', onOutside, true);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+      openMenus.delete(surface);
     }
   };
   const onOutside = (e: PointerEvent): void => {
     if (pop && !pop.contains(e.target as Node) && !trigger.contains(e.target as Node)) closeMenu();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape' && pop) {
+      closeMenu();
+      trigger.focus();
+    }
   };
 
   const openMenu = (): void => {
@@ -127,9 +156,15 @@ export function drawDropdown(
       });
       pop.appendChild(row);
     }
-    shell.host.appendChild(pop);
-    positionPopover(pop, trigger, shell.host);
+    // Portal to the document body so the menu floats above any clipping
+    // ancestor (e.g. the dashboard view cell's `overflow:hidden`).
+    document.body.appendChild(pop);
+    positionPopover(pop, trigger);
+    openMenus.set(surface, closeMenu);
     document.addEventListener('pointerdown', onOutside, true);
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
   };
 
   trigger.addEventListener('click', openMenu);

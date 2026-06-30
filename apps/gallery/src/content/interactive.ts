@@ -91,7 +91,7 @@ export function dashboardDemo(): DashboardSpec {
     layout: {
       cols: 12,
       density: 'comfortable',
-      maxWidth: 1280,
+      maxWidth: 1440,
       padding: 18,
       preset: 'kpi-first',
       sections: [
@@ -113,20 +113,19 @@ export function dashboardDemo(): DashboardSpec {
     },
     views: [
       // ---- Navigator strip (compact slicers reflow to the top) -------------
+      // No card title/accent here: each slicer renders its own header, so a
+      // card title would duplicate it (and the dashboard suppresses the
+      // slicer's title when the card already shows one).
       {
         id: 'region',
-        title: 'Region',
-        accent: '#14b8a6',
         spec: { type: 'dropdown', field: 'region', title: 'Region', multiple: true },
       },
       {
         id: 'product',
-        title: 'Product',
         spec: { type: 'dropdown', field: 'product', title: 'Product', multiple: true },
       },
       {
         id: 'month',
-        title: 'Month',
         spec: { type: 'dateRange', field: 'month', title: 'Month' },
       },
 

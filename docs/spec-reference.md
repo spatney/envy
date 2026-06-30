@@ -67,10 +67,11 @@ Shared by **all** chart types.
 | `data` | `Datum[]` | — | Row‑oriented records. Required for every chart/table. |
 | `transform` | `Transform[]` | — | Declarative pipeline that reshapes `data` **before** charting (aggregate, bin, filter, fold, timeUnit). See [Transforms](#transforms). |
 | `theme` | `'light' \| 'dark' \| ThemeOverride` | `'light'` | Theme name or a partial override (see [Themes](#themes)). |
+| `palette` | `'graphein' \| 'colorblind' \| 'bright' \| 'muted' \| string[]` | theme palette | Categorical series palette selector, or explicit colors cycled across series. |
 | `dimensions` | `{ width?, height?, autoResize? }` | responsive | Omit `width`/`height` to fill the container and track resizes. |
 | `title` | `string \| TitleConfig` | — | `string`, or `{ text, subtitle?, align? }`. |
 | `description` | `string` | auto | Accessible alt text. Used verbatim as the chart's `aria-label`; auto‑synthesized from type/title/data when omitted (see [Accessibility](#accessibility)). |
-| `legend` | `LegendConfig \| boolean` | auto | `false` hides it; `{ show?, position?, title? }`. `position`: `top \| right \| bottom \| left`. |
+| `legend` | `LegendConfig \| boolean` | auto | `false` hides it; `{ show?, position?, title?, interactive?, param? }`. `interactive:true` lets legend swatch clicks publish visible series as `{ kind:'set', field:<series field>, values:[...] }` (shift/alt-click isolates); `param` defaults to the series field. `position`: `top \| right \| bottom \| left`. |
 | `tooltip` | `TooltipConfig \| boolean` | `true` | `false` (or `{ show: false }`) disables hover tooltips. |
 | `axes` | `{ x?: AxisConfig, y?: AxisConfig }` | auto | Per‑axis overrides (cartesian charts). |
 | `animation` | `AnimationConfig \| boolean` | on | Brief entrance on first render. `false` disables; `{ enabled?, duration?, easing? }`. Honors `prefers-reduced-motion` (see [Animation](#animation)). |
@@ -1120,7 +1121,9 @@ with an optional `base`:
 Overridable token groups: `color` (`background`, `surface`, `text`, `textMuted`,
 `axis`, `grid`, `border`, `accent`, `palette[]`, `positive`, `negative`),
 `font`, `spacing`, `radius`, `stroke`. The default categorical `palette` is a
-vibrant, accessibility‑tuned 10‑color set that reads well on light and dark.
+vibrant, accessibility‑tuned 10‑color set that reads well on light and dark. For
+one chart, prefer top-level `palette: 'colorblind'` (or `'bright'`, `'muted'`, or
+an explicit `string[]`) instead of overriding theme tokens.
 
 ---
 

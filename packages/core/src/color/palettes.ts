@@ -16,12 +16,35 @@ const CATEGORICAL: Record<string, string[]> = {
     '#6366f1',
     '#84cc16',
   ],
+  colorblind: ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7', '#999999'],
+  bright: [
+    '#2563eb',
+    '#06b6d4',
+    '#22c55e',
+    '#eab308',
+    '#f97316',
+    '#ef4444',
+    '#a855f7',
+    '#ec4899',
+  ],
+  muted: [
+    '#4f46e5',
+    '#0f766e',
+    '#65a30d',
+    '#ca8a04',
+    '#c2410c',
+    '#be123c',
+    '#7c3aed',
+    '#475569',
+  ],
 };
 
 /** Get a categorical palette by name (defaults to the 'graphein' palette). */
 export function categorical(name = 'graphein'): string[] {
   return [...(CATEGORICAL[name] ?? CATEGORICAL.graphein)];
 }
+
+export const categoricalSchemes = Object.keys(CATEGORICAL);
 
 const must = (hex: string): RGBA => {
   const c = parseColor(hex);

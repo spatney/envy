@@ -10,13 +10,23 @@
 import type { Surface } from '../render/surface';
 import type { ThemeTokens } from '../theme';
 import { Tooltip } from './tooltip';
-import type { Hover, InteractionModel } from './types';
+import type { Hover, InteractionModel, LegendHitRegion } from './types';
 import type { SelectionValue } from '../spec/selection';
 
 /** How the controller publishes a click/tap selection from the current model. */
 export interface ControllerSelect {
   /** Called with the picked value (or `null` when empty space is clicked). */
-  onPick(value: SelectionValue | null): void;
+  onPick?(value: SelectionValue | null): void;
+  /** Called when an interactive legend swatch is clicked. */
+  onLegendToggle?(hit: LegendHitRegion, event: MouseEvent): void;
+}
+
+function resolveLegendHit(model: InteractionModel, px: number, py: number): LegendHitRegion | null {
+  for (const hit of model.legendHits ?? []) {
+    const r = hit.rect;
+    if (px >= r.x && px <= r.x + r.width && py >= r.y && py <= r.y + r.height) return hit;
+  }
+  return null;
 }
 
 export class InteractionController {
@@ -51,7 +61,7 @@ export class InteractionController {
     // The per-frame surface.clear() already wiped the interaction canvas and
     // any prior highlight; drop the active hover so the next move re-resolves.
     this.activeKey = null;
-    this.pickable = Boolean(model?.pick);
+    this.pickable = Boolean(model?.pick || model?.legendHits?.length);
     if (!model) this.tooltip.hide();
   }
 
@@ -79,9 +89,17 @@ export class InteractionController {
   private readonly onClick = (e: PointerEvent): void => {
     const cfg = this.selectCfg;
     const model = this.model;
-    if (!cfg || !model || !model.pick) return;
+    if (!cfg || !model) return;
     const rect = this.surface.root.getBoundingClientRect();
-    cfg.onPick(model.pick(e.clientX - rect.left, e.clientY - rect.top));
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const onLegendToggle = cfg.onLegendToggle;
+    const legendHit = onLegendToggle ? resolveLegendHit(model, px, py) : null;
+    if (legendHit && onLegendToggle) {
+      onLegendToggle(legendHit, e);
+      return;
+    }
+    if (model.pick && cfg.onPick) cfg.onPick(model.pick(px, py));
   };
 
   private readonly flush = (): void => {

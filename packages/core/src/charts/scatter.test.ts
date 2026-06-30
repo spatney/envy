@@ -2,6 +2,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Surface } from '../render/surface';
 import { buildCartesianModel } from '../runtime/cartesian';
+import { buildRenderReport } from '../runtime/report';
 import { validateSpec } from '../spec/validate';
 import type { ScatterSpec } from '../spec/types';
 import { resolveTheme } from '../theme';
@@ -32,10 +33,19 @@ function spec(over: Partial<ScatterSpec> = {}): ScatterSpec {
   };
 }
 
-function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number; methodCalls: (name: string) => number; alphas: () => number[] } {
+function fakeContext(): {
+  ctx: CanvasRenderingContext2D;
+  calls: () => number;
+  methodCalls: (name: string) => number;
+  alphas: () => number[];
+  arcs: () => Array<{ x: number; y: number; r: number }>;
+  fills: () => unknown[];
+} {
   let count = 0;
   const methods = new Map<string, number>();
   const alphaValues: number[] = [];
+  const arcs: Array<{ x: number; y: number; r: number }> = [];
+  const fills: unknown[] = [];
   const grad = { addColorStop() {} };
   const data: Record<PropertyKey, unknown> = {
     canvas: { width: 640, height: 400 },
@@ -52,6 +62,8 @@ function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number; me
         void args;
         count++;
         methods.set(String(prop), (methods.get(String(prop)) ?? 0) + 1);
+        if (prop === 'arc') arcs.push({ x: Number(args[0]), y: Number(args[1]), r: Number(args[2]) });
+        if (prop === 'fill') fills.push(t.fillStyle);
         return undefined;
       };
     },
@@ -61,21 +73,39 @@ function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number; me
       return true;
     },
   }) as unknown as CanvasRenderingContext2D;
-  return { ctx, calls: () => count, methodCalls: (name) => methods.get(name) ?? 0, alphas: () => alphaValues };
+  return {
+    ctx,
+    calls: () => count,
+    methodCalls: (name) => methods.get(name) ?? 0,
+    alphas: () => alphaValues,
+    arcs: () => arcs,
+    fills: () => fills,
+  };
 }
 
 function makeSurface() {
-  const { ctx, calls, methodCalls, alphas } = fakeContext();
+  const { ctx, calls, methodCalls, alphas, arcs, fills } = fakeContext();
   return {
     surface: { marks: { ctx }, overlay: document.createElement('div'), width: 640, height: 400 } as unknown as Surface,
     calls,
     methodCalls,
     alphas,
+    arcs,
+    fills,
   };
 }
 
-function modelFor(s: ScatterSpec) {
-  return buildCartesianModel(s, resolveTheme('light'), { width: 640, height: 400 });
+function modelFor(s: ScatterSpec, size = { width: 640, height: 400 }) {
+  return buildCartesianModel(s, resolveTheme('light'), size);
+}
+
+function denseData(count = 6000) {
+  return Array.from({ length: count }, (_, i) => ({
+    x: i % 100,
+    y: Math.floor(i / 100) % 60,
+    group: i % 2 === 0 ? 'A' : 'B',
+    size: (i % 10) + 1,
+  }));
 }
 
 describe('drawScatter', () => {
@@ -115,5 +145,64 @@ describe('drawScatter', () => {
     const { surface, calls } = makeSurface();
     drawScatter(surface, modelFor(spec({ sketch: { seed: 12 } })));
     expect(calls()).toBeGreaterThan(0);
+  });
+
+  it('quantizes dense unsized scatters while preserving extents and distinct colors', () => {
+    const dense = denseData(12000);
+    const s = spec({
+      data: dense,
+      encoding: {
+        x: { field: 'x', type: 'quantitative' },
+        y: { field: 'y' },
+        color: { field: 'group' },
+      },
+    });
+    const model = modelFor(s, { width: 220, height: 180 });
+    const { surface, methodCalls, arcs, fills } = makeSurface();
+    drawScatter(surface, model);
+
+    expect(model.markStats?.original).toBe(dense.length);
+    expect(model.markStats?.drawn).toBeLessThan(dense.length);
+    expect(methodCalls('arc')).toBe(model.markStats?.drawn);
+    const xs = dense.map((d) => model.x.pixel(d.x)!);
+    const ys = dense.map((d) => model.y.pixel(d.y));
+    const drawn = arcs();
+    expect(drawn.some((p) => p.x === Math.min(...xs))).toBe(true);
+    expect(drawn.some((p) => p.x === Math.max(...xs))).toBe(true);
+    expect(drawn.some((p) => p.y === Math.min(...ys))).toBe(true);
+    expect(drawn.some((p) => p.y === Math.max(...ys))).toBe(true);
+    expect(new Set(fills()).size).toBe(2);
+
+    const report = buildRenderReport({ type: 'scatter', spec: s, data: dense, tokens: resolveTheme('light'), size: { width: 220, height: 180 }, model });
+    const diagnostic = report.diagnostics.find((d) => d.code === 'scatter-quantized');
+    expect(report.markCount).toBe(dense.length);
+    expect(diagnostic?.severity).toBe('info');
+    expect(diagnostic?.details).toEqual(model.markStats);
+  });
+
+  it('does not quantize inputs below the density threshold', () => {
+    const rows = denseData(1200);
+    const s = spec({
+      data: rows,
+      encoding: {
+        x: { field: 'x', type: 'quantitative' },
+        y: { field: 'y' },
+        color: { field: 'group' },
+      },
+    });
+    const model = modelFor(s, { width: 220, height: 180 });
+    const { surface, methodCalls } = makeSurface();
+    drawScatter(surface, model);
+    expect(model.markStats).toEqual({ drawn: rows.length, original: rows.length });
+    expect(methodCalls('arc')).toBe(rows.length);
+  });
+
+  it('does not quantize scatters with a size channel', () => {
+    const rows = denseData();
+    const model = modelFor(spec({ data: rows }), { width: 220, height: 180 });
+    const { surface, methodCalls } = makeSurface();
+    drawScatter(surface, model);
+    expect(model.markStats).toEqual({ drawn: rows.length, original: rows.length });
+    expect(methodCalls('arc')).toBe(rows.length);
   });
 });

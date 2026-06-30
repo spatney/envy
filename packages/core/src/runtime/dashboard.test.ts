@@ -202,6 +202,31 @@ describe('renderDashboard', () => {
     d.destroy();
   });
 
+  it('cross-filters peer views from an interactive legend param under auto wiring', () => {
+    const d = renderDashboard(mount(), dashboard({
+      layout: { sections: [{ views: ['trend', 'peer'], cols: 6, rowHeight: 70 }] },
+      views: [
+        {
+          id: 'trend',
+          spec: {
+            type: 'bar',
+            legend: { interactive: true, param: 'visibleRegion' },
+            encoding: { x: { field: 'month' }, y: { field: 'sales' }, series: { field: 'region' } },
+          },
+        },
+        {
+          id: 'peer',
+          spec: { type: 'bar', encoding: { x: { field: 'month' }, y: { field: 'sales' } } },
+        },
+      ],
+    }));
+    const peer = d.views[1];
+    expect(peer.report().markCount).toBe(4);
+    d.setSelection('visibleRegion', { kind: 'set', field: 'region', values: ['West'] });
+    expect(peer.report().markCount).toBe(2);
+    d.destroy();
+  });
+
   it('updates, resizes, and ignores updates after destroy', () => {
     const d = renderDashboard(mount(), dashboard());
     d.update(

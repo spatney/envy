@@ -7,6 +7,8 @@
  * for derived ramps and contrast.
  */
 
+import { categorical } from '../color/palettes';
+
 export interface ThemeColors {
   /** Page/plot background. */
   background: string;
@@ -49,18 +51,7 @@ export interface ThemeTokens {
 }
 
 /** A vibrant, accessible categorical palette that reads well on light and dark. */
-const PALETTE = [
-  '#3b82f6', // blue
-  '#14b8a6', // teal
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-  '#10b981', // emerald
-  '#f97316', // orange
-  '#6366f1', // indigo
-  '#84cc16', // lime
-];
+const PALETTE = categorical('graphein');
 
 const FONT_FAMILY =
   'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';

@@ -11,6 +11,7 @@ import {
   renderChartHandler,
   validateChartHandler,
   repairChartHandler,
+  recommendChartHandler,
   summarizeChartHandler,
 } from './handlers.js';
 import { RESOURCES, readResourceFile } from './resources.js';
@@ -75,6 +76,21 @@ export function createServer(): McpServer {
       inputSchema: { spec: specSchema },
     },
     async (args) => validateChartHandler(args),
+  );
+
+  server.registerTool(
+    'recommend_chart',
+    {
+      title: 'Recommend Graphein chart specs',
+      description:
+        'Profile tidy rows and return ranked, ready-to-render ChartSpecs with rationale. Use this before guessing a chart type or encoding.',
+      inputSchema: {
+        data: z.array(z.record(z.string(), z.any())),
+        intent: z.string().optional(),
+        maxResults: z.number().int().positive().optional(),
+      },
+    },
+    async (args) => recommendChartHandler(args),
   );
 
   server.registerTool(

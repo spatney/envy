@@ -12,8 +12,10 @@
 import {
   validateSpec,
   repairSpec,
+  recommendChart,
   summarize,
   type ChartSpec,
+  type RecommendOptions,
   type ValidationError,
 } from 'graphein';
 import { renderChart } from '@graphein/node';
@@ -44,6 +46,12 @@ export interface RenderArgs {
   repair?: boolean;
 }
 
+export interface RecommendChartArgs {
+  data: Record<string, unknown>[];
+  intent?: string;
+  maxResults?: number;
+}
+
 function text(value: string): McpContent {
   return { type: 'text', text: value };
 }
@@ -56,6 +64,17 @@ function specType(spec: unknown): string {
   return typeof spec === 'object' && spec !== null && 'type' in spec
     ? String((spec as { type: unknown }).type)
     : '(missing)';
+}
+
+function isRecommendIntent(value: string | undefined): value is RecommendOptions['intent'] {
+  return (
+    value === undefined ||
+    value === 'trend' ||
+    value === 'comparison' ||
+    value === 'distribution' ||
+    value === 'relationship' ||
+    value === 'composition'
+  );
 }
 
 /** Slim a validation error for an agent payload (drops nothing useful). */
@@ -169,6 +188,30 @@ export function validateChartHandler(args: { spec: unknown }): ToolResult {
         type: specType(args.spec),
         errors: result.errors.map(tidyError),
         warnings: result.warnings.map(tidyError),
+      }),
+    ],
+  };
+}
+
+/** Recommend ready-to-render ChartSpecs from tidy rows and an optional intent. */
+export function recommendChartHandler(args: RecommendChartArgs): ToolResult {
+  if (!isRecommendIntent(args.intent)) {
+    return {
+      isError: true,
+      content: [
+        json({
+          ok: false,
+          message: 'Unsupported intent. Expected trend, comparison, distribution, relationship, or composition.',
+        }),
+      ],
+    };
+  }
+  return {
+    isError: false,
+    content: [
+      json({
+        ok: true,
+        recommendations: recommendChart(args.data, { intent: args.intent, maxResults: args.maxResults }),
       }),
     ],
   };

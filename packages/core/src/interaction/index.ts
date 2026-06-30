@@ -11,6 +11,7 @@ export type {
   Emphasis,
   Hover,
   InteractionModel,
+  LegendHitRegion,
   TooltipContent,
   TooltipRow,
 } from './types';

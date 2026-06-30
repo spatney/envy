@@ -43,7 +43,9 @@ import {
 } from '../interaction/select';
 import { filterRows } from '../interaction/predicate';
 import type { RenderContext } from '../charts';
+import type { LegendHitRegion } from '../interaction';
 import type { SelectionValue } from '../spec/selection';
+import { toKey } from '../util/data';
 import { applyA11y } from '../a11y';
 import {
   animate,
@@ -131,6 +133,78 @@ const CANVAS_MARK_TYPES: ReadonlySet<ChartType> = new Set<ChartType>([
 
 /** Stable empty-data sentinel so the no-data path keeps a single reference. */
 const EMPTY_DATA: Datum[] = [];
+
+interface LegendSelectionConfig {
+  param: string;
+  field: string;
+}
+
+function legendConfigFor(model: CartesianModel): LegendSelectionConfig | null {
+  const legend = model.spec.legend;
+  if (!(typeof legend === 'object' && legend.interactive === true)) return null;
+  const field = model.seriesField;
+  if (!field || !model.legendHits?.length) return null;
+  return { param: legend.param ?? field, field };
+}
+
+function visibleLegendKeys(value: SelectionValue | null, field: string): Set<string> | null {
+  if (!value || value.kind !== 'set' || value.field !== field) return null;
+  return new Set(value.values.map((v) => toKey(v)));
+}
+
+function applyLegendVisibility(model: CartesianModel, store: SelectionStore): LegendSelectionConfig | null {
+  const cfg = legendConfigFor(model);
+  if (!cfg) return null;
+  const visible = visibleLegendKeys(store.get(cfg.param), cfg.field);
+  if (!visible) return cfg;
+  model.series = model.series.filter((s) => visible.has(toKey(s.value)));
+  return cfg;
+}
+
+function publishLegendToggle(
+  store: SelectionStore,
+  cfg: LegendSelectionConfig,
+  allHits: readonly LegendHitRegion[],
+  hit: LegendHitRegion,
+  isolate: boolean,
+): void {
+  const all = allHits.map((h) => h.value);
+  const allKeys = all.map((v) => toKey(v));
+  const hitKey = toKey(hit.value);
+  const current = visibleLegendKeys(store.get(cfg.param), cfg.field);
+  const visible = current ? new Set(current) : new Set(allKeys);
+
+  if (isolate) {
+    if (visible.size === 1 && visible.has(hitKey)) {
+      store.set(cfg.param, null);
+      return;
+    }
+    visible.clear();
+    visible.add(hitKey);
+  } else if (visible.has(hitKey)) {
+    visible.delete(hitKey);
+  } else {
+    visible.add(hitKey);
+  }
+
+  if (visible.size === 0 || visible.size === allKeys.length) {
+    store.set(cfg.param, null);
+    return;
+  }
+  store.set(cfg.param, {
+    kind: 'set',
+    field: cfg.field,
+    values: all.filter((v) => visible.has(toKey(v))),
+  });
+}
+
+function specLegendParam(spec: ChartSpec): string | null {
+  const legend = spec.legend;
+  if (!(typeof legend === 'object' && legend.interactive === true)) return null;
+  if (legend.param) return legend.param;
+  const enc = (spec as { encoding?: { series?: { field?: string }; color?: { field?: string } } }).encoding;
+  return enc?.series?.field ?? enc?.color?.field ?? null;
+}
 
 function resolveContainer(target: HTMLElement | string): HTMLElement {
   if (typeof target === 'string') {
@@ -265,6 +339,7 @@ export function render(
     let interactionModel: InteractionModel | null = null;
     let reportModel: CartesianModel | undefined;
     let facetRpt: RenderReport | undefined;
+    let legendSelect: { cfg: LegendSelectionConfig; hits: LegendHitRegion[] } | null = null;
     const type = currentSpec.type;
     // Faceting: a trellis grid of comparable panels on one canvas. Static in v1
     // (no per-panel interaction), so it short-circuits the normal dispatch.
@@ -275,6 +350,8 @@ export function render(
     } else if (CARTESIAN_TYPES.has(type)) {
       const renderer = cartesianRenderers[type];
       const model = buildCartesianModel(effectiveSpec as CartesianChartSpec, tokens, size);
+      const legendCfg = applyLegendVisibility(model, store);
+      if (legendCfg && model.legendHits?.length) legendSelect = { cfg: legendCfg, hits: model.legendHits };
       model.emphasis = emphasis;
       reportModel = model;
       // When animating, the marks (and their gridline underlay) are painted by
@@ -331,9 +408,16 @@ export function render(
     interaction.setModel(interactionModel, tokens);
     // Wire click/tap selection when this chart defines a param and its model can
     // resolve a pick. Slicers publish via the render context instead.
-    if (ownParam && interactionModel?.pick) {
-      const cfg: SelectConfig = { store, param: ownParam.name, def: ownParam.select };
-      interaction.setSelect({ onPick: (value) => applyPick(cfg, value) });
+    if ((ownParam && interactionModel?.pick) || (legendSelect && interactionModel?.legendHits?.length)) {
+      const cfg: SelectConfig | null = ownParam ? { store, param: ownParam.name, def: ownParam.select } : null;
+      interaction.setSelect({
+        onPick: cfg && interactionModel?.pick ? (value) => applyPick(cfg, value) : undefined,
+        onLegendToggle: legendSelect
+          ? (hit, event) => {
+              publishLegendToggle(store, legendSelect!.cfg, legendSelect!.hits, hit, event.shiftKey || event.altKey);
+            }
+          : undefined,
+      });
     } else {
       interaction.setSelect(null);
     }
@@ -428,7 +512,7 @@ export function render(
   const unsubscribe = store.subscribe((name, value) => {
     for (const listener of [...hostListeners]) listener(name, value);
     if (destroyed) return;
-    if (dependentParams(currentSpec.highlight, currentSpec.filter).has(name)) {
+    if (dependentParams(currentSpec.highlight, currentSpec.filter).has(name) || specLegendParam(currentSpec) === name) {
       draw(false);
     }
   });

@@ -28,10 +28,14 @@ export function tooltipEnabled(spec: CartesianModel['spec']): boolean {
 }
 
 export function buildCartesianInteraction(model: CartesianModel): InteractionModel | null {
-  if (!tooltipEnabled(model.spec)) return null;
-  if (model.series.length === 0) return null;
-  if (model.spec.type === 'scatter') return scatterInteraction(model);
-  return indexInteraction(model);
+  if (!tooltipEnabled(model.spec) || model.series.length === 0) {
+    return model.legendHits?.length
+      ? { region: model.plot, hitTest: () => null, legendHits: model.legendHits }
+      : null;
+  }
+  const interaction = model.spec.type === 'scatter' ? scatterInteraction(model) : indexInteraction(model);
+  if (interaction) interaction.legendHits = model.legendHits;
+  return interaction;
 }
 
 function inside(r: Rect, px: number, py: number, pad = 0): boolean {
@@ -240,17 +244,36 @@ function scatterInteraction(model: CartesianModel): InteractionModel | null {
   }
   if (points.length === 0) return null;
 
+  const cell = HIT_RADIUS;
+  const grid = new Map<string, number[]>();
+  for (let i = 0; i < points.length; i++) {
+    const col = Math.floor(points[i].px / cell);
+    const row = Math.floor(points[i].py / cell);
+    const key = `${col},${row}`;
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(i);
+    else grid.set(key, [i]);
+  }
+
   const nearest = (px: number, py: number): number => {
     if (!inside(plot, px, py, HIT_RADIUS)) return -1;
     let best = -1;
     let bestSq = HIT_RADIUS * HIT_RADIUS;
-    for (let i = 0; i < points.length; i++) {
-      const dx = points[i].px - px;
-      const dy = points[i].py - py;
-      const sq = dx * dx + dy * dy;
-      if (sq <= bestSq) {
-        bestSq = sq;
-        best = i;
+    const col = Math.floor(px / cell);
+    const row = Math.floor(py / cell);
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        const bucket = grid.get(`${col + dc},${row + dr}`);
+        if (!bucket) continue;
+        for (const i of bucket) {
+          const dx = points[i].px - px;
+          const dy = points[i].py - py;
+          const sq = dx * dx + dy * dy;
+          if (sq < bestSq || (sq === bestSq && i > best)) {
+            bestSq = sq;
+            best = i;
+          }
+        }
       }
     }
     return best;

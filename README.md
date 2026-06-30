@@ -13,6 +13,23 @@ Graphein is a zero-runtime-dependency TypeScript visualization engine. The one r
 
 That shape is meant for generated code and ordinary application code alike. Specs contain data, marks, encodings, transforms, selections, layout, and formatting, but not callbacks. You can validate a spec before rendering with `validateSpec(spec)`, apply safe JSON Patch repairs with `repairSpec(spec)`, render it with `render(container, spec)`, and inspect the result with `chart.report()`.
 
+## For coding agents
+
+Most visualization libraries assume a human in an editor: write code, look at the canvas, adjust, and repeat. A coding agent has no editor and no eyes on the result — it emits text and needs to know whether that text produced a correct chart without looking at a screen. Graphein is designed around that constraint.
+
+A spec is plain JSON, so a model emits one object instead of imperative drawing code or a config tree laced with callbacks. Every step after generation then returns structured data instead of pixels: validation reports errors with JSON Patch fixes, `repairSpec` applies the safe ones, `chart.report()` grades the rendered model for clipped labels, legend overflow, and low-contrast colors, and `summarize(spec)` writes deterministic alt text. The whole generate → validate → repair → render → verify loop closes in JSON, with no human and no vision model. See [The spec loop](#the-spec-loop) for the mechanics, and `graphein-mcp` to expose that loop to MCP clients as tools.
+
+| Capability an agent relies on | Graphein | Imperative (e.g. D3) | Config libraries (e.g. Chart.js, Plotly) | JSON grammar (e.g. Vega-Lite) |
+| --- | --- | --- | --- | --- |
+| Spec is plain, serializable JSON | Yes | No, imperative code | Partial, config plus callbacks | Yes |
+| Pre-render validation with fixable errors | Yes, JSON Patch | No | No | Partial, unstructured errors |
+| One-call automatic repair | Yes | No | No | No |
+| Post-render critique without a vision model | Yes, `report()` | No | No | No |
+| Deterministic natural-language summary | Yes, `summarize()` | No | No | No |
+| First-class MCP server | Yes | No | No | No |
+
+Because selections and dashboards are data too, an agent can emit, store, diff, and replay an entire interactive page as JSON — not just a static picture, but a chart it can generate, check, and explain.
+
 The core package includes the chart model, scales, ticks, colors, transforms, layout, Canvas2D mark rendering, DOM/SVG overlays, tables, matrix pivots, slicers, and dashboards. It ships without runtime dependencies. Native rendering lives in `@graphein/node`; React support lives in `@graphein/react`; MCP integration lives in `graphein-mcp`.
 
 ## Gallery

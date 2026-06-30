@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dashboard } from '@graphein/react';
 import {
+  repairReport,
   repairSpec,
   summarize,
   validateSpec,
@@ -13,10 +14,11 @@ import { ChartCanvas } from '../components/chart/ChartCanvas';
 import { ReportPanel } from '../components/chart/ReportPanel';
 import { CodeMirrorEditor } from '../components/editor/CodeMirrorEditor';
 import { Page } from '../components/ui/Page';
-import { Button, Callout, Card, Chip, Kbd, Kicker, Stat } from '../components/ui/primitives';
+import { Button, ButtonLink, Callout, Card, Chip, Kbd, Kicker, Stat } from '../components/ui/primitives';
 import { presetGroups, presets, type Preset } from '../content/presets';
 import { fullSpecJson } from '../lib/chart';
 import { takePlaygroundHandoff } from '../lib/playground';
+import { RecommendPanel } from './Recommend';
 
 type AnySpec = ChartSpec | DashboardSpec;
 
@@ -151,6 +153,7 @@ export function Playground() {
   const [parsed, setParsed] = useState<ParsedState>({ spec: null, parseError: null, validation: null });
   const [repair, setRepair] = useState<RepairState | null>(null);
   const [report, setReport] = useState<RenderReport | null>(null);
+  const [reportFix, setReportFix] = useState<number | null>(null);
   const [summary, setSummary] = useState('');
   const [stageWidth, setStageWidth] = useState(100);
 
@@ -158,6 +161,7 @@ export function Playground() {
     setSource(next);
     setRepair(null);
     setReport(null);
+    setReportFix(null);
   }, []);
 
   useEffect(() => {
@@ -217,9 +221,21 @@ export function Playground() {
     setRepair({ applied: result.applied, remaining: result.remaining });
   }, [parsed.spec, writeText]);
 
+  const repairFromReport = useCallback(() => {
+    if (!parsed.spec || isDashboard(parsed.spec) || !report) return;
+    const result = repairReport(parsed.spec, report);
+    if (result.applied.length === 0) return;
+    writeText(pretty(result.spec));
+    setReportFix(result.applied.length);
+  }, [parsed.spec, report, writeText]);
+
   const validation = parsed.validation;
   const valid = Boolean(validation?.valid && parsed.spec);
   const canRepair = Boolean(parsed.spec && validation && (validation.errors.length > 0 || validation.warnings.some((w) => w.fix)));
+  const dashboardSpec = isDashboard(parsed.spec) ? parsed.spec : null;
+  const reportFixable = Boolean(
+    !dashboardSpec && report && report.diagnostics.some((d) => d.fix && d.fix.length > 0),
+  );
   const diagnosticsCount = (validation?.errors.length ?? 0) + (validation?.warnings.length ?? 0);
   const lineCount = source.split('\n').length;
 
@@ -234,6 +250,12 @@ export function Playground() {
           <p className="mt-2 text-muted">
             Edit one ChartSpec, validate, repair safe fixes, render, and read the RenderReport — the
             same loop SSR and MCP run.
+          </p>
+          <p className="mt-3 text-sm text-faint">
+            Building a multi-view BI page?{' '}
+            <ButtonLink to="/playground/dashboard" variant="ghost" size="sm" className="px-1.5">
+              Open the Dashboard Playground →
+            </ButtonLink>
           </p>
         </div>
         <div className="flex gap-3">
@@ -324,10 +346,21 @@ export function Playground() {
             </div>
             <div className="gx-stage min-h-[520px] p-4 sm:p-5">
               {valid && parsed.spec ? (
-                <div className="mx-auto h-[470px] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm" style={{ width: `${stageWidth}%` }}>
-                  {isDashboard(parsed.spec) ? (
-                    <Dashboard spec={parsed.spec} className="h-full w-full" />
-                  ) : (
+                isDashboard(parsed.spec) ? (
+                  <div className="mx-auto max-w-2xl">
+                    <Callout tone="warn" title="This is a dashboard spec">
+                      Dashboards are full BI pages, not single visuals — they render best in the
+                      dedicated stage.{' '}
+                      <ButtonLink to="/playground/dashboard" variant="ghost" size="sm" className="px-1.5">
+                        Open the Dashboard Playground →
+                      </ButtonLink>
+                    </Callout>
+                    <div className="mt-4 max-h-[470px] overflow-auto rounded-2xl border border-border bg-surface shadow-sm">
+                      <Dashboard spec={parsed.spec} className="w-full" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mx-auto h-[470px] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm" style={{ width: `${stageWidth}%` }}>
                     <ChartCanvas
                       spec={parsed.spec}
                       onReport={(info) => {
@@ -335,8 +368,8 @@ export function Playground() {
                         setSummary(info.summary);
                       }}
                     />
-                  )}
-                </div>
+                  </div>
+                )
               ) : (
                 <div className="flex min-h-[470px] items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface/70 p-6 text-center">
                   <div className="max-w-md">
@@ -359,9 +392,25 @@ export function Playground() {
           </Card>
 
           <Card className="p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-xs text-faint">report()</span>
+              {reportFixable && (
+                <Button type="button" onClick={repairFromReport} variant="outline" size="sm" className="rounded-lg">
+                  Repair from report
+                </Button>
+              )}
+            </div>
+            {reportFix !== null && (
+              <Callout tone="accent" title="Applied a report fix">
+                {reportFix} safe patch{reportFix === 1 ? '' : 'es'} applied from <span className="font-mono">repairReport()</span> — re-rendering to confirm the finding cleared.
+              </Callout>
+            )}
             <ReportPanel report={report} />
           </Card>
         </div>
+      </section>
+      <section className="mt-8">
+        <RecommendPanel />
       </section>
     </Page>
   );

@@ -50,6 +50,18 @@ export interface Hover {
   draw?(ctx: CanvasRenderingContext2D): void;
 }
 
+/** A click target for an interactive legend item. */
+export interface LegendHitRegion {
+  /** Swatch rectangle in CSS px. */
+  rect: Rect;
+  /** Stable string key for the series. */
+  key: string;
+  /** Raw series value used when publishing a selection. */
+  value: unknown;
+  /** Human-readable legend label. */
+  label: string;
+}
+
 /** A chart's hit-testable description for the current frame. */
 export interface InteractionModel {
   /** Hit region in CSS px. Moves outside it clear the hover. */
@@ -62,6 +74,8 @@ export interface InteractionModel {
    * a `pick` are hover-only.
    */
   pick?(px: number, py: number): SelectionValue | null;
+  /** Optional interactive legend click targets for this frame. */
+  legendHits?: LegendHitRegion[];
 }
 
 /**

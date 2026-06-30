@@ -31,6 +31,15 @@ function fakeContext(): { ctx: CanvasRenderingContext2D; calls: () => number; me
 }
 
 const tokens = resolveTheme('light');
+const HIT_RADIUS = 26;
+
+function rng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
 
 describe('cartesian interaction hit-testing', () => {
   it('respects tooltip disabled settings', () => {
@@ -142,6 +151,62 @@ describe('cartesian interaction hit-testing', () => {
     const { ctx, methodCalls } = fakeContext();
     hover?.draw?.(ctx);
     expect(methodCalls('arc')).toBe(2);
+  });
+
+  it('matches brute-force nearest scatter hit-testing over random points and queries', () => {
+    const rand = rng(12345);
+    const data = Array.from({ length: 1200 }, (_, i) => ({
+      x: rand() * 1000,
+      y: rand() * 1000,
+      id: i,
+    }));
+    const model = buildCartesianModel(
+      {
+        type: 'scatter',
+        data,
+        encoding: { x: { field: 'x', type: 'quantitative' }, y: { field: 'y' } },
+      },
+      tokens,
+      { width: 800, height: 500 },
+    );
+    const interaction = buildCartesianInteraction(model)!;
+    const points = model.series.flatMap((s) =>
+      s.rows.map((row) => ({
+        px: model.x.pixel(row.x)!,
+        py: model.y.pixel(row.y),
+      })),
+    );
+    const brute = (px: number, py: number): number => {
+      if (
+        px < model.plot.x - HIT_RADIUS ||
+        px > model.plot.x + model.plot.width + HIT_RADIUS ||
+        py < model.plot.y - HIT_RADIUS ||
+        py > model.plot.y + model.plot.height + HIT_RADIUS
+      ) {
+        return -1;
+      }
+      let best = -1;
+      let bestSq = HIT_RADIUS * HIT_RADIUS;
+      for (let i = 0; i < points.length; i++) {
+        const dx = points[i].px - px;
+        const dy = points[i].py - py;
+        const sq = dx * dx + dy * dy;
+        if (sq <= bestSq) {
+          bestSq = sq;
+          best = i;
+        }
+      }
+      return best;
+    };
+
+    for (let i = 0; i < 400; i++) {
+      const px = model.plot.x - HIT_RADIUS + rand() * (model.plot.width + HIT_RADIUS * 2);
+      const py = model.plot.y - HIT_RADIUS + rand() * (model.plot.height + HIT_RADIUS * 2);
+      const expected = brute(px, py);
+      const hover = interaction.hitTest(px, py);
+      expect(hover?.key ?? '-1').toBe(String(expected));
+    }
+    expect(interaction.hitTest(model.plot.x - HIT_RADIUS - 1, model.plot.y + model.plot.height / 2)).toBeNull();
   });
 
   it('picks x/y tuples for single-series scatter charts', () => {

@@ -14,6 +14,7 @@
 
 import type { Datum, RGBA, Rect, Size } from '../types';
 import type { ChartSpec, ChartType } from '../spec/types';
+import { applyPatch, type JsonPatchOp } from '../spec/jsonpatch';
 import type { ThemeTokens } from '../theme';
 import { accessor, extentOf } from '../util/data';
 import { parseColor, contrastRatio } from '../color';
@@ -34,6 +35,10 @@ export interface RenderDiagnostic {
   axis?: 'x' | 'y';
   /** Structured extras (counts, ratios) for programmatic consumers. */
   details?: Record<string, unknown>;
+  /** Safe JSON Patch operations an agent may apply to address this finding. */
+  fix?: JsonPatchOp[];
+  /** One-line advisory when there is no unambiguous safe patch. */
+  hint?: string;
 }
 
 /** A post-render, vision-free description of what was drawn. */
@@ -121,6 +126,15 @@ export function buildRenderReport(input: ReportInput): RenderReport {
 
   const plot = model?.plot;
 
+  if (type === 'scatter' && model?.markStats && model.markStats.drawn < model.markStats.original) {
+    add({
+      code: 'scatter-quantized',
+      severity: 'info',
+      message: `Dense scatter rendering was quantized from ${model.markStats.original} to ${model.markStats.drawn} drawn points to keep interaction smooth.`,
+      details: { drawn: model.markStats.drawn, original: model.markStats.original },
+    });
+  }
+
   // --- Empty data / empty plot ---
   // A value chart (kpi/gauge/bullet) with a literal numeric `value` needs no
   // data array, so an empty `data` is expected — don't flag it.
@@ -150,9 +164,9 @@ export function buildRenderReport(input: ReportInput): RenderReport {
   // --- Cartesian-model diagnostics ---
   if (model) {
     checkDegenerateAxis(model, add);
-    checkClippedMarks(model, add);
-    checkAxisLabelOverlap(model, tokens, add);
-    checkLegendOverflow(model, add);
+    checkClippedMarks(model, spec, add);
+    checkAxisLabelOverlap(model, spec, tokens, add);
+    checkLegendOverflow(model, spec, add);
   }
 
   // --- Color contrast (works for every chart type) ---
@@ -198,6 +212,7 @@ export function buildRenderReport(input: ReportInput): RenderReport {
       severity: 'info',
       message: `${colorCount} series share one color scale — beyond ~${MAX_DISTINGUISHABLE_SERIES} the colors repeat or blur together. Consider faceting, filtering, or grouping the long tail.`,
       details: { colorCount, max: MAX_DISTINGUISHABLE_SERIES },
+      ...(tooManyColorsRepair(spec)),
     });
   }
 
@@ -208,6 +223,13 @@ export function buildRenderReport(input: ReportInput): RenderReport {
   const summary = summarize({ ...spec, data } as ChartSpec) || undefined;
 
   return { type, size, plot, markCount, seriesCount, colorCount, ok, diagnostics, summary };
+}
+
+/** Apply safe render-report JSON Patch fixes to a clone of the spec. Pure: no rendering. */
+export function repairReport(spec: ChartSpec, report: RenderReport): { spec: ChartSpec; applied: JsonPatchOp[] } {
+  const applied = report.diagnostics.flatMap((d) => d.fix ?? []);
+  if (applied.length === 0) return { spec, applied: [] };
+  return { spec: applyPatch(spec, applied), applied };
 }
 
 /** Distinct series count for non-cartesian charts, from the series/color field. */
@@ -246,7 +268,7 @@ function checkDegenerateAxis(model: CartesianModel, add: (d: RenderDiagnostic) =
 }
 
 /** Data whose y-extent falls outside the y scale's range is clipped at the plot edge. */
-function checkClippedMarks(model: CartesianModel, add: (d: RenderDiagnostic) => void): void {
+function checkClippedMarks(model: CartesianModel, spec: ChartSpec, add: (d: RenderDiagnostic) => void): void {
   const field = model.y.field;
   if (!field) return;
   const read = accessor(field);
@@ -273,6 +295,9 @@ function checkClippedMarks(model: CartesianModel, add: (d: RenderDiagnostic) => 
       axis: 'y',
       message: `Some data falls outside the y-axis range [${round(Math.min(lo, hi))}, ${round(Math.max(lo, hi))}] and is clipped at the plot edge — widen the y domain or drop the manual scale.`,
       details: { dataMin: round(lo), dataMax: round(hi) },
+      ...(manualYDomainFix(spec) ?? {
+        hint: 'Drop the manual y scale domain or set a y scale domain/zero option that includes every data value.',
+      }),
     });
   }
 }
@@ -280,6 +305,7 @@ function checkClippedMarks(model: CartesianModel, add: (d: RenderDiagnostic) => 
 /** Adjacent x category labels that don't fit their slot collide / overlap. */
 function checkAxisLabelOverlap(
   model: CartesianModel,
+  spec: ChartSpec,
   tokens: ThemeTokens,
   add: (d: RenderDiagnostic) => void,
 ): void {
@@ -304,12 +330,15 @@ function checkAxisLabelOverlap(
       axis: 'x',
       message: `${collisions} adjacent x-axis label${collisions === 1 ? '' : 's'} overlap — there isn't room to show all ${ticks.length} categories. Reduce categories, widen the chart, or aggregate the long tail.`,
       details: { collisions, ticks: ticks.length },
+      ...(xLabelAngleFix(spec) ?? {
+        hint: 'Rotate x-axis labels, facet the chart, widen it, or aggregate the long tail.',
+      }),
     });
   }
 }
 
 /** A vertical legend truncated to fit its gutter hides some series. */
-function checkLegendOverflow(model: CartesianModel, add: (d: RenderDiagnostic) => void): void {
+function checkLegendOverflow(model: CartesianModel, spec: ChartSpec, add: (d: RenderDiagnostic) => void): void {
   const shown = model.frame.legendItems?.length;
   if (shown === undefined) return;
   const total = model.series.length;
@@ -319,6 +348,53 @@ function checkLegendOverflow(model: CartesianModel, add: (d: RenderDiagnostic) =
       severity: 'warning',
       message: `The legend shows only ${shown} of ${total} series — the rest were clipped to fit. Move the legend to the top/bottom or give the chart more height.`,
       details: { shown, total },
+      ...(legendPositionFix(spec) ?? {
+        hint: 'Move the legend to top/bottom, increase chart height, filter series, or facet the chart.',
+      }),
     });
   }
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date);
+}
+
+function xLabelAngleFix(spec: ChartSpec): Pick<RenderDiagnostic, 'fix'> | undefined {
+  const axes = (spec as { axes?: unknown }).axes;
+  if (!isRecord(axes)) return undefined;
+  const x = axes.x;
+  if (x === undefined) return { fix: [{ op: 'add', path: '/axes/x', value: { labelAngle: 45 } }] };
+  if (!isRecord(x)) return undefined;
+  const op = Object.prototype.hasOwnProperty.call(x, 'labelAngle') ? 'replace' : 'add';
+  return { fix: [{ op, path: '/axes/x/labelAngle', value: 45 }] };
+}
+
+function legendPositionFix(spec: ChartSpec): Pick<RenderDiagnostic, 'fix'> | undefined {
+  const legend = (spec as { legend?: unknown }).legend;
+  if (legend === false) return undefined;
+  if (legend === undefined || legend === true) {
+    return { fix: [{ op: legend === undefined ? 'add' : 'replace', path: '/legend', value: { position: 'bottom' } }] };
+  }
+  if (!isRecord(legend)) return undefined;
+  const current = legend.position;
+  if (current === 'bottom' || current === 'top') return undefined;
+  const op = Object.prototype.hasOwnProperty.call(legend, 'position') ? 'replace' : 'add';
+  return { fix: [{ op, path: '/legend/position', value: 'bottom' }] };
+}
+
+function tooManyColorsRepair(spec: ChartSpec): Pick<RenderDiagnostic, 'fix' | 'hint'> {
+  const palette = (spec as { palette?: unknown }).palette;
+  const hint = 'Switch to the colorblind palette, facet the chart, filter series, or group the long tail.';
+  if (Array.isArray(palette) || palette === 'colorblind') return { hint };
+  return { fix: [{ op: palette === undefined ? 'add' : 'replace', path: '/palette', value: 'colorblind' }], hint };
+}
+
+function manualYDomainFix(spec: ChartSpec): Pick<RenderDiagnostic, 'fix'> | undefined {
+  const enc = (spec as { encoding?: unknown }).encoding;
+  if (!isRecord(enc)) return undefined;
+  const y = enc.y;
+  if (!isRecord(y)) return undefined;
+  const scale = y.scale;
+  if (!isRecord(scale) || !Object.prototype.hasOwnProperty.call(scale, 'domain')) return undefined;
+  return { fix: [{ op: 'remove', path: '/encoding/y/scale/domain' }] };
 }

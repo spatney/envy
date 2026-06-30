@@ -202,13 +202,19 @@ export function makeSelectButton(tokens: ThemeTokens, label: string): HTMLButton
   return btn;
 }
 
-/** A themed floating popover surface (for dropdown menus). */
+/**
+ * A themed floating popover surface (for dropdown menus).
+ *
+ * Positioned `fixed` and portaled to `document.body` by the caller, so it floats
+ * above any `overflow:hidden` ancestor (e.g. a dashboard view cell) instead of
+ * being clipped to the slicer's own small card.
+ */
 export function makePopover(tokens: ThemeTokens): HTMLDivElement {
   const c = tokens.color;
   const pop = document.createElement('div');
   Object.assign(pop.style, {
-    position: 'absolute',
-    zIndex: '20',
+    position: 'fixed',
+    zIndex: '2147483000',
     background: c.surface,
     border: `1px solid ${c.border}`,
     borderRadius: `${tokens.radius.md}px`,
@@ -481,15 +487,37 @@ export function makeDualSlider(
   };
 }
 
-/** Place an absolutely-positioned popover under `anchor`, clamped to `host`. */
-export function positionPopover(pop: HTMLDivElement, anchor: HTMLElement, host: HTMLElement): void {
+/**
+ * Position a `fixed` popover under `anchor` in viewport coordinates.
+ *
+ * The popover is portaled to `document.body`, so it positions against the
+ * viewport (never a clipping ancestor): it drops below the trigger, flips above
+ * when the space below is cramped, and caps its height to the available room so
+ * a long option list scrolls instead of overflowing the screen.
+ */
+export function positionPopover(pop: HTMLDivElement, anchor: HTMLElement): void {
   const a = anchor.getBoundingClientRect();
-  const h = host.getBoundingClientRect();
-  pop.style.left = `${a.left - h.left}px`;
-  pop.style.top = `${a.bottom - h.top + 4}px`;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+  const margin = 8;
+  const gap = 4;
+
   pop.style.width = `${a.width}px`;
-  const maxH = Math.max(80, h.bottom - a.bottom - 8);
-  pop.style.maxHeight = `${maxH}px`;
+  const left = Math.min(Math.max(margin, a.left), Math.max(margin, vw - a.width - margin));
+  pop.style.left = `${left}px`;
+
+  const spaceBelow = vh - a.bottom - margin;
+  const spaceAbove = a.top - margin;
+  // Prefer dropping below; flip up only when below is cramped yet above has more room.
+  if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+    pop.style.top = `${a.bottom + gap}px`;
+    pop.style.bottom = '';
+    pop.style.maxHeight = `${Math.max(80, spaceBelow - gap)}px`;
+  } else {
+    pop.style.top = '';
+    pop.style.bottom = `${vh - a.top + gap}px`;
+    pop.style.maxHeight = `${Math.max(80, spaceAbove - gap)}px`;
+  }
 }
 
 function clamp(v: number, lo: number, hi: number): number {

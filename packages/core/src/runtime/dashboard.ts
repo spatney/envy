@@ -55,6 +55,20 @@ const DEFAULT_BREAKPOINTS: { maxWidth: number; cols: number }[] = [
 /** Compact slicers that belong in the top navigator strip (lists stay in the grid). */
 const STRIP_SLICERS = new Set(['dropdown', 'search', 'dateRange', 'range']);
 
+/**
+ * Height for a navigator-strip cell. Slider-based slicers (`dateRange`, `range`)
+ * need room for their header, preset chips, and the dual-slider track + thumbs,
+ * which the default compact height clips; titled cards add a header bar on top.
+ */
+function stripCellHeight(view: DashboardView, rowHeight: number): number {
+  const titled = !!(view.title || view.subtitle);
+  const titlePad = titled ? 30 : 0;
+  const base = Math.max(96, rowHeight + 8);
+  if (view.spec.type === 'dateRange') return Math.max(base, 150 + titlePad);
+  if (view.spec.type === 'range') return Math.max(base, 132 + titlePad);
+  return Math.max(base, 96 + titlePad);
+}
+
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
 type ResolvedLayout = Required<Pick<DashboardLayout, 'cols' | 'rowHeight' | 'gap'>> &
@@ -439,6 +453,7 @@ export function renderDashboard(
       Object.assign(strip.style, {
         display: 'flex',
         flexWrap: 'wrap',
+        alignItems: 'flex-start',
         gap: `${layout.gap}px`,
       } as Partial<CSSStyleDeclaration>);
       for (const view of stripViews) {
@@ -446,7 +461,7 @@ export function renderDashboard(
         Object.assign(cell.style, {
           flex: '1 1 220px',
           minWidth: '200px',
-          height: `${Math.max(96, layout.rowHeight + 8)}px`,
+          height: `${stripCellHeight(view, layout.rowHeight)}px`,
         } as Partial<CSSStyleDeclaration>);
         strip.appendChild(cell);
         deferredMounts.push({ el: host, view, mounted: false });

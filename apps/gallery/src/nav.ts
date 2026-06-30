@@ -20,6 +20,7 @@ export const NAV: NavSection[] = [
       { label: 'Overview', to: '/' },
       { label: 'Learn Track', to: '/learn' },
       { label: 'Playground', to: '/playground' },
+      { label: 'Dashboard Playground', to: '/playground/dashboard' },
     ],
   },
   { id: 'charts', title: 'Chart Catalog', kind: 'charts' },

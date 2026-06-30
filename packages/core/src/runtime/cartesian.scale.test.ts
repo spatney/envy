@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { resolveTheme, type ThemeTokens } from '../theme';
 import { buildCartesianModel, type CartesianChartSpec } from './cartesian';
 import type { BarSpec, LineSpec, ScatterSpec } from '../spec/types';
+import { categorical, parseColor, rgbaToCss } from '../color';
 
 // Stub canvas so measureText uses the deterministic SSR heuristic.
 beforeAll(() => {
@@ -245,5 +246,34 @@ describe('cartesian scale options — numeric x tick domain filter (B6)', () => 
     expect(xs.length).toBeGreaterThan(0);
     expect(Math.min(...xs)).toBeGreaterThanOrEqual(5);
     expect(Math.max(...xs)).toBeLessThanOrEqual(45);
+  });
+});
+
+describe('cartesian palette assignment', () => {
+  const css = (hex: string): string => rgbaToCss(parseColor(hex)!);
+  const seriesSpec = (palette?: string | string[]): LineSpec => ({
+    type: 'line',
+    data: [
+      { x: 'Jan', y: 1, series: 'A' },
+      { x: 'Jan', y: 2, series: 'B' },
+      { x: 'Jan', y: 3, series: 'C' },
+    ],
+    encoding: { x: { field: 'x' }, y: { field: 'y' }, series: { field: 'series' } },
+    ...(palette === undefined ? {} : { palette }),
+  });
+
+  it('uses a named colorblind palette in series order', () => {
+    const model = build(seriesSpec('colorblind'));
+    expect(model.series.map((s) => s.color)).toEqual(categorical('colorblind').slice(0, 3).map(css));
+  });
+
+  it('uses an explicit palette array verbatim and cycles it', () => {
+    const model = build(seriesSpec(['#111111', '#222222']));
+    expect(model.series.map((s) => s.color)).toEqual(['#111111', '#222222', '#111111'].map(css));
+  });
+
+  it('uses the graphein default when palette is absent', () => {
+    const model = build(seriesSpec());
+    expect(model.series.map((s) => s.color)).toEqual(categorical('graphein').slice(0, 3).map(css));
   });
 });

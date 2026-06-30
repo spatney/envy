@@ -4,7 +4,7 @@ import { parseColor } from './parse';
 import { rgbaToCss, toHex, withAlpha } from './format';
 import { rgbToOklab, oklabToRgb } from './convert';
 import { interpolateRgb, interpolateOklab } from './interpolate';
-import { categorical, sequential, diverging } from './palettes';
+import { categorical, categoricalSchemes, sequential, diverging } from './palettes';
 import { sequentialColorScale, divergingColorScale, ordinalColorScale } from './scales';
 import { relativeLuminance, contrastRatio, readableTextColor } from './contrast';
 
@@ -88,6 +88,20 @@ describe('palettes', () => {
     const p = categorical();
     expect(p.length).toBeGreaterThanOrEqual(8);
     for (const c of p) expect(parseColor(c)).not.toBeNull();
+  });
+  it('colorblind has 8 distinct valid hex colors', () => {
+    const p = categorical('colorblind');
+    expect(p).toHaveLength(8);
+    expect(new Set(p).size).toBe(8);
+    for (const c of p) {
+      expect(c).toMatch(/^#[0-9A-F]{6}$/);
+      expect(parseColor(c)).not.toBeNull();
+    }
+  });
+  it('returns every named categorical scheme and falls back for unknown names', () => {
+    expect(categoricalSchemes).toEqual(expect.arrayContaining(['graphein', 'colorblind', 'bright', 'muted']));
+    for (const name of categoricalSchemes) expect(categorical(name).length).toBeGreaterThan(0);
+    expect(categorical('not-a-scheme')).toEqual(categorical('graphein'));
   });
   it('sequential/diverging endpoints parse', () => {
     const s = sequential('viridis');

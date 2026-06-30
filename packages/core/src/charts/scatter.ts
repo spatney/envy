@@ -13,7 +13,11 @@ interface ScatterPoint {
   r: number;
   color: string;
   alpha: number;
+  seriesKey: string;
 }
+
+const QUANTIZE_MIN_POINTS = 4000;
+const QUANTIZE_AREA_DIVISOR = 4;
 
 function isMissing(value: unknown): boolean {
   return value == null || value === '';
@@ -29,6 +33,39 @@ function isInvalidPositionValue(value: unknown): boolean {
 
 function fixedRadius(): number {
   return 3.75;
+}
+
+function shouldQuantize(count: number, plot: CartesianModel['plot'], hasSize: boolean): boolean {
+  return !hasSize && count > QUANTIZE_MIN_POINTS && count > (plot.width * plot.height) / QUANTIZE_AREA_DIVISOR;
+}
+
+function quantizePoints(points: readonly ScatterPoint[]): ScatterPoint[] {
+  if (points.length === 0) return [];
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const seen = new Set<string>();
+  const keep: ScatterPoint[] = [];
+  for (const p of points) {
+    const extentPoint = p.x === minX || p.x === maxX || p.y === minY || p.y === maxY;
+    const ix = Math.round(p.x);
+    const iy = Math.round(p.y);
+    const key = `${p.seriesKey}|${ix}|${iy}`;
+    if (extentPoint || !seen.has(key)) {
+      keep.push(p);
+      seen.add(key);
+    }
+  }
+  return keep;
 }
 
 function radiusScale(rows: readonly Datum[], field: string, plotSize: number): (value?: unknown) => number {
@@ -87,11 +124,16 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
         r: readSize ? radius(readSize(row)) : radius(),
         color: series.color,
         alpha: rowAlpha(model.emphasis, row),
+        seriesKey: series.key,
       });
     }
   }
 
-  if (sizeField) points.sort((a, b) => b.r - a.r);
+  const originalCount = points.length;
+  const drawPoints = shouldQuantize(originalCount, plot, !!sizeField) ? quantizePoints(points) : points;
+  model.markStats = { drawn: drawPoints.length, original: originalCount };
+
+  if (sizeField) drawPoints.sort((a, b) => b.r - a.r);
 
   ctx.save();
   ctx.beginPath();
@@ -100,7 +142,7 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
 
   if (model.sketch) {
     const pen = new RoughPen(ctx, model.sketch);
-    for (const point of points) {
+    for (const point of drawPoints) {
       const prev = ctx.globalAlpha;
       if (point.alpha !== 1) ctx.globalAlpha = point.alpha;
       pen.circle(point.x, point.y, point.r, {
@@ -118,7 +160,7 @@ export function drawScatter(surface: Surface, model: CartesianModel): void {
   ctx.lineWidth = 1;
   ctx.strokeStyle = tokens.color.background;
 
-  for (const point of points) {
+  for (const point of drawPoints) {
     ctx.beginPath();
     ctx.arc(point.x, point.y, point.r, 0, Math.PI * 2);
     ctx.fillStyle = point.color;

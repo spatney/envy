@@ -41,6 +41,15 @@ function fieldOf(channel: FieldDef | undefined): string | undefined {
   return channel && typeof channel.field === 'string' ? channel.field : undefined;
 }
 
+function legendSource(spec: ChartSpec): { param: string; field: string } | null {
+  const legend = spec.legend;
+  if (!(typeof legend === 'object' && legend.interactive === true)) return null;
+  const enc = (spec as { encoding?: Encoding }).encoding;
+  const field = fieldOf(enc?.series) ?? fieldOf(enc?.color);
+  if (!field) return null;
+  return { param: legend.param ?? field, field };
+}
+
 /** Every data field a chart's encoding references (used to test "uses field"). */
 export function specFields(spec: ChartSpec): Set<string> {
   const out = new Set<string>();
@@ -169,9 +178,14 @@ export function wireViews(
       });
     } else if (PICKABLE.has(type)) {
       const fields = keyFields(v.spec);
-      if (fields.length === 0) return;
-      const param = autoParamName(v);
-      sources.push({ view: i, param, fields, as: 'highlight', slicer: false });
+      if (fields.length > 0) {
+        const param = autoParamName(v);
+        sources.push({ view: i, param, fields, as: 'highlight', slicer: false });
+      }
+      const legend = legendSource(v.spec);
+      if (legend) {
+        sources.push({ view: i, param: legend.param, fields: [legend.field], as: 'filter', slicer: true });
+      }
     }
   });
 

@@ -118,6 +118,10 @@ export interface LegendConfig {
   show?: boolean;
   position?: LegendPosition;
   title?: string;
+  /** Allow clicking legend items to toggle/isolate series; publishes a selection. */
+  interactive?: boolean;
+  /** Selection param to publish legend visibility to; defaults to the series field name. */
+  param?: string;
 }
 
 export interface TooltipConfig {
@@ -173,6 +177,8 @@ export interface BaseSpec {
   transform?: Transform[];
   /** Theme name ('light' | 'dark') or a partial override object. */
   theme?: ThemeInput;
+  /** Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors. */
+  palette?: string | string[];
   dimensions?: Dimensions;
   title?: string | TitleConfig;
   /**

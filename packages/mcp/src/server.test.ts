@@ -154,11 +154,17 @@ describe('createServer (in-memory round trip)', () => {
     return { server, client };
   }
 
-  it('advertises the four loop tools', async () => {
+  it('advertises the loop tools', async () => {
     const { client } = await connected();
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
-    expect(names).toEqual(['render_chart', 'repair_chart', 'summarize_chart', 'validate_chart']);
+    expect(names).toEqual([
+      'recommend_chart',
+      'render_chart',
+      'repair_chart',
+      'summarize_chart',
+      'validate_chart',
+    ]);
   });
 
   it('renders a chart end to end, returning an image and a critique', async () => {

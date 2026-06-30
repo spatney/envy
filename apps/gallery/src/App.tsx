@@ -22,6 +22,7 @@ const Packages = page(() => import('./pages/Packages'), 'Packages');
 const ReactUsage = page(() => import('./pages/ReactUsage'), 'ReactUsage');
 const Reference = page(() => import('./pages/Reference'), 'Reference');
 const Playground = page(() => import('./pages/Playground'), 'Playground');
+const DashboardPlayground = page(() => import('./pages/DashboardPlayground'), 'DashboardPlayground');
 const NotFound = page(() => import('./pages/NotFound'), 'NotFound');
 
 export function App() {
@@ -41,6 +42,7 @@ export function App() {
           <Route path="react" element={<ReactUsage />} />
           <Route path="reference" element={<Reference />} />
           <Route path="playground" element={<Playground />} />
+          <Route path="playground/dashboard" element={<DashboardPlayground />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

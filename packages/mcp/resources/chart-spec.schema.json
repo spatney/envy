@@ -326,6 +326,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -603,6 +617,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -885,6 +913,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -1094,6 +1136,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -1271,6 +1327,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -1555,6 +1625,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -1831,6 +1915,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -2423,6 +2521,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -2604,6 +2716,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -2761,6 +2887,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -3340,6 +3480,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -3541,6 +3695,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -3846,6 +4014,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -4081,6 +4263,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -4361,6 +4557,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -4514,6 +4724,14 @@
         },
         "title": {
           "type": "string"
+        },
+        "interactive": {
+          "type": "boolean",
+          "description": "Allow clicking legend items to toggle/isolate series; publishes a selection."
+        },
+        "param": {
+          "type": "string",
+          "description": "Selection param to publish legend visibility to; defaults to the series field name."
         }
       },
       "additionalProperties": false
@@ -4547,6 +4765,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -4780,6 +5012,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -5023,6 +5269,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -5306,6 +5566,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -5573,6 +5847,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -5738,6 +6026,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -6004,6 +6306,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -6214,6 +6530,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -6518,6 +6848,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -6794,6 +7138,20 @@
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
         },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
+        },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
         },
@@ -7045,8 +7403,7 @@
         "positive",
         "negative"
       ],
-      "additionalProperties": false,
-      "description": "Graphein design tokens. Flat, modern aesthetic: solid fills, minimal shadows, restrained radii, and a teal accent. Two built-in themes (light/dark). Token values are literals so this module stays dependency-free; charts combine these with the color module for derived ramps and contrast."
+      "additionalProperties": false
     },
     "ThemeFont": {
       "type": "object",
@@ -7313,6 +7670,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
@@ -7623,6 +7994,20 @@
         "theme": {
           "$ref": "#/$defs/ThemeInput",
           "description": "Theme name ('light' | 'dark') or a partial override object."
+        },
+        "palette": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Named categorical palette ('graphein'|'colorblind'|'bright'|'muted') or an explicit array of series colors."
         },
         "dimensions": {
           "$ref": "#/$defs/Dimensions"
