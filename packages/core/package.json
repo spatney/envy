@@ -1,6 +1,6 @@
 {
   "name": "graphein",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "type": "module",
   "description": "Graphein — framework-agnostic, zero-dependency, agent-first data visualization engine.",
   "license": "MIT",

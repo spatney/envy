@@ -1,6 +1,6 @@
 {
   "name": "graphein-monorepo",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "Graphein — a beautiful, high-performance, agent-first data visualization library.",
