@@ -114,6 +114,20 @@ export interface CartesianModel {
   series: ResolvedSeries[];
   seriesField?: string;
   stacked: boolean;
+  /**
+   * Bar orientation. Only `bar` ever sets `'horizontal'`; every other chart is
+   * `'vertical'`. In horizontal mode the `x` (category/band) axis runs vertically
+   * and the `y` (value) axis runs horizontally — so `x.pixel`/`x.bandwidth` are
+   * vertical extents and `y.pixel`/`y.baseline` are horizontal ones. Consumers map
+   * an (category-axis, value-axis) pixel pair to screen coords via {@link project}.
+   */
+  orientation: 'vertical' | 'horizontal';
+  /**
+   * Map a (category-axis pixel, value-axis pixel) pair to screen `{x, y}`,
+   * accounting for orientation. Vertical is the identity; horizontal swaps the
+   * pair (value → screen x, category → screen y).
+   */
+  project(catPixel: number, valPixel: number): { x: number; y: number };
   xTicks: Tick[];
   yTicks: Tick[];
   colorOf(key: string): string;
@@ -304,6 +318,10 @@ export function buildCartesianModel(
   const yField = enc.y.field;
   const xType = fieldType(spec, enc.x, 'nominal');
   const xKind = xKindFor(spec, xType);
+  // Horizontal bars swap the axes' pixel directions: the category band runs down
+  // the y-axis and the value scale runs across the x-axis. Gated to `bar` so every
+  // other chart (and vertical bars) build exactly as before.
+  const horizontal = spec.type === 'bar' && spec.orientation === 'horizontal';
 
   // --- Series split + colors ---
   const seriesField = resolveSeriesField(spec);
@@ -494,6 +512,24 @@ export function buildCartesianModel(
   const padding = { ...DEFAULT_PADDING, ...spec.padding };
   const titleInput = resolveTitle(spec);
 
+  // The category axis carries the (possibly rotated) band labels; the value axis
+  // carries edge-anchored numeric labels. `computeFrame` reserves the bottom gutter
+  // from its `xAxis` and the left gutter from its `yAxis`, so for horizontal bars we
+  // simply feed the category labels as the left axis and the value labels as the
+  // bottom — reserving a wide left gutter for long category names, no frame changes.
+  const categoryAxisInput = {
+    show: xShow,
+    labels: xLabels,
+    title: resolveAxisTitle(enc.x, xAxisCfg),
+    edgeAnchored: !categories,
+    labelAngle: xAxisCfg.labelAngle,
+  };
+  const valueAxisInput = {
+    show: yShow,
+    labels: yLabels,
+    title: resolveAxisTitle(enc.y, yAxisCfg),
+    edgeAnchored: true,
+  };
   const frame = computeFrame({
     width: opts.width,
     height: opts.height,
@@ -503,8 +539,8 @@ export function buildCartesianModel(
     font: tokens.font,
     title: titleInput,
     legend: legend.show && legendItems.length > 1 ? { items: legendItems, position: legend.position } : undefined,
-    xAxis: { show: xShow, labels: xLabels, title: resolveAxisTitle(enc.x, xAxisCfg), edgeAnchored: !categories, labelAngle: xAxisCfg.labelAngle },
-    yAxis: { show: yShow, labels: yLabels, title: resolveAxisTitle(enc.y, yAxisCfg) },
+    xAxis: horizontal ? valueAxisInput : categoryAxisInput,
+    yAxis: horizontal ? categoryAxisInput : valueAxisInput,
   });
   const legendHits =
     legendInteractive(spec) && seriesField && frame.legendItems
@@ -529,21 +565,27 @@ export function buildCartesianModel(
   const plot = frame.plot;
 
   // --- Build scales with final ranges ---
-  const yRange: [number, number] = [plot.y + plot.height, plot.y];
+  // The value scale runs vertically for vertical bars (and every other chart) and
+  // horizontally for horizontal bars; the band scale takes the opposite direction.
+  const valueRange: [number, number] = horizontal
+    ? [plot.x, plot.x + plot.width]
+    : [plot.y + plot.height, plot.y];
   const yScale = yIsLog
-    ? logScale({ domain: yDomain, range: yRange, base: yBase, clamp: yClamp })
-    : linearScale({ domain: yDomain, range: yRange, clamp: yClamp });
+    ? logScale({ domain: yDomain, range: valueRange, base: yBase, clamp: yClamp })
+    : linearScale({ domain: yDomain, range: valueRange, clamp: yClamp });
   const yPixel = (value: unknown): number => yScale.map(toNumber(value));
+  const valueMin = horizontal ? plot.x : plot.y;
+  const valueMax = horizontal ? plot.x + plot.width : plot.y + plot.height;
   const baseline = yIsLog
-    ? plot.y + plot.height
-    : clampPx(yScale.map(0), plot.y, plot.y + plot.height);
+    ? (horizontal ? plot.x : plot.y + plot.height)
+    : clampPx(yScale.map(0), valueMin, valueMax);
 
   const xModel = buildXModel(xKind, {
     field: xField,
     type: xType,
     categories,
     domainNum: xDomainNum,
-    range: [plot.x, plot.x + plot.width],
+    range: horizontal ? [plot.y, plot.y + plot.height] : [plot.x, plot.x + plot.width],
     paddingInner: spec.type === 'bar' ? 0.2 : spec.type === 'box' ? 0.32 : 0.5,
     scaleCfg: enc.x.scale,
   });
@@ -571,6 +613,10 @@ export function buildCartesianModel(
     series,
     seriesField,
     stacked,
+    orientation: horizontal ? 'horizontal' : 'vertical',
+    project: horizontal
+      ? (catPixel: number, valPixel: number) => ({ x: valPixel, y: catPixel })
+      : (catPixel: number, valPixel: number) => ({ x: catPixel, y: valPixel }),
     xTicks,
     yTicks,
     colorOf,

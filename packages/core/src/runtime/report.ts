@@ -288,7 +288,11 @@ function checkClippedMarks(model: CartesianModel, spec: ChartSpec, add: (d: Rend
   const pHi = model.y.pixel(hi); // largest value → topmost pixel
   const pLo = model.y.pixel(lo); // smallest value → bottommost pixel
   const EPS = 0.75;
-  if (pHi < top - EPS || pLo > bottom + EPS) {
+  const clipped =
+    model.orientation === 'horizontal'
+      ? pLo < model.plot.x - EPS || pHi > model.plot.x + model.plot.width + EPS
+      : pHi < top - EPS || pLo > bottom + EPS;
+  if (clipped) {
     add({
       code: 'marks-clipped',
       severity: 'warning',
@@ -311,8 +315,9 @@ function checkAxisLabelOverlap(
 ): void {
   const ticks = model.xTicks;
   if (ticks.length < 2) return;
+  const horizontal = model.orientation === 'horizontal';
   // Rotated x labels lean diagonally and don't collide — every category shows.
-  if (model.frame.xLabelAngle > 0) return;
+  if (!horizontal && model.frame.xLabelAngle > 0) return;
   const font = fontString(tokens.font.size.small, tokens.font.family, tokens.font.weight.normal);
   const GAP = 4; // minimum breathing room between labels
   let collisions = 0;
@@ -320,7 +325,9 @@ function checkAxisLabelOverlap(
     const prev = ticks[i - 1];
     const cur = ticks[i];
     const spacing = Math.abs(cur.pos - prev.pos);
-    const half = (measureText(prev.label, font).width + measureText(cur.label, font).width) / 2;
+    const half = horizontal
+      ? tokens.font.size.small
+      : (measureText(prev.label, font).width + measureText(cur.label, font).width) / 2;
     if (half + GAP > spacing) collisions++;
   }
   if (collisions > 0) {

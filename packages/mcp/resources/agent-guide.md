@@ -119,9 +119,11 @@ reference: [spec-reference → Transforms](./spec-reference.md#transforms).
 
 Rules of thumb: prefer `bar` over `pie` beyond ~6 slices; use `stack` for
 part‑to‑whole and grouped bars for direct comparison; reserve `pie` for a small
-number of shares. For a donut with several small slices, set `labels` to a
-`PieLabels` object — `placement:'auto'` keeps tight labels readable by moving
-them outside onto leader lines.
+number of shares. For long category names or ranked lists, set `orientation:'horizontal'`
+on a `bar` to lay categories down the left and grow bars rightward (works with
+`stack`/`group`, `insights`, and annotations). For a donut with several small slices,
+set `labels` to a `PieLabels` object — `placement:'auto'` keeps tight labels readable
+by moving them outside onto leader lines.
 
 ## Recipes
 

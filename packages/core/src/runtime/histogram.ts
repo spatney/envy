@@ -190,6 +190,8 @@ export function buildHistogramModel(
     series: [],
     seriesField: undefined,
     stacked: false,
+    orientation: 'vertical',
+    project: (c, v) => ({ x: c, y: v }),
     xTicks,
     yTicks,
     colorOf: () => color,

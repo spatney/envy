@@ -367,6 +367,12 @@ export interface AreaSpec extends BaseSpec {
 export interface BarSpec extends BaseSpec {
   type: 'bar';
   encoding: Encoding & { x: FieldDef; y: FieldDef };
+  /**
+   * Bar direction. `'vertical'` (default) draws columns growing up from the
+   * x-axis; `'horizontal'` draws bars growing rightward from the y-axis, with the
+   * `x` categories listed down the left — ideal when category names are long.
+   * The `encoding` is unchanged either way (`x` = category, `y` = value).
+   */
   orientation?: 'vertical' | 'horizontal';
   /** Stack series (default false). */
   stack?: boolean;

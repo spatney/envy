@@ -798,7 +798,8 @@
           "enum": [
             "vertical",
             "horizontal"
-          ]
+          ],
+          "description": "Bar direction. `'vertical'` (default) draws columns growing up from the x-axis; `'horizontal'` draws bars growing rightward from the y-axis, with the `x` categories listed down the left — ideal when category names are long. The `encoding` is unchanged either way (`x` = category, `y` = value)."
         },
         "stack": {
           "type": "boolean",

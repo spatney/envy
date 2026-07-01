@@ -100,6 +100,33 @@ describe('cartesian interaction hit-testing', () => {
     expect(methodCalls('fillRect')).toBe(1);
   });
 
+  it('uses the vertical category axis for horizontal bar hover', () => {
+    const model = buildCartesianModel(
+      {
+        type: 'bar',
+        orientation: 'horizontal',
+        data: [
+          { category: 'A', value: 3 },
+          { category: 'B', value: 7 },
+          { category: 'C', value: 5 },
+        ],
+        encoding: { x: { field: 'category' }, y: { field: 'value' } },
+      },
+      tokens,
+      { width: 640, height: 400 },
+    );
+    const interaction = buildCartesianInteraction(model)!;
+    const pointerX = model.x.pixel('A')!;
+    const categoryY = model.x.pixel('B')!;
+    const hover = interaction.hitTest(pointerX, categoryY);
+
+    expect(hover?.key).toBe('B');
+    expect(hover?.content.title).toBe('B');
+    expect(hover?.anchorX).toBe(pointerX);
+    expect(hover?.anchorY).toBeCloseTo(categoryY);
+    expect(interaction.pick?.(pointerX, categoryY)).toEqual({ kind: 'point', fields: ['category'], tuples: [['B']] });
+  });
+
   it('returns null outside the plot or for disabled tooltips', () => {
     const model = buildCartesianModel(
       {

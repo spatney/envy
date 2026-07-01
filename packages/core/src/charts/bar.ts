@@ -6,7 +6,7 @@ import { RoughPen } from '../rough';
 import { accessor, toKey, toNumber } from '../util/data';
 import { rowAlpha } from './emphasis';
 
-type CornerSide = 'top' | 'bottom' | 'none';
+type CornerSide = 'top' | 'bottom' | 'left' | 'right' | 'none';
 
 interface BarRect {
   x: number;
@@ -30,15 +30,11 @@ function defaultRadius(model: CartesianModel, spec: BarSpec): number {
   return Math.max(0, spec.cornerRadius ?? Math.min(4, model.tokens.radius.sm));
 }
 
-function cornerSideFor(baseY: number, valueY: number): CornerSide {
-  if (valueY < baseY) return 'top';
-  if (valueY > baseY) return 'bottom';
-  return 'none';
-}
-
 function makeRadii(side: CornerSide, radius: number): number | [number, number, number, number] {
   if (side === 'top') return [radius, radius, 0, 0];
   if (side === 'bottom') return [0, 0, radius, radius];
+  if (side === 'right') return [0, radius, radius, 0];
+  if (side === 'left') return [radius, 0, 0, radius];
   return 0;
 }
 
@@ -69,29 +65,54 @@ function drawRect(
   if (alpha !== 1) ctx.globalAlpha = prevAlpha;
 }
 
-function barRect(x: number, width: number, baseY: number, valueY: number, color: string): BarRect | null {
-  if (!finite(x) || !finite(width) || !finite(baseY) || !finite(valueY)) return null;
-  const y = Math.min(baseY, valueY);
-  const height = Math.abs(valueY - baseY);
-  if (width <= 0 || height <= 0) return null;
+/**
+ * Build a screen-space rect from category-axis and value-axis pixels. `catStart`
+ * and `catThick` are the bar's position and thickness along the category (band)
+ * axis; `base` and `value` are pixels along the value axis. For vertical bars the
+ * category axis is horizontal (screen x) and the value axis vertical; for
+ * horizontal bars they swap. Corners round on the growing value end.
+ */
+function orientedRect(
+  horizontal: boolean,
+  catStart: number,
+  catThick: number,
+  base: number,
+  value: number,
+  color: string,
+): BarRect | null {
+  if (!finite(catStart) || !finite(catThick) || !finite(base) || !finite(value)) return null;
+  const lo = Math.min(base, value);
+  const len = Math.abs(value - base);
+  if (catThick <= 0 || len <= 0) return null;
+  if (horizontal) {
+    return {
+      x: lo,
+      y: catStart,
+      width: len,
+      height: catThick,
+      color,
+      cornerSide: value > base ? 'right' : value < base ? 'left' : 'none',
+    };
+  }
   return {
-    x,
-    y,
-    width,
-    height,
+    x: catStart,
+    y: lo,
+    width: catThick,
+    height: len,
     color,
-    cornerSide: cornerSideFor(baseY, valueY),
+    cornerSide: value < base ? 'top' : value > base ? 'bottom' : 'none',
   };
 }
 
 function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number, pen?: RoughPen | null): void {
   const readX = accessor(model.x.field);
   const readY = accessor(model.y.field ?? '');
+  const horizontal = model.orientation === 'horizontal';
   const seriesCount = model.series.length;
   const bandWidth = model.x.bandwidth;
   const subWidth = seriesCount > 1 ? bandWidth / seriesCount : bandWidth;
   const gap = seriesCount > 1 && subWidth > 3 ? Math.min(1, subWidth * 0.15) : 0;
-  const barWidth = Math.max(0, subWidth - gap);
+  const barThick = Math.max(0, subWidth - gap);
 
   model.series.forEach((series, seriesIndex) => {
     ctx.fillStyle = series.color;
@@ -103,8 +124,8 @@ function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
       const center = model.x.pixel(readX(row));
       if (center == null) continue;
 
-      const left = center - bandWidth / 2 + seriesIndex * subWidth + gap / 2;
-      const rect = barRect(left, barWidth, model.y.baseline, model.y.pixel(value), series.color);
+      const catStart = center - bandWidth / 2 + seriesIndex * subWidth + gap / 2;
+      const rect = orientedRect(horizontal, catStart, barThick, model.y.baseline, model.y.pixel(value), series.color);
       if (rect) drawRect(ctx, rect, radius, pen, rowAlpha(model.emphasis, row));
     }
   });
@@ -113,6 +134,7 @@ function drawGroupedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
 function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, radius: number, pen?: RoughPen | null): void {
   const readX = accessor(model.x.field);
   const readY = accessor(model.y.field ?? '');
+  const horizontal = model.orientation === 'horizontal';
   const positiveTotals = new Map<string, number>();
   const negativeTotals = new Map<string, number>();
   const segments: StackSegment[] = [];
@@ -136,7 +158,7 @@ function drawStackedBars(ctx: CanvasRenderingContext2D, model: CartesianModel, r
       const top = base + value;
       totals.set(categoryKey, top);
 
-      const rect = barRect(center - bandWidth / 2, bandWidth, model.y.pixel(base), model.y.pixel(top), series.color);
+      const rect = orientedRect(horizontal, center - bandWidth / 2, bandWidth, model.y.pixel(base), model.y.pixel(top), series.color);
       if (!rect) continue;
 
       segments.push({ ...rect, stackEndKey, alpha: rowAlpha(model.emphasis, row) });

@@ -74,6 +74,7 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
   const xFormat = model.spec.encoding.x?.format;
   const yFormat = model.spec.encoding.y?.format;
   const band = x.kind === 'band';
+  const horizontal = model.orientation === 'horizontal';
   const showDots = !model.stacked && !band;
 
   const stopByKey = new Map<string, Stop>();
@@ -114,7 +115,7 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
   const hitTest = (px: number, py: number): Hover | null => {
     if (!inside(plot, px, py, 6)) return null;
 
-    const best = nearestStop(px);
+    const best = nearestStop(horizontal ? py : px);
 
     const rows: TooltipRow[] = [];
     const dots: { py: number; color: string }[] = [];
@@ -147,8 +148,8 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
 
     return {
       key: best.key,
-      anchorX: best.px,
-      anchorY,
+      anchorX: horizontal ? px : best.px,
+      anchorY: horizontal ? best.px : anchorY,
       content: { title: formatValue(best.value, xFormat), rows },
       draw: (ctx) => {
         ctx.save();
@@ -156,7 +157,11 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
         if (band) {
           const half = x.bandwidth / 2;
           ctx.fillStyle = withAlpha(model.tokens.color.text, 0.06);
-          ctx.fillRect(best.px - half, plot.y, x.bandwidth, plot.height);
+          if (horizontal) {
+            ctx.fillRect(plot.x, best.px - half, plot.width, x.bandwidth);
+          } else {
+            ctx.fillRect(best.px - half, plot.y, x.bandwidth, plot.height);
+          }
         } else {
           ctx.strokeStyle = withAlpha(model.tokens.color.text, 0.28);
           ctx.lineWidth = 1;
@@ -187,7 +192,7 @@ function indexInteraction(model: CartesianModel): InteractionModel | null {
 
   const pick = (px: number, py: number): SelectionValue | null => {
     if (!inside(plot, px, py, 6)) return null;
-    const best = nearestStop(px);
+    const best = nearestStop(horizontal ? py : px);
     return { kind: 'point', fields: [xField], tuples: [[best.value]] };
   };
 

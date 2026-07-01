@@ -481,13 +481,13 @@ Columns/bars with grouped or stacked series and rounded corners.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `encoding` | requires `x`, `y`; optional `series` | — |
-| `orientation` | `'vertical' \| 'horizontal'` | Default `vertical`. |
+| `orientation` | `'vertical' \| 'horizontal'` | Default `vertical`. `'horizontal'` lists categories down the left gutter and grows value bars rightward from a left baseline (value axis along the bottom) — ideal for long category names or ranked lists. Works with `stack`/`group`, `cornerRadius`, `insights`, and annotations. |
 | `stack` | `boolean` | Stack series. |
 | `group` | `boolean` | Side‑by‑side groups. Default when `series` is present and not stacked. |
 | `cornerRadius` | `number` | Bar corner radius in px. |
 | `facet` | `FacetConfig` | Split into a [trellis grid of small multiples](#faceting-small-multiples). |
 
-→ [`examples/bar-grouped.json`](./examples/bar-grouped.json)
+→ [`examples/bar-grouped.json`](./examples/bar-grouped.json) · [`examples/bar-horizontal.json`](./examples/bar-horizontal.json)
 
 ### scatter
 

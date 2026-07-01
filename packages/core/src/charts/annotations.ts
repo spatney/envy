@@ -40,9 +40,20 @@ function toPixel(model: CartesianModel, axis: Axis, value: unknown): number | un
 
 /** Resolve a `point` annotation's (x, y) data coords to plot pixels. */
 function pointPixels(model: CartesianModel, ann: Annotation): { px: number; py: number } | undefined {
-  const px = toPixel(model, 'x', ann.x);
-  const py = toPixel(model, 'y', ann.y);
-  return px === undefined || py === undefined ? undefined : { px, py };
+  const cat = toPixel(model, 'x', ann.x);
+  const val = toPixel(model, 'y', ann.y);
+  if (cat === undefined || val === undefined) return undefined;
+  const { x, y } = model.project(cat, val);
+  return { px: x, py: y };
+}
+
+/**
+ * Whether an annotation on the given data axis draws as a horizontal rule on
+ * screen. In vertical charts the value (`y`) axis is horizontal; in horizontal
+ * bar charts the axes swap, so the category (`x`) axis becomes the horizontal one.
+ */
+function drawsHorizontalRule(model: CartesianModel, axis: Axis): boolean {
+  return model.orientation === 'horizontal' ? axis === 'x' : axis === 'y';
 }
 
 /** Anchor pixel for an annotation's label (line value, or band midpoint). */
@@ -105,6 +116,7 @@ export function drawAnnotations(surface: Surface, model: CartesianModel): void {
 
     const axis: Axis = ann.axis === 'x' ? 'x' : 'y';
     const color = ann.color ?? tokens.color.textMuted;
+    const ruleHorizontal = drawsHorizontalRule(model, axis);
 
     if (kindOf(ann) === 'line') {
       const p = toPixel(model, axis, ann.value);
@@ -114,7 +126,7 @@ export function drawAnnotations(surface: Surface, model: CartesianModel): void {
       ctx.lineWidth = ann.strokeWidth ?? 1.5;
       ctx.setLineDash(ann.strokeDash ?? DEFAULT_DASH);
       ctx.beginPath();
-      if (axis === 'y') {
+      if (ruleHorizontal) {
         const y = crisp(p);
         ctx.moveTo(plot.x, y);
         ctx.lineTo(x1, y);
@@ -138,7 +150,7 @@ export function drawAnnotations(surface: Surface, model: CartesianModel): void {
     ctx.save();
     ctx.globalAlpha = ann.fillOpacity ?? DEFAULT_FILL_OPACITY;
     ctx.fillStyle = color;
-    if (axis === 'y') ctx.fillRect(plot.x, lo, plot.width, hi - lo);
+    if (ruleHorizontal) ctx.fillRect(plot.x, lo, plot.width, hi - lo);
     else ctx.fillRect(lo, plot.y, hi - lo, plot.height);
     ctx.restore();
 
@@ -148,7 +160,7 @@ export function drawAnnotations(surface: Surface, model: CartesianModel): void {
     ctx.lineWidth = 1;
     ctx.setLineDash(ann.strokeDash ?? [4, 4]);
     ctx.beginPath();
-    if (axis === 'y') {
+    if (ruleHorizontal) {
       ctx.moveTo(plot.x, crisp(lo));
       ctx.lineTo(x1, crisp(lo));
       ctx.moveTo(plot.x, crisp(hi));
@@ -174,16 +186,17 @@ interface LabelBox {
   transform: string;
 }
 
-/** Resolve the overlay box for a label given its axis, anchor pixel, and position. */
+/** Resolve the overlay box for a label given whether its rule is horizontal on
+ * screen, the anchor pixel, and the requested position. */
 function labelBox(
   model: CartesianModel,
-  axis: Axis,
+  horizontalRule: boolean,
   pos: 'start' | 'middle' | 'end',
   p: number,
 ): LabelBox {
   const { plot } = model;
   const inset = 6;
-  if (axis === 'y') {
+  if (horizontalRule) {
     // Horizontal line/band: label sits just above the rule, anchored horizontally.
     const top = p - 3;
     const transform = 'translateY(-100%)';
@@ -230,7 +243,7 @@ export function drawAnnotationLabels(surface: Surface, model: CartesianModel): v
       const axis: Axis = ann.axis === 'x' ? 'x' : 'y';
       const p = anchorPixel(model, ann, axis, kindOf(ann));
       if (p === undefined) continue;
-      box = labelBox(model, axis, ann.labelPosition ?? 'end', p);
+      box = labelBox(model, drawsHorizontalRule(model, axis), ann.labelPosition ?? 'end', p);
     }
 
     const color = ann.color ?? tokens.color.text;

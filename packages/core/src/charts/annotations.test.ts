@@ -224,6 +224,53 @@ describe('drawAnnotations — geometry', () => {
   });
 });
 
+describe('horizontal bar orientation', () => {
+  const hbar = {
+    type: 'bar' as const,
+    data: [
+      { region: 'A', sales: 10 },
+      { region: 'B', sales: 30 },
+    ],
+    encoding: { x: { field: 'region' }, y: { field: 'sales' } },
+    orientation: 'horizontal' as const,
+  };
+  const hbarModel = (extra: Record<string, unknown>) =>
+    buildCartesianModel({ ...hbar, ...extra } as unknown as LineSpec, resolveTheme('light'), {
+      width: 400,
+      height: 300,
+    });
+
+  it('draws a value reference line as a vertical rule', () => {
+    const model = hbarModel({ annotations: [{ value: 20 }] });
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+    const expectedX = crisp(model.y.pixel(20));
+    // Vertical segment: moveTo(x, plot.y) → lineTo(x, y1).
+    expect(rec.moves.some(([x]) => x === expectedX)).toBe(true);
+    expect(
+      rec.lines.some(([x, y]) => x === expectedX && y === model.plot.y + model.plot.height),
+    ).toBe(true);
+    expect(rec.strokes).toBeGreaterThan(0);
+  });
+
+  it('projects a point annotation onto the swapped axes', () => {
+    const model = hbarModel({ annotations: [{ type: 'point', x: 'B', y: 30, label: 'Peak' }] });
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+    const catPixel = model.x.pixel('B')!; // vertical (screen-y) for horizontal bars
+    const valPixel = model.y.pixel(30); // horizontal (screen-x) for horizontal bars
+    expect(rec.arcs.some(([x, y]) => x === valPixel && y === catPixel)).toBe(true);
+  });
+
+  it('marks insights at value=x, category=y', () => {
+    const model = hbarModel({ insights: true });
+    const { surface, rec } = mockSurface();
+    drawAnnotations(surface, model);
+    const xMax = model.y.pixel(30); // max value → screen-x
+    expect(rec.arcs.some(([x]) => x === xMax)).toBe(true);
+  });
+});
+
 describe('auto-insights (spec.insights)', () => {
   it('expands insights:true into max and min point markers', () => {
     const model = modelFromSpec({ insights: true });

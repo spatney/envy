@@ -187,6 +187,8 @@ export function buildSlopeModel(spec: SlopeSpec, tokens: ThemeTokens, opts: Buil
     series: [],
     seriesField: undefined,
     stacked: false,
+    orientation: 'vertical',
+    project: (c, v) => ({ x: c, y: v }),
     xTicks,
     yTicks,
     colorOf: () => tokens.color.text,

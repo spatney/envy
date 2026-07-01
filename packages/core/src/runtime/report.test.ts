@@ -150,6 +150,36 @@ describe('buildRenderReport — axis label overlap', () => {
     const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size: SIZE, model: barModel(spec) });
     expect(codes(r)).not.toContain('axis-label-overlap');
   });
+
+  it('warns when horizontal category labels are vertically crowded', () => {
+    const cats = Array.from({ length: 18 }, (_, i) => `Category ${i + 1}`);
+    const spec: BarSpec = {
+      type: 'bar',
+      orientation: 'horizontal',
+      data: cats.map((c, i) => ({ cat: c, v: i + 1 })),
+      encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+    };
+    const size = { width: 420, height: 170 };
+    const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size, model: barModel(spec, size) });
+    const d = r.diagnostics.find((x) => x.code === 'axis-label-overlap');
+    expect(d).toBeDefined();
+    expect(d?.axis).toBe('x');
+  });
+
+  it('does not warn when horizontal category labels have vertical room', () => {
+    const spec: BarSpec = {
+      type: 'bar',
+      orientation: 'horizontal',
+      data: [
+        { cat: 'A', v: 1 },
+        { cat: 'B', v: 2 },
+        { cat: 'C', v: 3 },
+      ],
+      encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+    };
+    const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size: SIZE, model: barModel(spec) });
+    expect(codes(r)).not.toContain('axis-label-overlap');
+  });
 });
 
 // --- Legend overflow ------------------------------------------------------
@@ -226,6 +256,25 @@ describe('buildRenderReport — clipped marks', () => {
       }),
     });
     expect(codes(r)).toContain('marks-clipped');
+  });
+
+  it('does not warn for in-range horizontal bar values', () => {
+    const spec: BarSpec = {
+      type: 'bar',
+      orientation: 'horizontal',
+      data: [
+        { cat: 'Very long category label A', v: 0 },
+        { cat: 'Very long category label B', v: 25 },
+        { cat: 'Very long category label C', v: 50 },
+      ],
+      encoding: { x: { field: 'cat' }, y: { field: 'v' } },
+      axes: { y: { scale: { domain: [0, 50] } } },
+    };
+    const size = { width: 520, height: 80 };
+    const model = barModel(spec, size);
+    expect(model.y.pixel(0)).toBeGreaterThan(model.plot.y + model.plot.height);
+    const r = buildRenderReport({ type: 'bar', spec, data: spec.data!, tokens: tokens(), size, model });
+    expect(codes(r)).not.toContain('marks-clipped');
   });
 });
 

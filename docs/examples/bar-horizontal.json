@@ -1,0 +1,18 @@
+{
+  "type": "bar",
+  "title": "Roadmap opportunity score",
+  "orientation": "horizontal",
+  "data": [
+    { "priority": "Onboarding", "score": 91 },
+    { "priority": "Procurement", "score": 77 },
+    { "priority": "Templates", "score": 72 },
+    { "priority": "Checkout", "score": 66 },
+    { "priority": "Renewals", "score": 58 }
+  ],
+  "encoding": {
+    "x": { "field": "priority" },
+    "y": { "field": "score", "title": "Opportunity score" }
+  },
+  "cornerRadius": 7,
+  "insights": true
+}

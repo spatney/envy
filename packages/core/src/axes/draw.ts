@@ -79,6 +79,10 @@ function yGridEnabled(model: CartesianModel): boolean {
 
 /** Draw gridlines + axis baselines + tick marks on the marks canvas (behind marks). */
 export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void {
+  if (model.orientation === 'horizontal') {
+    drawHorizontalAxesUnderlay(surface, model);
+    return;
+  }
   const ctx = surface.marks.ctx;
   const { plot, tokens } = model;
   const x0 = plot.x;
@@ -167,6 +171,71 @@ export function drawAxesUnderlay(surface: Surface, model: CartesianModel): void 
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+/**
+ * Horizontal-bar axis underlay: the value axis runs along the bottom (vertical
+ * gridlines at each value tick) and the category axis is a left spine with
+ * outward tick marks that anchors the bars. Mirror of the vertical layout.
+ */
+function drawHorizontalAxesUnderlay(surface: Surface, model: CartesianModel): void {
+  const ctx = surface.marks.ctx;
+  const { plot, tokens } = model;
+  const x0 = plot.x;
+  const y0 = plot.y;
+  const y1 = plot.y + plot.height;
+
+  ctx.save();
+  ctx.lineWidth = 1;
+
+  const pen = model.sketch ? new RoughPen(ctx, model.sketch) : null;
+  const seg = (sx0: number, sy0: number, sx1: number, sy1: number, stroke: string): void => {
+    pen!.polyline([{ x: sx0, y: sy0 }, { x: sx1, y: sy1 }], {
+      stroke,
+      strokeWidth: 1,
+      roughness: model.sketch!.roughness * 0.5,
+      bowing: model.sketch!.bowing * 0.55,
+    });
+  };
+
+  // Vertical value gridlines (the value axis runs horizontally).
+  if (yGridEnabled(model)) {
+    if (pen) {
+      for (const t of model.yTicks) seg(t.pos, y0, t.pos, y1, tokens.color.grid);
+    } else {
+      ctx.strokeStyle = tokens.color.grid;
+      ctx.beginPath();
+      for (const t of model.yTicks) {
+        const x = crisp(t.pos);
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x, y1);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // Left category spine + outward tick marks anchor the bars.
+  if (model.spec.axes?.x?.show !== false) {
+    if (pen) {
+      seg(x0, y0, x0, y1, tokens.color.axis);
+      for (const t of model.xTicks) seg(x0 - TICK_SIZE, t.pos, x0, t.pos, tokens.color.axis);
+    } else {
+      ctx.strokeStyle = tokens.color.axis;
+      ctx.beginPath();
+      ctx.moveTo(crisp(x0), y0);
+      ctx.lineTo(crisp(x0), y1);
+      ctx.stroke();
+      ctx.beginPath();
+      for (const t of model.xTicks) {
+        const y = crisp(t.pos);
+        ctx.moveTo(x0 - TICK_SIZE, y);
+        ctx.lineTo(x0, y);
+      }
+      ctx.stroke();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -272,10 +341,17 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
   const f = tokens.font;
   const smallFont = fontString(f.size.small, f.family, f.weight.normal);
 
-  // Y tick labels (right-aligned in the left gutter).
-  if (model.spec.axes?.y?.labels !== false) {
+  const horizontal = model.orientation === 'horizontal';
+
+  // Axis tick labels. In horizontal bar mode the category axis runs down the left
+  // gutter and the value axis along the bottom, so the two label sets swap sides.
+  const gutterTicks = horizontal ? model.xTicks : model.yTicks;
+  const gutterLabelsOn = horizontal
+    ? model.spec.axes?.x?.labels !== false
+    : model.spec.axes?.y?.labels !== false;
+  if (gutterLabelsOn) {
     const gutterRight = plot.x - TICK_SIZE - 4;
-    for (const t of model.yTicks) {
+    for (const t of gutterTicks) {
       addText(surface, smallFont, {
         left: 0,
         top: t.pos,
@@ -289,24 +365,40 @@ export function drawOverlay(surface: Surface, model: CartesianModel): void {
     }
   }
 
-  // X tick labels. Resolve each thinned tick to a measured box, clamp the
-  // first/last so they never overflow the surface, then drop any that still
-  // collide — always preserving the final (right-edge) label, which is the most
-  // informative on a time/linear axis.
-  if (model.spec.axes?.x?.labels !== false) {
+  // Bottom tick labels: category ticks (vertical) or value ticks (horizontal).
+  // Resolve each to a measured box, clamp the first/last so they never overflow
+  // the surface, then drop any that still collide — always preserving the final
+  // (right-edge) label, which is the most informative on a time/linear axis.
+  const bottomLabelsOn = horizontal
+    ? model.spec.axes?.y?.labels !== false
+    : model.spec.axes?.x?.labels !== false;
+  if (bottomLabelsOn) {
     const top = plot.y + plot.height + TICK_SIZE + 3;
-    const rotated = frame.xLabelAngle > 0;
-    for (const p of resolveXLabels(model)) {
-      addText(surface, smallFont, {
-        left: p.left,
-        top,
-        text: p.text,
-        color: tokens.color.textMuted,
-        size: f.size.small,
-        align: rotated ? 'right' : undefined,
-        transform: p.transform,
-        transformOrigin: rotated ? '100% 0%' : undefined,
-      });
+    if (horizontal) {
+      for (const p of placeXLabels(model.yTicks, frame.originX, frame.width, smallFont)) {
+        addText(surface, smallFont, {
+          left: p.left,
+          top,
+          text: p.text,
+          color: tokens.color.textMuted,
+          size: f.size.small,
+          transform: p.transform,
+        });
+      }
+    } else {
+      const rotated = frame.xLabelAngle > 0;
+      for (const p of resolveXLabels(model)) {
+        addText(surface, smallFont, {
+          left: p.left,
+          top,
+          text: p.text,
+          color: tokens.color.textMuted,
+          size: f.size.small,
+          align: rotated ? 'right' : undefined,
+          transform: p.transform,
+          transformOrigin: rotated ? '100% 0%' : undefined,
+        });
+      }
     }
   }
 
@@ -321,6 +413,35 @@ function drawAxisTitles(surface: Surface, model: CartesianModel): void {
   const baseFont = fontString(f.size.base, f.family, f.weight.medium);
 
   const xTitle = model.spec.axes?.x?.title ?? model.spec.encoding.x.title;
+  const yTitle = model.spec.axes?.y?.title ?? model.spec.encoding.y.title;
+
+  if (model.orientation === 'horizontal') {
+    // Value title along the bottom; category title down the left, rotated.
+    if (yTitle) {
+      addText(surface, baseFont, {
+        left: plot.x + plot.width / 2,
+        top: frame.originY + frame.height - Math.round(f.size.base * 1.35),
+        text: yTitle,
+        color: tokens.color.text,
+        size: f.size.base,
+        weight: f.weight.medium,
+        transform: 'translateX(-50%)',
+      });
+    }
+    if (xTitle) {
+      addText(surface, baseFont, {
+        left: frame.originX + Math.round(f.size.base * 0.4),
+        top: plot.y + plot.height / 2,
+        text: xTitle,
+        color: tokens.color.text,
+        size: f.size.base,
+        weight: f.weight.medium,
+        transform: 'translate(-50%, -50%) rotate(-90deg)',
+      });
+    }
+    return;
+  }
+
   if (xTitle) {
     addText(surface, baseFont, {
       left: plot.x + plot.width / 2,
@@ -332,7 +453,6 @@ function drawAxisTitles(surface: Surface, model: CartesianModel): void {
       transform: 'translateX(-50%)',
     });
   }
-  const yTitle = model.spec.axes?.y?.title ?? model.spec.encoding.y.title;
   if (yTitle) {
     addText(surface, baseFont, {
       left: frame.originX + Math.round(f.size.base * 0.4),
