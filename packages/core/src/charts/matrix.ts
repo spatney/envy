@@ -1,8 +1,11 @@
 import { drawTitleBlock } from './chrome';
 import {
   buildTable,
+  createSketchGridCanvas,
+  paintSketchGridOverlay,
   paintTableCanvas,
   resolveConditionalDomain,
+  type BuildTableOptions,
   type HeaderCell,
   type ViewColumn,
 } from './tableView';
@@ -53,16 +56,17 @@ function drawMatrixCanvas(surface: Surface, spec: MatrixSpec, tokens: ThemeToken
     conditionalDomains: prepared.bodyDomains,
     headerRows: prepared.headerRows,
     density: spec.density,
-    sketch: resolveSketch(spec) != null,
+    sketch: resolveSketch(spec),
   });
 }
 
 function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, size: Size): void {
   const rect = drawTitleBlock(surface, tokens, size, spec.title);
   const prepared = prepareMatrix(spec);
+  const sketch = resolveSketch(spec);
   const host = document.createElement('div');
   surface.overlay.appendChild(host);
-  buildTable({
+  const buildOpts: BuildTableOptions = {
     container: host,
     tokens,
     rect,
@@ -89,8 +93,49 @@ function renderMatrix(surface: Surface, spec: MatrixSpec, tokens: ThemeTokens, s
     conditionalDomains: prepared.bodyDomains,
     headerRows: prepared.headerRows,
     density: spec.density,
-    sketch: resolveSketch(spec) != null,
-  });
+    sketch,
+  };
+  buildTable(buildOpts);
+
+  if (sketch) {
+    const overlay = createSketchGridCanvas(rect);
+    if (overlay.ctx) {
+      surface.overlay.appendChild(overlay.canvas);
+      const ctx = overlay.ctx;
+      const draw = (): void => {
+        paintSketchGridOverlay(ctx, {
+          sketch,
+          tokens,
+          rect,
+          dpr: overlay.dpr,
+          columns: prepared.columns,
+          widths: buildOpts.widths ?? [],
+          rowCount: prepared.rows.length,
+          headerRowCount: prepared.headerRows.length,
+          hasFooter: false,
+          rowHeaderSpan: 1,
+          density: spec.density,
+          scrollLeft: host.scrollLeft || 0,
+          scrollTop: host.scrollTop || 0,
+        });
+      };
+      draw();
+      let frame = 0;
+      host.addEventListener('scroll', () => {
+        if (frame !== 0) return;
+        frame =
+          typeof requestAnimationFrame === 'function'
+            ? requestAnimationFrame(() => {
+                frame = 0;
+                draw();
+              })
+            : window.setTimeout(() => {
+                frame = 0;
+                draw();
+              }, 16);
+      });
+    }
+  }
 }
 
 function prepareMatrix(spec: MatrixSpec): {

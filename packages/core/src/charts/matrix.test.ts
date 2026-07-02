@@ -151,4 +151,10 @@ describe('render — matrix DOM', () => {
     const headers = [...container.querySelectorAll('th')].map((th) => th.textContent ?? '');
     expect(headers.indexOf('Q2')).toBeLessThan(headers.indexOf('Q1'));
   });
+
+  it('renders a viewport grid overlay in sketch mode', () => {
+    const { container } = mount(matrixSpec({ sketch: true, subtotals: true }));
+
+    expect(container.querySelector('.graphein-layer-overlay > canvas')).not.toBeNull();
+  });
 });

@@ -1,5 +1,13 @@
 import { drawTitleBlock } from './chrome';
-import { buildTable, paintTableCanvas, resolveConditionalDomain, type ViewColumn } from './tableView';
+import {
+  buildTable,
+  createSketchGridCanvas,
+  paintSketchGridOverlay,
+  paintTableCanvas,
+  resolveConditionalDomain,
+  type BuildTableOptions,
+  type ViewColumn,
+} from './tableView';
 import { resolveSketch } from '../spec/sketch';
 import type { Surface } from '../render/surface';
 import type { ChartSpec, TableSpec } from '../spec/types';
@@ -49,7 +57,7 @@ function drawTableCanvas(surface: Surface, spec: TableSpec, tokens: ThemeTokens,
     headerRows: buildTableHeaderRows(columns),
     footerRow: buildTotalsRow(sortedRows, columns, read, spec),
     density: spec.density,
-    sketch: resolveSketch(spec) != null,
+    sketch: resolveSketch(spec),
   });
 }
 
@@ -58,7 +66,7 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
   const data = spec.data ?? [];
   const columns = resolveColumns(data, spec);
   const read = columns.map((column) => accessor(column.key));
-  const sketch = resolveSketch(spec) != null;
+  const sketch = resolveSketch(spec);
   let sortState = initialSortState(spec, columns);
   let sortedRows = sortRows(data, columns, read, sortState);
   const domains = columns.map((column, colIndex) =>
@@ -71,6 +79,10 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
   const host = document.createElement('div');
   surface.overlay.appendChild(host);
 
+  const headerRowCount = buildTableHeaderRows(columns)?.length ?? 1;
+  const overlay = sketch ? createSketchGridCanvas(rect) : null;
+  if (overlay) surface.overlay.appendChild(overlay.canvas);
+
   let frame = 0;
   const renderWindow = (): void => {
     const scrollTop = host.scrollTop || 0;
@@ -78,7 +90,8 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
     const start = Math.max(0, Math.floor(scrollTop / rowHeight) - BUFFER_ROWS);
     const visible = Math.ceil(Math.max(rect.height, host.clientHeight || rect.height) / rowHeight) + BUFFER_ROWS * 2;
     const end = Math.min(sortedRows.length, start + visible);
-    buildTable({
+    const footerRow = buildTotalsRow(sortedRows, columns, read, spec);
+    const buildOpts: BuildTableOptions = {
       container: host,
       tokens,
       rect,
@@ -102,11 +115,28 @@ function renderTable(surface: Surface, spec: TableSpec, tokens: ThemeTokens, siz
       sortState: sortState ?? undefined,
       conditionalDomains: domains,
       headerRows: buildTableHeaderRows(columns),
-      footerRow: buildTotalsRow(sortedRows, columns, read, spec),
+      footerRow,
       density: spec.density,
       visibleRange: { start, end, rowHeight },
       sketch,
-    });
+    };
+    buildTable(buildOpts);
+    if (sketch && overlay?.ctx) {
+      paintSketchGridOverlay(overlay.ctx, {
+        sketch,
+        tokens,
+        rect,
+        dpr: overlay.dpr,
+        columns,
+        widths: buildOpts.widths ?? [],
+        rowCount: sortedRows.length,
+        headerRowCount,
+        hasFooter: Boolean(footerRow),
+        density: spec.density,
+        scrollLeft: host.scrollLeft || 0,
+        scrollTop,
+      });
+    }
   };
 
   host.addEventListener('scroll', () => {

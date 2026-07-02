@@ -1,4 +1,5 @@
 import type { ConditionalFormat } from '../spec/types';
+import type { ResolvedSketch } from '../spec/sketch';
 import type { ThemeTokens } from '../theme';
 import type { FieldType, Rect } from '../types';
 import {
@@ -12,7 +13,9 @@ import {
 } from '../color';
 import { formatValue } from '../format';
 import { paintCanvasText } from '../render/overlayText';
+import { getDevicePixelRatio } from '../render/env';
 import { fontString, measureText, ellipsize } from '../render/text';
+import { RoughPen } from '../rough';
 import { roundedRect } from '../shape';
 import { evalRules, iconForValue, toneColor } from './condFormat';
 
@@ -72,8 +75,9 @@ export interface BuildTableOptions {
   footerRow?: { cells: Array<{ value: unknown; raw: number | null; label?: boolean }> };
   density?: 'comfortable' | 'standard' | 'compact';
   visibleRange?: VisibleRange;
-  /** Render hand-drawn chrome (a wobbly container frame) for sketch mode. */
-  sketch?: boolean;
+  /** Render hand-drawn chrome (wobbly frame, grid, and data bars) for sketch
+   * mode. Carries the resolved rough style (roughness/bowing/seed/...) or null. */
+  sketch?: ResolvedSketch | null;
   /** Computed internally by buildTable; column pixel widths fitted to the container. */
   widths?: number[];
 }
@@ -136,7 +140,7 @@ export function buildTable(opts: BuildTableOptions): void {
     overflow: 'auto',
     pointerEvents: 'auto',
     boxSizing: 'border-box',
-    border: `1px solid ${tokens.color.border}`,
+    border: `1px solid ${opts.sketch ? 'transparent' : tokens.color.border}`,
     borderRadius: opts.sketch ? SKETCH_BORDER_RADIUS : `${tokens.radius.sm}px`,
     background: tokens.color.background,
   });
@@ -171,15 +175,26 @@ export function paintTableCanvas(opts: CanvasTableOptions): void {
   const available = Math.max(0, rect.width - 2);
   const widths = computeFittedWidths(opts.columns, available);
   opts.widths = widths;
+  const pen = opts.sketch ? new RoughPen(ctx, opts.sketch) : null;
+  const w = Math.max(0, rect.width);
+  const h = Math.max(0, rect.height);
 
   ctx.save();
   ctx.beginPath();
-  roundedRect(ctx, rect.x, rect.y, Math.max(0, rect.width), Math.max(0, rect.height), tokens.radius.sm);
-  ctx.fillStyle = tokens.color.background;
-  ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = tokens.color.border;
-  ctx.stroke();
+  if (pen) {
+    // A plain-rect clip keeps content contained; the wobbly frame is stroked
+    // on top after `restore()` so its outer wobble isn't clipped away.
+    ctx.rect(rect.x, rect.y, w, h);
+    ctx.fillStyle = tokens.color.background;
+    ctx.fill();
+  } else {
+    roundedRect(ctx, rect.x, rect.y, w, h, tokens.radius.sm);
+    ctx.fillStyle = tokens.color.background;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = tokens.color.border;
+    ctx.stroke();
+  }
   ctx.clip();
 
   const headerRows = normalizedHeaderRows(opts);
@@ -193,18 +208,20 @@ export function paintTableCanvas(opts: CanvasTableOptions): void {
   const cueReserve = clipped && opts.clippedCue !== false && visibleRows > 0 ? metrics.rowHeight : 0;
   const rowsToDraw = Math.max(0, visibleRows - (cueReserve > 0 ? 1 : 0));
 
-  paintHeaderCanvas(opts, widths, headerRows, metrics);
+  paintHeaderCanvas(opts, widths, headerRows, metrics, pen);
   for (let rowIndex = 0; rowIndex < rowsToDraw; rowIndex += 1) {
-    paintBodyRowCanvas(opts, widths, rowIndex, bodyTop + rowIndex * metrics.rowHeight, metrics);
+    paintBodyRowCanvas(opts, widths, rowIndex, bodyTop + rowIndex * metrics.rowHeight, metrics, pen);
   }
   if (cueReserve > 0) {
     paintClippedCueCanvas(opts, bodyTop + rowsToDraw * metrics.rowHeight, metrics, opts.rowCount - rowsToDraw);
   }
   if (opts.footerRow) {
-    paintFooterCanvas(opts, widths, rect.y + rect.height - metrics.rowHeight, metrics);
+    paintFooterCanvas(opts, widths, rect.y + rect.height - metrics.rowHeight, metrics, pen);
   }
 
   ctx.restore();
+
+  if (pen) pen.rect(rect.x, rect.y, w, h, { stroke: tokens.color.border });
 }
 
 const FILL_EPS = 0.5;
@@ -320,14 +337,14 @@ function makeHeaderCell(
   th.textContent = title;
   const isSorted = colIndex != null && opts.sortState?.col === colIndex;
   if (isSorted) th.setAttribute('aria-sort', opts.sortState?.dir === 'desc' ? 'descending' : 'ascending');
-  setCellBaseStyles(th, opts.tokens, align ?? 'left', opts.stickyHeader !== false, metrics.padding);
+  setCellBaseStyles(th, opts.tokens, align ?? 'left', opts.stickyHeader !== false, metrics.padding, gridBorderColor(opts));
   setStyles(th, {
     top: `${rowIndex * metrics.headerHeight}px`,
     zIndex: '4',
     background: opts.tokens.color.surface,
     color: opts.tokens.color.text,
     fontWeight: String(opts.tokens.font.weight.bold),
-    borderBottom: `1px solid ${opts.tokens.color.border}`,
+    borderBottom: `1px solid ${gridBorderColor(opts)}`,
     userSelect: 'none',
     height: `${metrics.headerHeight}px`,
   });
@@ -389,19 +406,19 @@ function makeBodyRow(opts: BuildTableOptions, rowIndex: number, rowHeight?: numb
     const td = document.createElement('td');
     const cell = opts.getCell(rowIndex, colIndex);
     const rowBg = rowBackground(opts, rowIndex, cls);
-    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding);
+    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding, gridBorderColor(opts));
     setStyles(td, {
       position: colIndex < (opts.rowHeaderSpan ?? 0) ? 'sticky' : 'relative',
       background: rowBg,
       fontWeight: cls === 'normal' ? String(opts.tokens.font.weight.normal) : String(opts.tokens.font.weight.bold),
       color: opts.tokens.color.text,
-      borderBottom: `1px solid ${opts.tokens.color.border}`,
+      borderBottom: `1px solid ${gridBorderColor(opts)}`,
       height: rowHeight ? `${rowHeight}px` : `${metrics.rowHeight}px`,
       whiteSpace: column.wrap === true ? 'normal' : 'nowrap',
     });
     const indent = opts.cellIndent?.(rowIndex, colIndex) ?? 0;
     if (indent > 0) td.style.paddingLeft = `${metrics.paddingX + indent}px`;
-    applyConditionalFormatting(td, opts, column, colIndex, cell, rowBg);
+    applyConditionalFormatting(td, opts, column, colIndex, cell, rowBg, rowIndex);
     if (td.childNodes.length === 0) {
       td.textContent = formatDisplayValue(cell.value, column);
       applyNegativeStyle(td, cell.value, column);
@@ -420,7 +437,7 @@ function buildFooter(opts: BuildTableOptions): HTMLTableSectionElement | null {
   opts.columns.forEach((column, colIndex) => {
     const td = document.createElement('td');
     const cell = opts.footerRow?.cells[colIndex] ?? { value: null, raw: null };
-    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding);
+    setCellBaseStyles(td, opts.tokens, column.align, false, metrics.padding, gridBorderColor(opts));
     setStyles(td, {
       position: colIndex < (opts.rowHeaderSpan ?? 0) ? 'sticky' : 'sticky',
       bottom: '0',
@@ -428,8 +445,8 @@ function buildFooter(opts: BuildTableOptions): HTMLTableSectionElement | null {
       background: opts.tokens.color.surface,
       color: opts.tokens.color.text,
       fontWeight: String(opts.tokens.font.weight.bold),
-      borderTop: `1px solid ${opts.tokens.color.border}`,
-      borderBottom: `1px solid ${opts.tokens.color.border}`,
+      borderTop: `1px solid ${gridBorderColor(opts)}`,
+      borderBottom: `1px solid ${gridBorderColor(opts)}`,
       height: `${metrics.rowHeight}px`,
       whiteSpace: column.wrap === true ? 'normal' : 'nowrap',
     });
@@ -464,6 +481,7 @@ function applyConditionalFormatting(
   colIndex: number,
   cell: { value: unknown; raw: number | null },
   rowBg: string,
+  rowIndex = 0,
 ): void {
   const cf = column.conditionalFormat;
   const raw = cell.raw;
@@ -516,13 +534,32 @@ function applyConditionalFormatting(
 
   if (!domain) return;
   const ratio = normalized(numeric, domain);
-  const bar = document.createElement('div');
   const diverging = cf.negativeColor !== undefined || cf.baseline === 'zero';
   const positive = numeric >= 0;
   const barColor = alphaColor(positive ? cf.color ?? opts.tokens.color.accent : cf.negativeColor ?? opts.tokens.color.negative, 0.85);
   const baseline = diverging ? normalized(0, domain) : 0;
   const left = diverging ? Math.min(baseline, normalized(numeric, domain)) : 0;
   const width = diverging ? Math.abs(normalized(numeric, domain) - baseline) : ratio;
+
+  const text = document.createElement('span');
+  text.textContent = cf.showValue === false ? '' : formatDisplayValue(cell.value, column);
+  setStyles(text, overlayTextStyles(opts.tokens.color.text));
+  td.style.background = rowBg;
+
+  if (opts.sketch) {
+    // Hand-drawn bar: an embedded rough canvas (KPI-sparkline pattern) sized to
+    // the same track the headless canvas uses, so DOM & PNG sketch bars match.
+    const colWidth = opts.widths?.[colIndex] ?? column.width ?? defaultColumnWidth(column);
+    const rowHeight = densityMetrics(opts.density).rowHeight;
+    const seed = (opts.sketch.seed ^ Math.imul(rowIndex + 1, 374761393) ^ Math.imul(colIndex + 1, 668265263)) >>> 0;
+    const canvas = buildSketchDataBar(opts.sketch, barColor, colWidth, rowHeight, left, width, seed);
+    if (canvas) td.appendChild(canvas);
+    td.appendChild(text);
+    applyNegativeStyle(text, cell.value, column);
+    return;
+  }
+
+  const bar = document.createElement('div');
   setStyles(bar, {
     position: 'absolute',
     left: `calc(${Math.round(left * 1000) / 10}% + 4px)`,
@@ -534,12 +571,51 @@ function applyConditionalFormatting(
     opacity: '0.9',
     pointerEvents: 'none',
   });
-  const text = document.createElement('span');
-  text.textContent = cf.showValue === false ? '' : formatDisplayValue(cell.value, column);
-  setStyles(text, overlayTextStyles(opts.tokens.color.text));
-  td.style.background = rowBg;
   td.append(bar, text);
   applyNegativeStyle(text, cell.value, column);
+}
+
+/**
+ * Build a hand-drawn data-bar as an embedded canvas positioned inside its cell.
+ * Geometry mirrors the headless `paintDataBar` (4px inset each side) so the DOM
+ * and PNG sketch bars are identical; a small pad keeps the outer wobble from
+ * being clipped at the canvas edge.
+ */
+function buildSketchDataBar(
+  sketch: ResolvedSketch,
+  color: string,
+  colWidth: number,
+  rowHeight: number,
+  leftRatio: number,
+  widthRatio: number,
+  seed: number,
+): HTMLCanvasElement | null {
+  const avail = Math.max(0, colWidth - 8);
+  const barW = widthRatio * avail;
+  const barH = Math.max(0, rowHeight - 10);
+  if (barW <= 0.5 || barH <= 0) return null;
+  const pad = 3;
+  const leftPx = 4 + leftRatio * avail;
+  const dpr = getDevicePixelRatio();
+  const canvas = document.createElement('canvas');
+  const cssW = barW + pad * 2;
+  const cssH = barH + pad * 2;
+  canvas.width = Math.max(1, Math.round(cssW * dpr));
+  canvas.height = Math.max(1, Math.round(cssH * dpr));
+  setStyles(canvas, {
+    position: 'absolute',
+    left: `${leftPx - pad}px`,
+    top: `${5 - pad}px`,
+    width: `${cssW}px`,
+    height: `${cssH}px`,
+    pointerEvents: 'none',
+  });
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(dpr, dpr);
+  const pen = new RoughPen(ctx, { ...sketch, seed });
+  pen.rect(pad, pad, barW, barH, { stroke: color, fill: color, fillAlpha: 0.9, strokeAlpha: 0.9 });
+  return canvas;
 }
 
 function setCellBaseStyles(
@@ -548,6 +624,7 @@ function setCellBaseStyles(
   align: 'left' | 'center' | 'right',
   sticky: boolean,
   padding = '6px 10px',
+  borderColor = tokens.color.border,
 ): void {
   setStyles(cell, {
     boxSizing: 'border-box',
@@ -556,10 +633,19 @@ function setCellBaseStyles(
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    borderRight: `1px solid ${tokens.color.border}`,
+    borderRight: `1px solid ${borderColor}`,
     verticalAlign: 'middle',
   });
   if (sticky) cell.style.position = 'sticky';
+}
+
+/**
+ * Grid line color for the DOM table. In sketch mode the clean 1px borders are
+ * made transparent so they don't double up with the hand-drawn grid overlay
+ * (see `paintSketchGridOverlay`); the layout-reserving 1px is kept.
+ */
+function gridBorderColor(opts: BuildTableOptions): string {
+  return opts.sketch ? 'transparent' : opts.tokens.color.border;
 }
 
 function renderIconValue(
@@ -642,6 +728,7 @@ function paintHeaderCanvas(
   widths: readonly number[],
   rows: HeaderCell[][],
   metrics: ReturnType<typeof densityMetrics>,
+  pen?: RoughPen | null,
 ): void {
   rows.forEach((row, rowIndex) => {
     let cursor = 0;
@@ -653,7 +740,7 @@ function paintHeaderCanvas(
       const y = opts.rect.y + rowIndex * metrics.headerHeight;
       const w = sumWidths(widths.slice(start, start + colSpan));
       const h = metrics.headerHeight * rowSpan;
-      paintCellBox(opts.ctx, x, y, w, h, opts.tokens.color.surface, opts.tokens.color.border);
+      paintCellBox(opts.ctx, x, y, w, h, opts.tokens.color.surface, opts.tokens.color.border, false, pen);
       paintCellText(opts, {
         x,
         y,
@@ -676,6 +763,7 @@ function paintBodyRowCanvas(
   rowIndex: number,
   y: number,
   metrics: ReturnType<typeof densityMetrics>,
+  pen?: RoughPen | null,
 ): void {
   const cls = opts.rowClass?.(rowIndex) ?? 'normal';
   let x = opts.rect.x;
@@ -686,8 +774,8 @@ function paintBodyRowCanvas(
     const baseBg = canvasRowBackground(opts, rowIndex, cls);
     const conditional = resolveCanvasConditional(opts, column, colIndex, cell, baseBg);
     const bg = conditional.background ?? baseBg;
-    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, bg, opts.tokens.color.border);
-    if (conditional.bar) paintDataBar(opts, x, y, width, metrics.rowHeight, conditional.bar);
+    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, bg, opts.tokens.color.border, false, pen);
+    if (conditional.bar) paintDataBar(opts, x, y, width, metrics.rowHeight, conditional.bar, pen);
     const indent = opts.cellIndent?.(rowIndex, colIndex) ?? 0;
     const text = conditional.showValue === false ? '' : formatDisplayValue(cell.value, column);
     const color = negativeTextColor(cell.value, column, conditional.color ?? opts.tokens.color.text);
@@ -715,13 +803,14 @@ function paintFooterCanvas(
   widths: readonly number[],
   y: number,
   metrics: ReturnType<typeof densityMetrics>,
+  pen?: RoughPen | null,
 ): void {
   let x = opts.rect.x;
   for (let colIndex = 0; colIndex < opts.columns.length; colIndex += 1) {
     const column = opts.columns[colIndex] as ViewColumn;
     const width = widths[colIndex] ?? 0;
     const cell = opts.footerRow?.cells[colIndex] ?? { value: null, raw: null };
-    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, opts.tokens.color.surface, opts.tokens.color.border, true);
+    paintCellBox(opts.ctx, x, y, width, metrics.rowHeight, opts.tokens.color.surface, opts.tokens.color.border, true, pen);
     paintCellText(opts, {
       x,
       y,
@@ -766,10 +855,29 @@ function paintCellBox(
   background: string,
   border: string,
   topBorder = false,
+  pen?: RoughPen | null,
 ): void {
   ctx.save();
   ctx.fillStyle = background;
   ctx.fillRect(x, y, width, height);
+  if (pen) {
+    // Flat fill (above) keeps stripes / conditional color-scales unchanged; only
+    // the separators are hand-drawn. An "L" through the right + bottom edges is
+    // one doubled wobbly stroke per cell (shared edges drawn once by each cell).
+    pen.polyline(
+      [
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ],
+      { stroke: border, strokeWidth: 1 },
+    );
+    if (topBorder) {
+      pen.polyline([{ x, y }, { x: x + width, y }], { stroke: border, strokeWidth: 1 });
+    }
+    ctx.restore();
+    return;
+  }
   ctx.strokeStyle = border;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -960,9 +1068,19 @@ function paintDataBar(
   width: number,
   height: number,
   bar: { leftRatio: number; widthRatio: number; color: string },
+  pen?: RoughPen | null,
 ): void {
   const left = x + 4 + bar.leftRatio * Math.max(0, width - 8);
   const barW = bar.widthRatio * Math.max(0, width - 8);
+  if (pen) {
+    pen.rect(left, y + 5, barW, Math.max(0, height - 10), {
+      stroke: bar.color,
+      fill: bar.color,
+      fillAlpha: 0.9,
+      strokeAlpha: 0.9,
+    });
+    return;
+  }
   opts.ctx.save();
   opts.ctx.globalAlpha *= 0.9;
   opts.ctx.beginPath();
@@ -970,6 +1088,121 @@ function paintDataBar(
   opts.ctx.fillStyle = bar.color;
   opts.ctx.fill();
   opts.ctx.restore();
+}
+
+/**
+ * Geometry + style needed to paint the DOM sketch grid overlay for the current
+ * scroll viewport. Coordinates are canvas-local (origin = table rect top-left).
+ */
+export interface SketchGridOverlay {
+  sketch: ResolvedSketch;
+  tokens: ThemeTokens;
+  rect: Rect;
+  dpr: number;
+  columns: readonly ViewColumn[];
+  widths: readonly number[];
+  rowCount: number;
+  headerRowCount: number;
+  hasFooter: boolean;
+  rowHeaderSpan?: number;
+  density?: BuildTableOptions['density'];
+  scrollLeft: number;
+  scrollTop: number;
+}
+
+/**
+ * Create a DPR-scaled overlay `<canvas>` positioned exactly over the table
+ * rect. It lives as a sibling of the scroll host (`pointer-events: none`) so it
+ * survives the host's `replaceChildren()` and lets scroll/click pass through.
+ */
+export function createSketchGridCanvas(rect: Rect): {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D | null;
+  dpr: number;
+} {
+  const dpr = getDevicePixelRatio();
+  const w = Math.max(0, rect.width);
+  const h = Math.max(0, rect.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * dpr));
+  canvas.height = Math.max(1, Math.round(h * dpr));
+  setStyles(canvas, {
+    position: 'absolute',
+    left: `${rect.x}px`,
+    top: `${rect.y}px`,
+    width: `${w}px`,
+    height: `${h}px`,
+    pointerEvents: 'none',
+  });
+  return { canvas, ctx: canvas.getContext('2d'), dpr };
+}
+
+/**
+ * Draw the hand-drawn frame + column/row separators + header rule onto a
+ * viewport-pinned overlay canvas. Vertical separators track horizontal scroll;
+ * body row separators track vertical scroll and are clipped to the body band so
+ * they never bleed over the sticky header/footer. Every line is seeded from its
+ * own index so the wobble stays stable across scroll frames.
+ */
+export function paintSketchGridOverlay(ctx: CanvasRenderingContext2D, o: SketchGridOverlay): void {
+  const w = Math.max(0, o.rect.width);
+  const h = Math.max(0, o.rect.height);
+  ctx.save();
+  ctx.setTransform(o.dpr, 0, 0, o.dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const metrics = densityMetrics(o.density);
+  const headerHeight = o.headerRowCount * metrics.headerHeight;
+  const footerHeight = o.hasFooter ? metrics.rowHeight : 0;
+  const bodyTop = headerHeight;
+  const bodyBottom = Math.max(bodyTop, h - footerHeight);
+  const border = o.tokens.color.border;
+  const base = o.sketch.seed >>> 0;
+  const stroke = (x1: number, y1: number, x2: number, y2: number, seed: number): void => {
+    const pen = new RoughPen(ctx, { ...o.sketch, seed: seed >>> 0 });
+    pen.polyline(
+      [
+        { x: x1, y: y1 },
+        { x: x2, y: y2 },
+      ],
+      { stroke: border, strokeWidth: 1 },
+    );
+  };
+
+  // Vertical separators (internal column boundaries). Sticky row-header columns
+  // stay pinned; scrolling columns shift with the horizontal scroll offset.
+  let cursor = 0;
+  for (let i = 0; i < o.columns.length - 1; i += 1) {
+    cursor += o.widths[i] ?? 0;
+    const pinned = i < (o.rowHeaderSpan ?? 0);
+    const x = pinned ? cursor : cursor - o.scrollLeft;
+    if (x <= 0 || x >= w) continue;
+    stroke(x, 0, x, h, base ^ Math.imul(i + 1, 2246822519));
+  }
+
+  // Body row separators — clipped to the body band, shifted by vertical scroll.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, bodyTop, w, Math.max(0, bodyBottom - bodyTop));
+  ctx.clip();
+  const firstRow = Math.max(0, Math.floor(o.scrollTop / metrics.rowHeight) - 1);
+  for (let r = firstRow; r < o.rowCount; r += 1) {
+    const y = bodyTop + (r + 1) * metrics.rowHeight - o.scrollTop;
+    if (y <= bodyTop) continue;
+    if (y >= bodyBottom) break;
+    stroke(0, y, w, y, base ^ Math.imul(r + 1, 3266489917));
+  }
+  ctx.restore();
+
+  // Pinned header rule + footer top border.
+  if (headerHeight > 0 && headerHeight < h) stroke(0, headerHeight, w, headerHeight, (base ^ 0x9e3779b9) >>> 0);
+  if (footerHeight > 0 && bodyBottom > bodyTop) stroke(0, bodyBottom, w, bodyBottom, (base ^ 0x85ebca6b) >>> 0);
+
+  // Wobbly frame (inset so its outer wobble isn't clipped at the canvas edge).
+  const framePen = new RoughPen(ctx, { ...o.sketch, seed: base });
+  framePen.rect(1.5, 1.5, Math.max(0, w - 3), Math.max(0, h - 3), { stroke: border, strokeWidth: 1 });
+
+  ctx.restore();
 }
 
 function canvasRowBackground(opts: CanvasTableOptions, rowIndex: number, cls: 'normal' | 'subtotal' | 'grandtotal'): string {

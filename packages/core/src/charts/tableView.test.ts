@@ -150,4 +150,13 @@ describe('render — tableView branches through table specs', () => {
     expect(host.style.borderRadius).toContain('/');
     expect(container.textContent).toMatch(/[✓×]/);
   });
+
+  it('renders hand-drawn data bars and a viewport grid overlay in sketch mode', () => {
+    const { container } = mount(spec({ sketch: true }));
+
+    // A viewport-pinned grid/frame overlay canvas is a sibling of the scroll host.
+    expect(container.querySelector('.graphein-layer-overlay > canvas')).not.toBeNull();
+    // Data bars render as embedded hand-drawn canvases behind the value text.
+    expect(container.querySelectorAll('tbody td canvas').length).toBeGreaterThan(0);
+  });
 });
